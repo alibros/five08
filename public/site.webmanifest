@@ -1,1 +1,1 @@
-{"name":"Five08","short_name":"Five08","description":"Eurorack panel design in your browser","start_url":"/app/","display":"standalone","background_color":"#171816","theme_color":"#171816","icons":[{"src":"/five08-mark.svg","sizes":"any","type":"image/svg+xml"}]}
+{"name":"Five08","short_name":"Five08","description":"Free, open-source Eurorack panel layout tool","start_url":"/app/","display":"standalone","background_color":"#f2f0e9","theme_color":"#f2f0e9","icons":[{"src":"/five08-mark.svg","sizes":"any","type":"image/svg+xml"}]}

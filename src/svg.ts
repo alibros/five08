@@ -1,5 +1,5 @@
 import type {ComponentDefinition,Item,Project} from './model';
-import {PANEL_H,panelWidth} from './model';
+import {dimensionLocked,PANEL_H,panelWidth} from './model';
 
 export const esc=(s:string)=>s.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]!));
 
@@ -25,7 +25,7 @@ export function componentSvg(i:Item,d:ComponentDefinition,p:Project,selected:boo
   else if(d.renderer==='touch')body=d.id==='joystick'?`<circle r="${w/2}" fill="#20221e" stroke="${ink}" stroke-width=".7"/><circle cx="${(i.value-.5)*w*.35}" cy="${(i.value-.5)*-h*.35}" r="${w*.18}" fill="${c}" stroke="${ink}" stroke-width=".5"/>`:`<rect x="${-w/2}" y="${-h/2}" width="${w}" height="${h}" rx="${w/2}" fill="#20221e" stroke="${c}" stroke-width=".6"/>`;
   else body=d.id==='divider'?`<line x1="${-w/2}" x2="${w/2}" stroke="${c}" stroke-width="${h}"/>`:`<${d.id.includes('circle')?'ellipse':'rect'} ${d.id.includes('circle')?`rx="${w/2}" ry="${h/2}"`:`x="${-w/2}" y="${-h/2}" width="${w}" height="${h}" rx="1"`} fill="none" stroke="${c}" stroke-width=".6"/>`;
   const label=i.label&&d.renderer!=='text'&&view==='design'?`<text y="${h/2+3.6}" fill="${ink}" font-family="ui-monospace,monospace" font-size="2" font-weight="600" text-anchor="middle" letter-spacing=".06em">${esc(i.label.toUpperCase())}</text>`:'';
-  const selection=selected?`<rect class="selection-ui" x="${-w/2-1.3}" y="${-h/2-1.3}" width="${w+2.6}" height="${h+2.6}" fill="none" stroke="${p.accentColor}" stroke-width=".45" stroke-dasharray="1.3 1"/><circle class="selection-ui" cx="${w/2+1.3}" cy="${-h/2-1.3}" r="1.1" fill="${p.accentColor}"/>`:'';
+  const selection=selected?`<g class="selection-ui"><rect x="${-w/2-1.3}" y="${-h/2-1.3}" width="${w+2.6}" height="${h+2.6}" fill="none" stroke="${p.accentColor}" stroke-width=".45" stroke-dasharray="1.3 1" pointer-events="none"/>${dimensionLocked(d)?'':[['nw',-w/2-1.3,-h/2-1.3],['ne',w/2+1.3,-h/2-1.3],['sw',-w/2-1.3,h/2+1.3],['se',w/2+1.3,h/2+1.3]].map(([corner,x,y])=>`<rect class="resize-handle" data-resize="${corner}" x="${Number(x)-1.15}" y="${Number(y)-1.15}" width="2.3" height="2.3" rx=".35" fill="${p.accentColor}" stroke="#fff" stroke-width=".25" vector-effect="non-scaling-stroke" style="cursor:${corner==='nw'||corner==='se'?'nwse-resize':'nesw-resize'}"/>`).join('')}</g>`:'';
   return `<g class="panel-item" data-id="${i.id}" transform="translate(${i.x} ${i.y}) rotate(${i.rotation})" opacity="${i.locked?.75:1}" style="cursor:${i.locked?'not-allowed':'move'}">${body}${label}${selection}</g>`;
 }
 

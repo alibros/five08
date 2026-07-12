@@ -3,7 +3,7 @@
   <path d="M0 82h1200M0 548h1200" stroke="#c5c7c3"/>
   <g transform="translate(88 80)"><rect width="82" height="470" rx="8" fill="#171816"/><path d="M17 18h48M17 452h48" stroke="#f2f0e9" stroke-width="4"/><circle cx="41" cy="235" r="15" fill="#ff5a36"/></g>
   <text x="230" y="240" fill="#171816" font-family="system-ui,sans-serif" font-size="126" font-weight="700" letter-spacing="-8">five08</text>
-  <text x="238" y="330" fill="#171816" font-family="system-ui,sans-serif" font-size="42" font-weight="600">Design the instrument before you build it.</text>
+  <text x="238" y="330" fill="#171816" font-family="system-ui,sans-serif" font-size="42" font-weight="600">Free Eurorack panel layout tool.</text>
   <text x="238" y="395" fill="#686b66" font-family="ui-monospace,monospace" font-size="24">EURORACK PANEL DESIGN / 5.08 MM PER HP</text>
   <circle cx="1080" cy="315" r="54" fill="none" stroke="#171816" stroke-width="3"/><circle cx="1080" cy="315" r="17" fill="#ff5a36"/>
 </svg>

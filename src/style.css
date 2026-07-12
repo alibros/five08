@@ -352,3 +352,10 @@ button:focus-visible,input:focus-visible,select:focus-visible { outline-color:#f
 .surface-upload,.surface-remove { height:27px; display:grid; place-items:center; padding:0 8px; border:1px solid #b9bab3; border-radius:3px; background:#f2f0e9; color:#30332e; font-size:8px; cursor:pointer; }
 .surface-upload:hover,.surface-remove:hover { color:#fff; border-color:#171816; background:#171816; }
 .surface-note { margin:6px 1px 11px; color:#81847e; font:7.5px ui-monospace,monospace; }
+.size-preset { margin-top:2px; padding:9px; border:1px solid #d0d0c9; border-radius:4px; background:#f4f2eb; }
+.locked-size-note { display:flex; align-items:center; gap:9px; margin:2px 0 12px; padding:9px; border:1px solid #c9cac3; border-radius:4px; background:#e5e3dc; }
+.locked-size-note>span { width:25px; height:25px; display:grid; place-items:center; flex:none; border:1px solid #b8bab3; border-radius:3px; color:#5e625b; }
+.locked-size-note strong,.locked-size-note small { display:block; }
+.locked-size-note strong { font-size:9px; }
+.locked-size-note small { margin-top:3px; color:#777a73; font-size:8px; }
+.form-row input:disabled { color:#686b65; background:#e0ded7; cursor:not-allowed; }

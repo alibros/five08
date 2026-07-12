@@ -3,9 +3,9 @@ import type {Category,ComponentDefinition} from './model';
 const part=(id:string,name:string,category:Category,renderer:ComponentDefinition['renderer'],width:number,height:number,cutout:number|undefined,keepout:number,color:string,label:string,description:string,extra:Partial<ComponentDefinition>={}):ComponentDefinition=>({id,name,category,renderer,width,height,cutout,keepout,color,label,description,status:'generic',tags:[name.toLowerCase(),category.toLowerCase(),renderer],...extra});
 
 export const catalog:ComponentDefinition[]=[
-  part('knob-small','Small knob','Controls','knob',10,10,7,12,'#242520','LEVEL','Compact 10 mm cap · 7 mm panel cutout',{depth:14}),
-  part('knob-medium','Medium knob','Controls','knob',15,15,7,18,'#242520','FREQUENCY','General-purpose 15 mm cap',{depth:14}),
-  part('knob-large','Large knob','Controls','knob',24,24,7,28,'#242520','TUNING','Performance-sized 24 mm cap',{depth:14}),
+  part('knob-small','Small knob','Controls','knob',10,10,7,12,'#242520','LEVEL','Compact 10 mm cap · 7 mm panel cutout',{depth:14,libraryHidden:true}),
+  part('knob-medium','Standard knob','Controls','knob',15,15,7,18,'#242520','FREQUENCY','General-purpose potentiometer knob',{depth:14,sizePresets:[{label:'Small · 10 mm',componentId:'knob-small'},{label:'Medium · 15 mm',componentId:'knob-medium'},{label:'Large · 24 mm',componentId:'knob-large'}]}),
+  part('knob-large','Large knob','Controls','knob',24,24,7,28,'#242520','TUNING','Performance-sized 24 mm cap',{depth:14,libraryHidden:true}),
   part('knob-skirted','Skirted knob','Controls','knob',20,20,7,23,'#e5e3da','AMOUNT','Skirted cap with value scale',{tags:['knob','skirted','potentiometer']}),
   part('knob-fluted','Fluted pointer knob','Controls','knob',16,16,7,19,'#252823','AMOUNT','Fluted cap with high-contrast pointer',{depth:14,tags:['knob','fluted','pointer','potentiometer']}),
   part('knob-soft-touch','Soft-touch knob','Controls','knob',18,18,7,21,'#343936','TONE','Low-profile rubberized performance cap',{depth:14,tags:['knob','soft touch','rubber','potentiometer']}),
@@ -15,9 +15,9 @@ export const catalog:ComponentDefinition[]=[
   part('encoder-ring','Illuminated encoder + push','Controls','knob',22,22,8,26,'#202421','SELECT','Endless push encoder with illuminated halo',{depth:18,tags:['encoder','endless','push','illuminated','led ring','rotary']}),
   part('encoder-metal','Metal encoder + push','Controls','knob',16,16,7.2,20,'#aeb3ac','DATA','Machined aluminium endless push encoder',{depth:17,tags:['encoder','endless','push','metal','rotary']}),
   part('knob-concentric','Concentric knob','Controls','knob',18,18,8,22,'#252622','COARSE / FINE','Dual concentric control',{depth:18}),
-  part('slider-20','20 mm slider','Controls','slider',10,28,2.2,14,'#d8d8d0','LEVEL','20 mm travel vertical fader',{orientation:'vertical',depth:12}),
-  part('slider-30','30 mm slider','Controls','slider',10,38,2.2,14,'#d8d8d0','LEVEL','30 mm travel vertical fader',{orientation:'vertical',depth:12}),
-  part('slider-45','45 mm slider','Controls','slider',10,53,2.2,14,'#d8d8d0','LEVEL','45 mm travel vertical fader',{orientation:'vertical',depth:14}),
+  part('slider-20','Vertical slider','Controls','slider',10,28,2.2,14,'#d8d8d0','LEVEL','Vertical panel fader',{orientation:'vertical',depth:12,sizePresets:[{label:'20 mm travel',componentId:'slider-20'},{label:'30 mm travel',componentId:'slider-30'},{label:'45 mm travel',componentId:'slider-45'}]}),
+  part('slider-30','30 mm slider','Controls','slider',10,38,2.2,14,'#d8d8d0','LEVEL','30 mm travel vertical fader',{orientation:'vertical',depth:12,libraryHidden:true}),
+  part('slider-45','45 mm slider','Controls','slider',10,53,2.2,14,'#d8d8d0','LEVEL','45 mm travel vertical fader',{orientation:'vertical',depth:14,libraryHidden:true}),
   part('crossfader','Horizontal crossfader','Controls','slider',43,10,2.2,14,'#d8d8d0','MIX','Horizontal performance fader',{orientation:'horizontal',depth:12}),
   part('joystick','Joystick','Controls','touch',25,25,12,31,'#262824','X / Y','Two-axis joystick',{depth:28}),
   part('touch-strip','Touch strip','Controls','touch',12,48,0,15,'#b8ff65','TOUCH','Capacitive touch strip',{depth:3}),
@@ -46,9 +46,9 @@ export const catalog:ComponentDefinition[]=[
   part('slide-switch','Slide switch','Switches & buttons','toggle',12,7,8,15,'#d8d8d0','RANGE','Compact slide switch',{orientation:'horizontal',depth:8}),
   part('rotary-switch','Rotary selector','Switches & buttons','knob',18,18,10,22,'#e2e0d7','RANGE','Multi-position rotary selector',{depth:22}),
 
-  part('led-2mm','2 mm LED','Indicators & displays','led',2,2,2.1,4,'#ff6045','','Discrete 2 mm indicator'),
-  part('led-3mm','3 mm LED','Indicators & displays','led',3,3,3.1,5,'#ff6045','','Discrete 3 mm indicator'),
-  part('led-5mm','5 mm LED','Indicators & displays','led',5,5,5.1,7,'#b7ff54','','Discrete 5 mm indicator'),
+  part('led-2mm','2 mm LED','Indicators & displays','led',2,2,2.1,4,'#ff6045','','Discrete 2 mm indicator',{libraryHidden:true}),
+  part('led-3mm','Panel LED','Indicators & displays','led',3,3,3.1,5,'#ff6045','','Discrete panel indicator',{sizePresets:[{label:'2 mm',componentId:'led-2mm'},{label:'3 mm',componentId:'led-3mm'},{label:'5 mm',componentId:'led-5mm'}]}),
+  part('led-5mm','5 mm LED','Indicators & displays','led',5,5,5.1,7,'#b7ff54','','Discrete 5 mm indicator',{libraryHidden:true}),
   part('led-rgb','RGB LED','Indicators & displays','led',5,5,5.1,7,'#70d7ff','RGB','Full-colour indicator'),
   part('led-ring','LED ring','Indicators & displays','led',22,22,0,25,'#b7ff54','VALUE','12-segment LED ring'),
   part('bargraph','10-segment bargraph','Indicators & displays','display',7,26,0,10,'#b7ff54','LEVEL','Vertical 10-segment LED meter'),

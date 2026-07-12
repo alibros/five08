@@ -1,10 +1,15 @@
 import {describe,expect,it} from 'vitest';
 import {catalogMap} from './catalog';
-import {HP_MM,emptyProject,panelWidth,parseProject} from './model';
+import {HP_MM,dimensionLocked,emptyProject,panelWidth,parseProject} from './model';
 
 describe('panel geometry',()=>{
   it('uses exact nominal HP geometry',()=>{const p=emptyProject();p.panel.widthMode='nominal';p.panel.hp=12;expect(panelWidth(p.panel)).toBe(12*HP_MM);});
   it('uses the Doepfer width allowance',()=>{const p=emptyProject();p.panel.widthMode='doepfer';p.panel.hp=12;expect(panelWidth(p.panel)).toBeCloseTo(60.56);});
+});
+
+describe('component sizing',()=>{
+  it('locks factual connector dimensions',()=>expect(dimensionLocked(catalogMap.get('jack-mono')!)).toBe(true));
+  it('keeps standard knob variants editable through presets',()=>{const knob=catalogMap.get('knob-medium')!;expect(knob.sizePresets?.map(x=>x.componentId)).toEqual(['knob-small','knob-medium','knob-large']);expect(dimensionLocked(knob)).toBe(false);});
 });
 
 describe('project import',()=>{

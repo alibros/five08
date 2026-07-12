@@ -7,6 +7,8 @@ export type ComponentDefinition = {
   width:number; height:number; cutout?:number; cutoutShape?:'circle'|'rect'; cutoutWidth?:number; cutoutHeight?:number; keepout?:number; depth?:number;
   color:string; label:string; status:PartStatus; description:string;
   manufacturer?:string; partNumber?:string; orientation?:'vertical'|'horizontal';
+  libraryHidden?:boolean; resizable?:boolean;
+  sizePresets?:Array<{label:string;componentId:string}>;
 };
 
 export type Item = {
@@ -30,6 +32,7 @@ export const HP_MM = 5.08;
 export const panelWidth = (p:PanelProfile) => p.widthMode==='custom' ? p.customWidth : p.widthMode==='doepfer' ? Math.max(5,p.hp*HP_MM-.4) : p.hp*HP_MM;
 export const uid = () => crypto.randomUUID?.() ?? Math.random().toString(36).slice(2,11);
 export const clone = <T,>(x:T):T => structuredClone(x);
+export const dimensionLocked=(d:ComponentDefinition)=>d.resizable===false||d.status==='verified'||['jack','connector','toggle','hole'].includes(d.renderer);
 export const emptyProject = ():Project => ({version:2,name:'Untitled panel',panel:{hp:12,widthMode:'doepfer',customWidth:60.56,thickness:2,material:'Aluminium',finish:'brushed-silver',mounting:'four'},panelColor:'#d9d8d1',inkColor:'#1b1c19',accentColor:'#ff5d3b',items:[],notes:''});
 
 type V1Item={id:string;kind:string;x:number;y:number;size:number;label:string;color:string;value?:number};

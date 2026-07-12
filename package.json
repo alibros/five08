@@ -2,6 +2,11 @@
   "name": "five08",
   "private": true,
   "version": "0.1.0",
+  "description": "Free, open-source Eurorack panel layout tool",
+  "license": "MIT",
+  "repository": { "type": "git", "url": "https://github.com/alibros/five08.git" },
+  "homepage": "https://github.com/alibros/five08",
+  "bugs": { "url": "https://github.com/alibros/five08/issues" },
   "type": "module",
   "scripts": {
     "dev": "vite",
