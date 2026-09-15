@@ -124,11 +124,12 @@ export function componentSvg(i:Item,d:ComponentDefinition,p:Project,selected:boo
   else body=d.id==='divider'?`<line x1="${-w/2}" x2="${w/2}" stroke="${c}" stroke-width="${h}"/>`:`<${d.id.includes('circle')?'ellipse':'rect'} ${d.id.includes('circle')?`rx="${w/2}" ry="${h/2}"`:`x="${-w/2}" y="${-h/2}" width="${w}" height="${h}" rx="1"`} fill="none" stroke="${c}" stroke-width=".6"/>`;
   const label=i.label&&d.renderer!=='text'&&view==='design'?`<text y="${h/2+3.6}" fill="${ink}" font-family="ui-monospace,monospace" font-size="2" font-weight="600" text-anchor="middle" letter-spacing=".06em">${esc(i.label.toUpperCase())}</text>`:'';
   const selection=selected?`<g class="selection-ui"><rect x="${-w/2-1.3}" y="${-h/2-1.3}" width="${w+2.6}" height="${h+2.6}" fill="none" stroke="${p.accentColor}" stroke-width=".45" stroke-dasharray="1.3 1" pointer-events="none"/>${dimensionLocked(d)?'':[['nw',-w/2-1.3,-h/2-1.3],['ne',w/2+1.3,-h/2-1.3],['sw',-w/2-1.3,h/2+1.3],['se',w/2+1.3,h/2+1.3]].map(([corner,x,y])=>`<rect class="resize-handle" data-resize="${corner}" x="${Number(x)-1.15}" y="${Number(y)-1.15}" width="2.3" height="2.3" rx=".35" fill="${p.accentColor}" stroke="#fff" stroke-width=".25" vector-effect="non-scaling-stroke" style="cursor:${corner==='nw'||corner==='se'?'nwse-resize':'nesw-resize'}"/>`).join('')}</g>`:'';
-  const inner=`${body}${label}${selection}`;
   const place=`transform="translate(${i.x} ${i.y}) rotate(${i.rotation})"`;
+  // On the panel the drawing sits in its own group so it can be lifted while
+  // dragged without disturbing the selection handles around it.
   return wrapper==='preview'
-    ? `<g class="part-preview" ${place} pointer-events="none">${inner}</g>`
-    : `<g class="panel-item" data-id="${i.id}" data-kind="${d.renderer}" ${place} opacity="${i.locked?.75:1}" style="cursor:${i.locked?'not-allowed':'move'}">${inner}</g>`;
+    ? `<g class="part-preview" ${place} pointer-events="none">${body}${label}</g>`
+    : `<g class="panel-item" data-id="${i.id}" data-kind="${d.renderer}" ${place} opacity="${i.locked?.75:1}" style="cursor:${i.locked?'not-allowed':'move'}"><g class="part-body">${body}${label}</g>${selection}</g>`;
 }
 
 /** Panel legends: multi-line, aligned, in a font that will survive the trip to a fabricator. */

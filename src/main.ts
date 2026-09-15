@@ -12,6 +12,8 @@ import {openPalette,type Command} from './palette';
 import {issueCounts,preflight,type Issue} from './preflight';
 import {printSheet,svgToPng} from './raster';
 import {activeId,deleteProject,duplicateProject,listProjects,listRecovery,migrateLegacy,newProjectId,pushRecovery,readPrefs,readProject,renameProject,saveProject,setActiveId,storageUsed,writePrefs,type Prefs} from './store';
+import {pulse,roll} from './roll';
+import {units} from './units';
 import {applyTheme,nextTheme,watchSystemTheme,type Theme} from './theme';
 import {registerOffline} from './offline';
 
@@ -31,6 +33,7 @@ type ResizeDrag={mode:'resize';itemId:string;corner:'nw'|'ne'|'sw'|'se';startX:n
 type MarqueeDrag={mode:'marquee';startX:number;startY:number;x:number;y:number;base:Set<string>;moved:boolean};
 type PanDrag={mode:'pan';startClientX:number;startClientY:number;scrollLeft:number;scrollTop:number;moved:boolean};
 let drag:null|MoveDrag|ResizeDrag|MarqueeDrag|PanDrag=null;
+let lastGuideKey='',lastSelectionKey='',lastFocusId='';
 let spaceHeld=false;
 let focusedId='';
 let toastTimer=0;
@@ -50,9 +53,9 @@ app.innerHTML=`<div class="skip-links">
 </div><main class="app">
  <header class="topbar"><a class="brand" href="/" aria-label="Five08 home"><div class="brand-mark"></div><div><strong>five08</strong><small>Eurorack panel designer</small></div></a><span class="top-divider"></span><div class="project-identity"><span class="eyebrow">Panel</span><input class="project-name" id="project-name" aria-label="Panel name" spellcheck="false"></div><div class="history-group"><button class="icon-button" id="undo" aria-label="Undo" data-tooltip="Undo · ⌘Z">${icon('undo')}</button><button class="icon-button" id="redo" aria-label="Redo" data-tooltip="Redo · ⇧⌘Z">${icon('redo')}</button></div><span class="spacer"></span><button class="command-hint" id="open-palette" data-tooltip="All commands · ⌘K">${icon('command')}<span>Commands</span><kbd id="palette-key">⌘K</kbd></button><div class="file-group"><button class="tool-button subtle" id="new-project" data-tooltip="New panel">${icon('plus')}<span>New</span></button><button class="tool-button subtle" id="open-library" data-tooltip="Your panels · ⌘O">${icon('folder')}<span>Panels</span></button><button class="tool-button subtle" id="save-json" data-tooltip="Download .panel.json · ⌘S">${icon('save')}<span>Save</span></button></div><button class="tool-button primary export-button" id="export" data-tooltip="Export · ⌘E">${icon('export')} Export</button><button class="icon-button" id="theme-toggle" aria-label="Change theme">${icon('theme')}</button><button class="icon-button" id="help" aria-label="Keyboard shortcuts" data-tooltip="Help & shortcuts">${icon('help')}</button><input id="file-input" type="file" accept=".json,application/json" hidden></header>
  <div class="layout"><aside class="sidebar library"><div class="side-head"><div><span class="eyebrow">Create</span><h2>Components</h2></div><div class="head-actions"><span id="library-count"></span><button class="collapse-button" id="collapse-left" aria-label="Collapse component library">${icon('left')}</button></div></div><div class="library-tools"><div class="search-wrap"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6"/><path d="m16 16 4 4"/></svg><input id="library-search" type="search" placeholder="Search parts, families, makers…" aria-label="Search components"></div><div class="category-tabs" id="category-tabs"></div></div><div class="side-scroll" id="library"></div></aside>
- <section class="canvas-wrap"><div class="precision-bar"><button class="collapse-rail left-rail" id="open-left" aria-label="Show component library">${icon('right')}</button><div class="segmented" id="views" role="group" aria-label="Panel view"><button data-view="design">Hardware</button><button data-view="cutout">Cutouts</button><button data-view="rear">Rear clearance</button></div><div class="mode-context" id="mode-context"><span></span><small></small></div><span class="spacer"></span><div class="layout-tools" role="toolbar" aria-label="Alignment"><button class="quiet" id="align-x" data-tooltip="Align horizontal centres">Align X</button><button class="quiet" id="align-y" data-tooltip="Align vertical centres">Align Y</button><button class="quiet" id="distribute-h" data-tooltip="Equal horizontal spacing">Space H</button><button class="quiet" id="distribute-v" data-tooltip="Equal vertical spacing">Space V</button><button class="quiet" id="center-panel" data-tooltip="Centre the selection across the panel">Centre</button><span class="precision-divider"></span><button class="quiet icon-tool" id="tool-grid" data-tooltip="Arrange in a grid">${icon('grid')}</button><button class="quiet icon-tool" id="tool-mirror" data-tooltip="Mirror across the centreline · M">${icon('mirror')}</button><button class="quiet icon-tool" id="tool-rotate" data-tooltip="Rotate 90° · R">${icon('rotate')}</button></div><span class="precision-divider"></span><button class="quiet on" id="smart-guides">Smart guides</button><button class="quiet" id="toggle-safe">Safe zones</button><button class="quiet" id="toggle-rack" data-tooltip="Show the neighbouring modules">Rack</button><button class="collapse-rail right-rail" id="open-right" aria-label="Show inspector">${icon('left')}</button></div><div class="ruler-corner">0,0</div><div class="ruler ruler-x" id="ruler-x"></div><div class="ruler ruler-y" id="ruler-y"></div><div class="canvas" id="canvas" tabindex="0" aria-label="Panel canvas. Press Enter to step through the parts on it."><div class="panel-stage" id="panel-stage"></div></div><div class="selection-bar" id="selection-bar"></div><div class="canvas-toolbar"><div class="toolbar-group"><button id="zoom-out" aria-label="Zoom out">−</button><button id="zoom-fit" data-tooltip="Fit panel · 0">Fit</button><button id="zoom-selection" data-tooltip="Zoom to selection · F">Selection</button><button id="zoom-100">100%</button><button id="zoom-in" aria-label="Zoom in">+</button></div><span></span><div class="toolbar-group"><button id="snap-toggle">Grid snap</button><button id="grid-cycle">1 mm</button><button id="grid-toggle">Grid</button></div><span></span><label class="toolbar-switch" data-tooltip="Fade the hardware, keep the artwork"><input type="checkbox" id="light-table"><span>Light table</span></label></div></section>
+ <section class="canvas-wrap"><div class="precision-bar"><button class="collapse-rail left-rail" id="open-left" aria-label="Show component library">${icon('right')}</button><div class="segmented" id="views" role="group" aria-label="Panel view"><button data-view="design">Hardware</button><button data-view="cutout">Cutouts</button><button data-view="rear">Rear clearance</button></div><div class="mode-context" id="mode-context"><span></span><small></small></div><span class="spacer"></span><div class="layout-tools" role="toolbar" aria-label="Alignment"><button class="quiet" id="align-x" data-tooltip="Align horizontal centres">Align X</button><button class="quiet" id="align-y" data-tooltip="Align vertical centres">Align Y</button><button class="quiet" id="distribute-h" data-tooltip="Equal horizontal spacing">Space H</button><button class="quiet" id="distribute-v" data-tooltip="Equal vertical spacing">Space V</button><button class="quiet" id="center-panel" data-tooltip="Centre the selection across the panel">Centre</button><span class="precision-divider"></span><button class="quiet icon-tool" id="tool-grid" data-tooltip="Arrange in a grid">${icon('grid')}</button><button class="quiet icon-tool" id="tool-mirror" data-tooltip="Mirror across the centreline · M">${icon('mirror')}</button><button class="quiet icon-tool" id="tool-rotate" data-tooltip="Rotate 90° · R">${icon('rotate')}</button></div><span class="precision-divider"></span><button class="quiet on" id="smart-guides">Smart guides</button><button class="quiet" id="toggle-safe">Safe zones</button><button class="quiet" id="toggle-rack" data-tooltip="Show the neighbouring modules">Rack</button><button class="collapse-rail right-rail" id="open-right" aria-label="Show inspector">${icon('left')}</button></div><div class="ruler-corner">0,0</div><div class="ruler ruler-x" id="ruler-x"></div><div class="ruler ruler-y" id="ruler-y"></div><div class="canvas" id="canvas" tabindex="0" aria-label="Panel canvas. Press Enter to step through the parts on it."><div class="panel-stage" id="panel-stage"></div></div><div class="cursor-tag mono" id="cursor-tag" aria-hidden="true"></div><div class="selection-bar" id="selection-bar"></div><div class="canvas-toolbar"><div class="toolbar-group"><button id="zoom-out" aria-label="Zoom out">−</button><button id="zoom-fit" data-tooltip="Fit panel · 0">Fit</button><button id="zoom-selection" data-tooltip="Zoom to selection · F">Selection</button><button id="zoom-100">100%</button><button id="zoom-in" aria-label="Zoom in">+</button></div><span></span><div class="toolbar-group"><button id="snap-toggle">Grid snap</button><button id="grid-cycle">1 mm</button><button id="grid-toggle">Grid</button></div><span></span><label class="toolbar-switch" data-tooltip="Fade the hardware, keep the artwork"><input type="checkbox" id="light-table"><span>Light table</span></label></div></section>
  <aside class="sidebar right"><div class="side-head"><div><span class="eyebrow">Inspect</span><h2 id="inspector-title">Panel</h2></div><div class="head-actions"><button class="icon-button danger" id="delete" aria-label="Delete selection" data-tooltip="Delete selection">${icon('trash')}</button><button class="collapse-button" id="collapse-right" aria-label="Collapse inspector">${icon('right')}</button></div></div><nav class="inspector-tabs" aria-label="Inspector sections"><button data-inspector-tab="context">Context</button><button data-inspector-tab="panel">Panel</button><button data-inspector-tab="layers">Layers <span id="layers-count"></span></button></nav><div class="side-scroll" id="inspector"></div></aside></div>
- <footer class="statusbar"><button class="status-control ready" id="save-status">● Saved locally</button><span id="dimensions"></span><span id="selection-status"></span><span id="coordinates">X — · Y —</span><span class="spacer"></span><span id="zoom-status">100%</span><span id="snap-status">Snap · 1 mm</span><button class="status-control" id="warning-count"></button></footer>
+ <footer class="statusbar"><button class="status-control ready" id="save-status">● Saved locally</button><span id="dimensions"></span><span id="selection-status"></span><span id="coordinates">X — · Y —</span><span class="spacer"></span><span id="zoom-status" class="mono roll"><span class="roll-int tight" data-unit="%" style="--n:100" aria-hidden="true"></span><span class="sr-only">100%</span></span><span id="snap-status">Snap · 1 mm</span><button class="status-control" id="warning-count"></button></footer>
 </main>
 <svg class="defs-host" aria-hidden="true" width="0" height="0"><defs><filter id="glow" x="-75%" y="-75%" width="250%" height="250%"><feGaussianBlur stdDeviation="1" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs></svg>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>`;
@@ -86,9 +89,12 @@ function setSaveStatus(state:'saving'|'saved'|'quota'|'unavailable'){
   const el=document.querySelector('#save-status');if(!el)return;
   const minutes=Math.floor((Date.now()-lastSaved)/60000);
   const text=state==='saving'?'Saving…':state==='quota'?'Storage full':state==='unavailable'?'Not saving':lastSaved&&minutes>=1?`Saved ${minutes} min ago`:'Saved locally';
+  const wasSaving=el.textContent?.includes('Saving');
   el.textContent=`● ${text}`;
   el.classList.toggle('ready',state==='saved'||state==='saving');
   el.classList.toggle('danger',state==='quota'||state==='unavailable');
+  // A green hairline that blinks once: the save landed, no toast required.
+  if(state==='saved'&&wasSaving)pulse(el,'flash-ok');
 }
 function savePrefs(){writePrefs({theme,grid:grids[gridIndex],snap,smartGuides,showGrid,showSafe});}
 function saveRecovery(){pushRecovery(project);}
@@ -111,7 +117,7 @@ function render(){
   issues=preflight(project,catalogMap);
   renderLibrary();renderCanvas();renderInspector();renderChrome();
 }
-function renderChrome(){(document.querySelector('#project-name') as HTMLInputElement).value=project.name;const w=panelWidth(project.panel),items=selectedItems();document.querySelector('#dimensions')!.textContent=`${project.panel.hp} HP · ${w.toFixed(2)} × ${PANEL_H} mm`;document.querySelector('#selection-status')!.textContent=items.length===1?`${catalogMap.get(items[0].componentId)!.name} · X ${items[0].x.toFixed(1)} Y ${items[0].y.toFixed(1)}`:items.length>1?`${items.length} selected`:`${project.items.length} components`;document.querySelector('#zoom-status')!.textContent=`${Math.round(zoom*100)}%`;document.querySelector('#snap-status')!.textContent=`${smartGuides?'Guides':'No guides'} · ${snap?`${grids[gridIndex]} mm grid`:'free'}`;const counts=issueCounts(issues),wc=document.querySelector('#warning-count')!;wc.textContent=counts.errors?`✕ ${counts.errors} error${counts.errors===1?'':'s'}${counts.warnings?` · ${counts.warnings} warning${counts.warnings===1?'':'s'}`:''}`:counts.warnings?`▲ ${counts.warnings} warning${counts.warnings===1?'':'s'}`:'✓ Layout checks pass';wc.classList.toggle('warn',counts.warnings>0&&counts.errors===0);wc.classList.toggle('bad',counts.errors>0);(document.querySelector('#undo') as HTMLButtonElement).disabled=!history.canUndo;(document.querySelector('#redo') as HTMLButtonElement).disabled=!history.canRedo;(document.querySelector('#delete') as HTMLButtonElement).disabled=selection.size===0;(document.querySelector('#align-x') as HTMLButtonElement).disabled=selection.size<2;(document.querySelector('#align-y') as HTMLButtonElement).disabled=selection.size<2;(document.querySelector('#distribute-h') as HTMLButtonElement).disabled=selection.size<3;(document.querySelector('#distribute-v') as HTMLButtonElement).disabled=selection.size<3;(document.querySelector('#center-panel') as HTMLButtonElement).disabled=selection.size===0;document.querySelector('#grid-cycle')!.textContent=`${grids[gridIndex]} mm`;document.querySelector('#snap-toggle')!.classList.toggle('on',snap);(document.querySelector('#zoom-selection') as HTMLButtonElement).disabled=selection.size===0;document.querySelector('#theme-toggle')!.setAttribute('data-tooltip',`Theme: ${theme}`);document.querySelector('#smart-guides')!.classList.toggle('on',smartGuides);document.querySelector('#grid-toggle')!.classList.toggle('on',showGrid);document.querySelector('#toggle-safe')!.classList.toggle('on',showSafe);document.querySelector('#toggle-rack')!.classList.toggle('on',showRack);document.querySelectorAll('[data-view]').forEach(e=>{const on=(e as HTMLElement).dataset.view===view;e.classList.toggle('on',on);e.setAttribute('aria-pressed',String(on));});document.querySelectorAll('[data-inspector-tab]').forEach(e=>{const on=(e as HTMLElement).dataset.inspectorTab===inspectorTab;e.classList.toggle('on',on);e.setAttribute('aria-selected',String(on));});document.querySelector('.layout')!.classList.toggle('left-closed',!leftOpen);document.querySelector('.layout')!.classList.toggle('right-closed',!rightOpen);document.querySelector('#layers-count')!.textContent=String(project.items.length);const context={design:['Hardware view','Front-panel controls and artwork'],cutout:['Machining view','Cutouts and drilling geometry'],rear:['Rear clearance','Bodies, depth and keepout zones']}[view];document.querySelector('#mode-context')!.innerHTML=`<span>${context[0]}</span><small>${context[1]}</small>`;renderSelectionBar();}
+function renderChrome(){(document.querySelector('#project-name') as HTMLInputElement).value=project.name;const w=panelWidth(project.panel),items=selectedItems();document.querySelector('#dimensions')!.textContent=units(`${project.panel.hp} HP · ${w.toFixed(2)} × ${PANEL_H} mm`);document.querySelector('#selection-status')!.textContent=items.length===1?`${catalogMap.get(items[0].componentId)!.name} · X ${items[0].x.toFixed(1)} Y ${items[0].y.toFixed(1)}`:items.length>1?`${items.length} selected`:`${project.items.length} components`;setZoomStatus();document.querySelector('#snap-status')!.textContent=`${smartGuides?'Guides':'No guides'} · ${snap?`${grids[gridIndex]} mm grid`:'free'}`;const counts=issueCounts(issues),wc=document.querySelector('#warning-count')!;const wasVerdict=wc.textContent;wc.textContent=counts.errors?`✕ ${counts.errors} error${counts.errors===1?'':'s'}${counts.warnings?` · ${counts.warnings} warning${counts.warnings===1?'':'s'}`:''}`:counts.warnings?`▲ ${counts.warnings} warning${counts.warnings===1?'':'s'}`:'✓ Layout checks pass';wc.classList.toggle('warn',counts.warnings>0&&counts.errors===0);wc.classList.toggle('bad',counts.errors>0);if(wasVerdict&&wasVerdict!==wc.textContent)pulse(wc,'swap');(document.querySelector('#undo') as HTMLButtonElement).disabled=!history.canUndo;(document.querySelector('#redo') as HTMLButtonElement).disabled=!history.canRedo;(document.querySelector('#delete') as HTMLButtonElement).disabled=selection.size===0;(document.querySelector('#align-x') as HTMLButtonElement).disabled=selection.size<2;(document.querySelector('#align-y') as HTMLButtonElement).disabled=selection.size<2;(document.querySelector('#distribute-h') as HTMLButtonElement).disabled=selection.size<3;(document.querySelector('#distribute-v') as HTMLButtonElement).disabled=selection.size<3;(document.querySelector('#center-panel') as HTMLButtonElement).disabled=selection.size===0;document.querySelector('#grid-cycle')!.textContent=`${grids[gridIndex]} mm`;document.querySelector('#snap-toggle')!.classList.toggle('on',snap);(document.querySelector('#zoom-selection') as HTMLButtonElement).disabled=selection.size===0;document.querySelector('#theme-toggle')!.setAttribute('data-tooltip',`Theme: ${theme}`);document.querySelector('#smart-guides')!.classList.toggle('on',smartGuides);document.querySelector('#grid-toggle')!.classList.toggle('on',showGrid);document.querySelector('#toggle-safe')!.classList.toggle('on',showSafe);document.querySelector('#toggle-rack')!.classList.toggle('on',showRack);document.querySelectorAll('[data-view]').forEach(e=>{const on=(e as HTMLElement).dataset.view===view;e.classList.toggle('on',on);e.setAttribute('aria-pressed',String(on));});document.querySelectorAll('[data-inspector-tab]').forEach(e=>{const on=(e as HTMLElement).dataset.inspectorTab===inspectorTab;e.classList.toggle('on',on);e.setAttribute('aria-selected',String(on));});document.querySelector('.layout')!.classList.toggle('left-closed',!leftOpen);document.querySelector('.layout')!.classList.toggle('right-closed',!rightOpen);document.querySelector('#layers-count')!.textContent=String(project.items.length);const context={design:['Hardware view','Front-panel controls and artwork'],cutout:['Machining view','Cutouts and drilling geometry'],rear:['Rear clearance','Bodies, depth and keepout zones']}[view];document.querySelector('#mode-context')!.innerHTML=`<span>${context[0]}</span><small>${context[1]}</small>`;renderSelectionBar();}
 
 function renderLibrary(){const tabs=document.querySelector('#category-tabs')!;tabs.innerHTML=['All',...categories].map(c=>`<button class="category-pill ${c===activeCategory?'on':''}" data-category="${c}">${c==='All'?'All parts':c}</button>`).join('');tabs.querySelectorAll<HTMLElement>('[data-category]').forEach(b=>b.onclick=()=>{activeCategory=b.dataset.category!;renderLibrary();});const q=libraryQuery.trim().toLowerCase();const defs=catalog.filter(d=>!d.libraryHidden&&(activeCategory==='All'||d.category===activeCategory)&&(!q||[d.name,d.description,...d.tags,d.manufacturer||''].some(x=>x.toLowerCase().includes(q))));document.querySelector('#library-count')!.textContent=`${defs.length} part${defs.length===1?'':'s'}`;const groups=activeCategory==='All'?[...categories]:[activeCategory];document.querySelector('#library')!.innerHTML=groups.map(cat=>{const ds=defs.filter(d=>d.category===cat);return ds.length?`<section class="drawer-section"><h3 class="drawer-tab"><span>${cat}</span><i>${ds.length}</i></h3><div class="drawer-grid">${ds.map(d=>`<button class="part-card" data-component="${d.id}" draggable="true" aria-label="Add ${d.name}" title="${esc(d.name)} · ${d.width} × ${d.height} mm${d.cutout?` · ${cutoutLabel(d)}`:''}${d.status==='verified'?' · verified against a datasheet':''}"><span class="part-thumbnail">${thumbnailSvg(d,project,d.color,44)}</span><strong>${esc(d.name)}</strong><small class="mono">${d.width} × ${d.height}${d.cutout?`<b> · ${cutoutLabel(d).replace(' cutout','')}</b>`:''}</small>${d.status==='verified'?'<i class="verified" aria-hidden="true"></i>':''}<span class="add-part" aria-hidden="true">Add</span></button>`).join('')}</div></section>`:''}).join('')||`<div class="empty-library"><strong>No matching parts</strong><span>Try another name, family or manufacturer.</span></div>`;document.querySelectorAll<HTMLElement>('[data-component]').forEach(b=>{b.onclick=()=>add(b.dataset.component!);b.ondragstart=e=>e.dataTransfer?.setData('component',b.dataset.component!);});}
 function finishCards(){return panelFinishes.map(f=>`<button class="finish-card ${project.panel.finish===f.id?'selected':''}" data-finish="${f.id}" aria-label="Use ${f.name}"><span class="finish-swatch">${finishSwatchSvg(f,32)}</span><span><strong>${f.name}</strong><small>${f.material}</small></span>${project.panel.finish===f.id?'<b>✓</b>':''}</button>`).join('');}
@@ -156,7 +162,7 @@ function bindGraphicsControl(i:Item,d:ComponentDefinition){
 }
 
 function sizeControl(d:ComponentDefinition){const owner=presetOwner(d);if(owner)return`<div class="form-row size-preset"><label>Standard size</label><select id="size-preset">${owner.sizePresets!.map(p=>`<option value="${p.componentId}" ${p.componentId===d.id?'selected':''}>${p.label}</option>`).join('')}</select></div>`;return dimensionLocked(d)?`<div class="locked-size-note"><span>⌑</span><div><strong>Mechanical size locked</strong><small>${d.width} × ${d.height} mm · based on the selected hardware</small></div></div>`:'';}
-function renderCanvas(){const w=panelWidth(project.panel),stage=document.querySelector<HTMLDivElement>('#panel-stage')!;stage.style.width=`${w*PX*zoom}px`;stage.style.height=`${PANEL_H*PX*zoom}px`;const safe=showSafe?`<g class="design-guide"><rect x="3" y="3" width="${w-6}" height="${PANEL_H-6}" rx="1" fill="none" stroke="${project.accentColor}" stroke-opacity=".35" stroke-width=".3" stroke-dasharray="1 1"/><rect width="${w}" height="8" fill="${project.accentColor}" opacity=".045"/><rect y="${PANEL_H-8}" width="${w}" height="8" fill="${project.accentColor}" opacity=".045"/></g>`:'';const grid=showGrid?`<rect class="design-guide" width="${w}" height="${PANEL_H}" fill="url(#grid)"/>`:'';const visible=project.items.filter(i=>!i.hidden);stage.innerHTML=`<svg class="panel-svg" id="panel-svg" width="${w*PX}" height="${PANEL_H*PX}" viewBox="0 0 ${w} ${PANEL_H}" style="transform:scale(${zoom});transform-origin:top left"><defs>${panelFinishDefs(project)}<pattern id="grid" width="${grids[gridIndex]}" height="${grids[gridIndex]}" patternUnits="userSpaceOnUse"><path d="M ${grids[gridIndex]} 0H0V${grids[gridIndex]}" fill="none" stroke="${project.inkColor}" stroke-opacity=".08" stroke-width=".1"/></pattern><style>.cut{fill:none;stroke:#ef523c;stroke-width:.45}.panel-item:focus{outline:none}.smart-line{stroke:#168cff;stroke-width:.42;vector-effect:non-scaling-stroke}.measure-line{stroke:#ff4fad;stroke-width:.35;vector-effect:non-scaling-stroke}.measure-text{fill:#fff;font:1.75px ui-monospace,monospace;paint-order:stroke;stroke:#a52065;stroke-width:.7px}.equal-pill{fill:#ff4fad}.equal-text{fill:#fff;font:bold 1.45px ui-monospace,monospace}.marquee{fill:#2e8fff22;stroke:#2e8fff;stroke-width:.3;vector-effect:non-scaling-stroke}.marquee-hit{fill:none;stroke:#2e8fff;stroke-width:.35;stroke-dasharray:1 .8;vector-effect:non-scaling-stroke}.focus-ring{fill:none;stroke:#2e8fff;stroke-width:1.6;stroke-dasharray:2 1.4;vector-effect:non-scaling-stroke;paint-order:stroke}</style></defs>${showRack?rackContextSvg(project):''}<rect class="light-sheet" width="${w}" height="${PANEL_H}" rx=".6" fill="#fff"/>${panelFinishSurface(project,w)}${grid}${safe}${view!=='rear'?mountingSvg(project)+(showRack&&view==='design'?screwsSvg(project):''):''}${visible.map(i=>componentSvg(i,catalogMap.get(i.componentId)!,project,selection.has(i.id),view)).join('')}<g id="smart-guide-layer" pointer-events="none"></g><g id="overlay-layer" pointer-events="none"></g><g id="focus-layer" pointer-events="none"></g>${project.items.length===0?emptyPanelSvg(w):''}</svg>`;bindCanvas();renderRuler(w);}
+function renderCanvas(){const w=panelWidth(project.panel),stage=document.querySelector<HTMLDivElement>('#panel-stage')!;stage.style.width=`${w*PX*zoom}px`;stage.style.height=`${PANEL_H*PX*zoom}px`;const safe=showSafe?`<g class="design-guide"><rect x="3" y="3" width="${w-6}" height="${PANEL_H-6}" rx="1" fill="none" stroke="${project.accentColor}" stroke-opacity=".35" stroke-width=".3" stroke-dasharray="1 1"/><rect width="${w}" height="8" fill="${project.accentColor}" opacity=".045"/><rect y="${PANEL_H-8}" width="${w}" height="8" fill="${project.accentColor}" opacity=".045"/></g>`:'';const grid=showGrid?`<rect class="design-guide" width="${w}" height="${PANEL_H}" fill="url(#grid)"/>`:'';const visible=project.items.filter(i=>!i.hidden);stage.innerHTML=`<svg class="panel-svg" id="panel-svg" width="${w*PX}" height="${PANEL_H*PX}" viewBox="0 0 ${w} ${PANEL_H}" style="transform:scale(${zoom});transform-origin:top left"><defs>${panelFinishDefs(project)}<pattern id="grid" width="${grids[gridIndex]}" height="${grids[gridIndex]}" patternUnits="userSpaceOnUse"><path d="M ${grids[gridIndex]} 0H0V${grids[gridIndex]}" fill="none" stroke="${project.inkColor}" stroke-opacity=".08" stroke-width=".1"/></pattern><style>.cut{fill:none;stroke:#ef523c;stroke-width:.45}.panel-item:focus{outline:none}.smart-line{stroke:var(--trace,#2563a8);stroke-width:.42;vector-effect:non-scaling-stroke}.measure-line{stroke:var(--signal,#c8321e);stroke-width:.35;vector-effect:non-scaling-stroke}.measure-text{fill:#fff;font:1.75px ui-monospace,monospace;paint-order:stroke;stroke:var(--signal-ink,#8e2415);stroke-width:.7px}.equal-pill{fill:var(--signal,#c8321e)}.equal-text{fill:#fff;font:bold 1.45px ui-monospace,monospace}.marquee{fill:var(--trace,#2563a8);fill-opacity:.08;stroke:var(--ink,#191b1e);stroke-width:.3;stroke-dasharray:1.2 .9;vector-effect:non-scaling-stroke}.marquee-hit{fill:none;stroke:var(--trace,#2563a8);stroke-width:.35;stroke-dasharray:1 .8;vector-effect:non-scaling-stroke}.marquee-dim{fill:var(--ink,#191b1e);font:1.9px ui-monospace,monospace;paint-order:stroke;stroke:var(--paper,#f2efe6);stroke-width:.8px}.focus-ring{fill:none;stroke:var(--trace,#2563a8);stroke-width:1.6;stroke-dasharray:2 1.4;vector-effect:non-scaling-stroke;paint-order:stroke}</style></defs>${showRack?rackContextSvg(project):''}<rect class="light-sheet" width="${w}" height="${PANEL_H}" rx=".6" fill="#fff"/>${panelFinishSurface(project,w)}${grid}${safe}${view!=='rear'?mountingSvg(project)+(showRack&&view==='design'?screwsSvg(project):''):''}${visible.map(i=>componentSvg(i,catalogMap.get(i.componentId)!,project,selection.has(i.id),view)).join('')}<g id="smart-guide-layer" pointer-events="none"></g><g id="overlay-layer" pointer-events="none"></g><g id="focus-layer" pointer-events="none"></g>${project.items.length===0?emptyPanelSvg(w):''}</svg>`;const selectionKey=[...selection].sort().join();if(selectionKey!==lastSelectionKey){stage.querySelectorAll('.selection-ui').forEach(g=>g.classList.add('landing'));lastSelectionKey=selectionKey;}bindCanvas();renderRuler(w);}
 /**
  * Rulers with real millimetre ticks, like a drawing board's: every mm when
  * there is room, every 5 otherwise, numbered every 10. The grid drawn behind
@@ -179,6 +185,17 @@ function emptyPanelSvg(w:number){
       <text x="${f(w/2)}" y="${f(PANEL_H*.42+8)}" font-size="2" fill-opacity=".5">or press ${'\u2318'}K for a template.</text>
     </g>
   </g>`;
+}
+/** The readout that travels with the pointer over the canvas. */
+function cursorTag(e:{clientX:number;clientY:number}|null,text=''){
+  const tag=document.querySelector<HTMLElement>('#cursor-tag');
+  if(!tag)return;
+  if(!e){tag.classList.remove('on');return;}
+  const box=document.querySelector<HTMLElement>('.canvas-wrap')!.getBoundingClientRect();
+  tag.style.setProperty('--cx',`${(e.clientX-box.left).toFixed(0)}px`);
+  tag.style.setProperty('--cy',`${(e.clientY-box.top).toFixed(0)}px`);
+  tag.textContent=text;
+  tag.classList.add('on');
 }
 function renderRuler(w:number){
   const rx=document.querySelector<HTMLDivElement>('#ruler-x'),ry=document.querySelector<HTMLDivElement>('#ruler-y');
@@ -261,6 +278,8 @@ function bindCanvas(){
     if(!item.locked){
       drag={mode:'move',startClientX:e.clientX,startClientY:e.clientY,orig:new Map(selectedItems().filter(i=>!i.locked).map(i=>[i.id,{x:i.x,y:i.y}])),moved:false};
       capture(g,e.pointerId);
+      // Lift what is about to move: a shadow and a hair of scale, dropped again on release.
+      svg.querySelectorAll<SVGGElement>('.panel-item').forEach(el=>el.classList.toggle('lifting',(drag as MoveDrag).orig.has(el.dataset.id!)));
     }
     renderChrome();renderInspector();
   });
@@ -268,7 +287,9 @@ function bindCanvas(){
     if(drag)return;
     const p=point(e,svg);
     document.querySelector('#coordinates')!.textContent=`X ${p.x.toFixed(1)} · Y ${p.y.toFixed(1)}`;
+    cursorTag(e,`${p.x.toFixed(1)}  ${p.y.toFixed(1)}`);
   };
+  svg.onpointerleave=()=>{if(!drag)cursorTag(null);};
   applyCanvasA11y();
   svg.ondragover=e=>e.preventDefault();
   svg.ondrop=e=>{e.preventDefault();const id=e.dataTransfer?.getData('component');if(id){const p=point(e,svg);add(id,p.x,p.y);}};
@@ -307,13 +328,15 @@ function startPan(e:PointerEvent){
   canvas.classList.add('panning');
 }
 
+function setZoomStatus(){const pct=Math.round(zoom*100);roll(document.querySelector<HTMLElement>('#zoom-status')!,{n:pct},`${pct}%`);}
+
 /** Resizes the stage in place — far cheaper than rebuilding the SVG on every wheel tick. */
 function applyZoom(){
   const w=panelWidth(project.panel),stage=stageEl(),svg=document.querySelector<SVGSVGElement>('#panel-svg');
   stage.style.width=`${w*PX*zoom}px`;
   stage.style.height=`${PANEL_H*PX*zoom}px`;
   if(svg)svg.style.transform=`scale(${zoom})`;
-  document.querySelector('#zoom-status')!.textContent=`${Math.round(zoom*100)}%`;
+  setZoomStatus();
   renderRuler(w);
 }
 
@@ -390,8 +413,9 @@ function drawFocusRing(){
   if(!layer)return;
   const item=project.items.find(i=>i.id===focusedId&&!i.hidden);
   layer.innerHTML=item
-    ?`<rect class="focus-ring" x="${item.x-item.width/2-2}" y="${item.y-item.height/2-2}" width="${item.width+4}" height="${item.height+4}"/>`
+    ?`<rect class="focus-ring ${item.id!==lastFocusId?'landing':''}" x="${item.x-item.width/2-2}" y="${item.y-item.height/2-2}" width="${item.width+4}" height="${item.height+4}"/>`
     :'';
+  lastFocusId=item?.id??'';
 }
 
 function moveFocus(delta:number){
@@ -419,9 +443,11 @@ function drawMarquee(d:MarqueeDrag){
   const layer=document.querySelector('#overlay-layer');
   if(!layer)return;
   const box=marqueeRect(d),hits=marqueeHits(d);
+  const dims=`${(box.r-box.l).toFixed(1)} × ${(box.b-box.t).toFixed(1)}`;
   layer.innerHTML=`<rect class="marquee" x="${box.l}" y="${box.t}" width="${box.r-box.l}" height="${box.b-box.t}"/>`
-    +hits.map(i=>`<rect class="marquee-hit" x="${i.x-i.width/2-.8}" y="${i.y-i.height/2-.8}" width="${i.width+1.6}" height="${i.height+1.6}" rx=".6"/>`).join('');
-  document.querySelector('#coordinates')!.textContent=`${(box.r-box.l).toFixed(1)} × ${(box.b-box.t).toFixed(1)} mm · ${hits.length} in range`;
+    +hits.map(i=>`<rect class="marquee-hit" x="${i.x-i.width/2-.8}" y="${i.y-i.height/2-.8}" width="${i.width+1.6}" height="${i.height+1.6}" rx=".6"/>`).join('')
+    +(box.r-box.l>4?`<text class="marquee-dim" x="${(box.r-.8).toFixed(2)}" y="${(box.b-.9).toFixed(2)}" text-anchor="end">${dims}</text>`:'');
+  document.querySelector('#coordinates')!.textContent=units(`${dims} mm · ${hits.length} in range`);
 }
 
 function point(e:PointerEvent|DragEvent,svg:SVGSVGElement){const p=svg.createSVGPoint();p.x=e.clientX;p.y=e.clientY;return p.matrixTransform(svg.getScreenCTM()!.inverse());}
@@ -537,7 +563,7 @@ function bindImageObject(i:Item){
 function bindItemInspector(i:Item){bindImageObject(i);bindGraphicsControl(i,catalogMap.get(i.componentId)!);
   const spec=document.querySelector<HTMLInputElement>('#field-item-spec');
   if(spec)spec.onchange=()=>mutate(()=>{const value=spec.value.trim();value?i.spec=value:delete i.spec;});const preset=document.querySelector<HTMLSelectElement>('#size-preset');if(preset)preset.onchange=()=>{const next=catalogMap.get(preset.value);if(!next)return;mutate(()=>{i.componentId=next.id;i.width=next.width;i.height=next.height;});};document.querySelector("#send-back")?.addEventListener("click",()=>moveLayer(i,-1));document.querySelector("#bring-forward")?.addEventListener("click",()=>moveLayer(i,1));['x','y','width','height','rotation','label','value','identifier'].forEach(k=>{const e=document.querySelector<HTMLInputElement>(`#field-${k}`);if(!e)return;e.onchange=ev=>mutate(()=>{const v=(ev.target as HTMLInputElement).value;(i as unknown as Record<string,string|number>)[k]=['label','identifier'].includes(k)?v:Number(v);});e.oninput=k==='value'?ev=>{i.value=Number((ev.target as HTMLInputElement).value);renderCanvas();}:null;});const color=document.querySelector<HTMLInputElement>('#item-color')!,hex=document.querySelector<HTMLInputElement>('#item-color-text')!;color.oninput=()=>{i.color=color.value;hex.value=color.value;renderCanvas();};color.onchange=()=>mutate(()=>i.color=color.value);hex.onchange=()=>mutate(()=>i.color=hex.value);document.querySelector<HTMLSelectElement>('#role')!.onchange=e=>mutate(()=>i.role=(e.target as HTMLSelectElement).value as Item['role']);document.querySelector('#duplicate')!.addEventListener('click',duplicate);document.querySelector('#lock')!.addEventListener('click',()=>mutate(()=>i.locked=!i.locked));}
-function renderLayers(){const el=document.querySelector('#layers');if(!el)return;el.innerHTML=`<div class="layers">${[...project.items].reverse().map(i=>{const d=catalogMap.get(i.componentId)!;return`<div class="layer ${selection.has(i.id)?'selected':''}"><button class="layer-main" data-layer="${i.id}"><span class="layer-icon">${thumbnailSvg(d,project,i.color,18)}</span><span class="layer-name">${esc(i.label||d.name)}</span></button><button class="layer-toggle" data-visibility="${i.id}" aria-label="Toggle visibility">${i.hidden?'○':'●'}</button><button class="layer-toggle" data-lock="${i.id}" aria-label="Toggle lock">${i.locked?'◆':'◇'}</button></div>`}).join('')}</div>`;el.querySelectorAll<HTMLElement>('[data-layer]').forEach(b=>b.onclick=e=>{selection=(e.shiftKey?new Set([...selection,b.dataset.layer!]):new Set([b.dataset.layer!]));render();});el.querySelectorAll<HTMLElement>('[data-visibility]').forEach(b=>b.onclick=()=>{const i=project.items.find(x=>x.id===b.dataset.visibility)!;mutate(()=>i.hidden=!i.hidden);});el.querySelectorAll<HTMLElement>('[data-lock]').forEach(b=>b.onclick=()=>{const i=project.items.find(x=>x.id===b.dataset.lock)!;mutate(()=>i.locked=!i.locked);});}
+function renderLayers(){const el=document.querySelector('#layers');if(!el)return;el.innerHTML=`<div class="layers">${[...project.items].reverse().map(i=>{const d=catalogMap.get(i.componentId)!;return`<div class="layer ${selection.has(i.id)?'selected':''}" style="view-transition-name:l-${i.id.replace(/[^a-z0-9-]/gi,'')}"><button class="layer-main" data-layer="${i.id}"><span class="layer-icon">${thumbnailSvg(d,project,i.color,18)}</span><span class="layer-name">${esc(i.label||d.name)}</span></button><button class="layer-toggle" data-visibility="${i.id}" aria-label="Toggle visibility">${i.hidden?'○':'●'}</button><button class="layer-toggle" data-lock="${i.id}" aria-label="Toggle lock">${i.locked?'◆':'◇'}</button></div>`}).join('')}</div>`;el.querySelectorAll<HTMLElement>('[data-layer]').forEach(b=>b.onclick=e=>{selection=(e.shiftKey?new Set([...selection,b.dataset.layer!]):new Set([b.dataset.layer!]));render();});el.querySelectorAll<HTMLElement>('[data-visibility]').forEach(b=>b.onclick=()=>{const i=project.items.find(x=>x.id===b.dataset.visibility)!;mutate(()=>i.hidden=!i.hidden);});el.querySelectorAll<HTMLElement>('[data-lock]').forEach(b=>b.onclick=()=>{const i=project.items.find(x=>x.id===b.dataset.lock)!;mutate(()=>i.locked=!i.locked);});}
 
 const exact=(v:number)=>Math.round(v*100)/100;
 /** Alignment and centring ignore the grid: snapping them would defeat the point. */
@@ -570,7 +596,13 @@ function center(axis:'x'|'y'='x'){
   notify(`Centred ${axis==='x'?'across the panel':'down the panel'}`);
 }
 function bindGroupButtons(prefix=''){document.querySelector(`#${prefix}align-x`)?.addEventListener('click',()=>align('x'));document.querySelector(`#${prefix}align-y`)?.addEventListener('click',()=>align('y'));document.querySelector(`#${prefix}distribute-h`)?.addEventListener('click',()=>distribute('x'));document.querySelector(`#${prefix}distribute-v`)?.addEventListener('click',()=>distribute('y'));document.querySelector(`#${prefix}center`)?.addEventListener('click',()=>center('x'));document.querySelector(`#${prefix}center-panel`)?.addEventListener('click',()=>center('x'));}
-function moveLayer(item:Item,delta:number){const from=project.items.findIndex(x=>x.id===item.id),to=Math.max(0,Math.min(project.items.length-1,from+delta));if(from===to)return;mutate(()=>{project.items.splice(from,1);project.items.splice(to,0,item);});}
+function moveLayer(item:Item,delta:number){
+  const from=project.items.findIndex(x=>x.id===item.id),to=Math.max(0,Math.min(project.items.length-1,from+delta));
+  if(from===to)return;
+  const reorder=()=>mutate(()=>{project.items.splice(from,1);project.items.splice(to,0,item);});
+  // With the layers list on screen, rows slide to their new order instead of re-rendering in place.
+  if(inspectorTab==='layers'&&document.startViewTransition)document.startViewTransition(reorder);else reorder();
+}
 function duplicate(){const copies=selectedItems().map(i=>({...clone(i),id:uid(),x:sv(i.x+3),y:sv(i.y+3)}));if(!copies.length)return;selection=new Set(copies.map(i=>i.id));mutate(()=>project.items.push(...copies));}
 function remove(){if(!selection.size)return;mutate(()=>project.items=project.items.filter(i=>!selection.has(i.id)));selection.clear();render();}
 /* ---------- clipboard ---------- */
@@ -1020,7 +1052,7 @@ function helpDialog(){
   document.body.insertAdjacentHTML('beforeend',`<div class="modal-backdrop" id="modal"><div class="modal shortcuts-modal" role="dialog" aria-modal="true" aria-labelledby="shortcuts-title">
     <div class="modal-head"><span class="eyebrow">Five08</span><h2 id="shortcuts-title">Shortcuts</h2><p>Drag a part onto the panel, or click a library row to drop it at the centre.</p></div>
     <div class="shortcut-grid">${SHORTCUTS.map(([title,rows])=>`<section><h3>${title}</h3>${rows.map(([label,keys])=>`<div><span>${label}</span><kbd>${keys}</kbd></div>`).join('')}</section>`).join('')}</div>
-    <div class="guide-tip"><strong>Smart guides</strong><span>Blue lines align centres and edges while you drag. Pink measurements show the gap to the nearest neighbour, and a matching “=” badge means two gaps are equal. Hold Alt to place a part anywhere, ignoring the grid.</span></div>
+    <div class="guide-tip"><strong>Smart guides</strong><span>Blue lines align centres and edges while you drag. Red measurements show the gap to the nearest neighbour, and a matching “=” badge means two gaps are equal. Hold Alt to place a part anywhere, ignoring the grid.</span></div>
     <div class="guide-tip"><strong>Before you cut metal</strong><span>Preflight checks edge margins, cutout walls, mounting clashes, jack spacing and part depth. Generic component dimensions are starting points — check every one against the real datasheet.</span></div>
     <div class="modal-actions"><button class="tool-button primary" id="cancel-modal">Close</button></div>
   </div></div>`);
@@ -1077,6 +1109,7 @@ function bomCsv(){
 
 async function doExport(type:string){
   const name=slug(project.name);
+  pulse(document.querySelector('#export'),'flash-ok');
   try{
     if(type==='json'){download(`${name}.panel.json`,JSON.stringify(project,null,2),'application/json');notify('Project file saved');return;}
     if(type==='bom'){download(`${name}-bom.csv`,bomCsv(),'text/csv');notify('Bill of materials exported');return;}
@@ -1128,6 +1161,7 @@ window.addEventListener('pointermove',e=>{
     current.x=p.x;current.y=p.y;
     current.moved=current.moved||Math.abs(p.x-current.startX)>.4||Math.abs(p.y-current.startY)>.4;
     drawMarquee(current);
+    cursorTag(null);
     return;
   }
   if(current.mode==='resize'){
@@ -1146,6 +1180,7 @@ window.addEventListener('pointermove',e=>{
     const g=svg.querySelector<SVGGElement>(`[data-id="${item.id}"]`);
     g?.setAttribute('transform',`translate(${item.x} ${item.y}) rotate(${item.rotation}) scale(${item.width/current.startWidth} ${item.height/current.startHeight})`);
     document.querySelector('#coordinates')!.textContent=`W ${item.width.toFixed(1)} · H ${item.height.toFixed(1)}`;
+    cursorTag(e,`${item.width.toFixed(1)} × ${item.height.toFixed(1)}`);
     return;
   }
   const panelRect=svg.getBoundingClientRect();
@@ -1162,8 +1197,13 @@ window.addEventListener('pointermove',e=>{
     i.x=x;i.y=y;
     const g=svg.querySelector<SVGGElement>(`[data-id="${i.id}"]`);
     g?.setAttribute('transform',`translate(${i.x} ${i.y}) rotate(${i.rotation})`);
-    if(n===0)document.querySelector('#coordinates')!.textContent=`X ${i.x.toFixed(1)} · Y ${i.y.toFixed(1)}`;
+    if(n===0){document.querySelector('#coordinates')!.textContent=`X ${i.x.toFixed(1)} · Y ${i.y.toFixed(1)}`;cursorTag(e,`${i.x.toFixed(1)}  ${i.y.toFixed(1)}`);}
   });
+  // A guide that has just appeared, or moved to a new target, ticks once so
+  // the snap is felt rather than merely seen. One that is merely still does not.
+  const key=guide.match(/<line class="smart-line"[^>]*>/g)?.join('')??'';
+  if(key&&key!==lastGuideKey)guide=guide.replaceAll('class="smart-line"','class="smart-line fresh"');
+  lastGuideKey=key;
   const layer=svg.querySelector('#smart-guide-layer');
   if(layer)layer.innerHTML=guide;
 });
@@ -1172,6 +1212,8 @@ window.addEventListener('pointerup',()=>{
   if(!drag)return;
   const finished=drag;
   drag=null;
+  cursorTag(null);
+  lastGuideKey='';
   if(finished.mode==='pan'){canvasEl().classList.remove('panning');return;}
   if(finished.mode==='marquee'){
     const hits=finished.moved?marqueeHits(finished).map(i=>i.id):[];

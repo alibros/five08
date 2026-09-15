@@ -206,6 +206,7 @@
 .roll > .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
 .roll-int { counter-reset: n var(--n); transition: --n var(--slow) var(--ease); }
 .roll-int::before { content: counter(n) "\202f" attr(data-unit); }
+.roll-int.tight::before { content: counter(n) attr(data-unit); }
 .roll-dec { counter-reset: w var(--w) f var(--f); transition: --w var(--slow) var(--ease), --f var(--slow) var(--ease); }
 .roll-dec::before { content: counter(w) "." counter(f, decimal-leading-zero) "\202f" attr(data-unit); }
 

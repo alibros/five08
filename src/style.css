@@ -151,7 +151,7 @@ body { min-width:760px; background:var(--bg); }
 .ui-icon { width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round }.tool-button .ui-icon{width:14px;height:14px}
 .icon-button { position:relative;width:32px;height:32px;display:grid;place-items:center;border:1px solid transparent;border-radius: 3px;background:transparent;color:#9aa298;cursor:pointer }.icon-button:hover{background:var(--surface-3);color:#fff;border-color:var(--line)}.icon-button:disabled{opacity:.28;cursor:default}.icon-button.danger:not(:disabled):hover{color:#ff9075;background:#2a1c18;border-color:#503126}
 .tool-button { height:34px;border-radius: 3px;font-size:10px }.tool-button.subtle{border-color:transparent;background:transparent;color:#aab1a7}.tool-button.subtle:hover{background:var(--surface-3);border-color:var(--line);color:#fff}.export-button{height:36px;padding:0 15px;box-shadow:0 0 0 1px #d8ff8d22,0 4px 16px #b9ff4020}
-[data-tooltip]{position:relative}[data-tooltip]:hover::after{content:attr(data-tooltip);position:absolute;z-index:50;top:calc(100% + 7px);left:50%;transform:translateX(-50%);padding:6px 8px;border:1px solid var(--line-strong);border-radius: 3px;background:#0e110e;color:#e9ede8;font-size:9px;white-space:nowrap;box-shadow:0 7px 18px #0008;pointer-events:none}
+[data-tooltip]{position:relative}[data-tooltip]::after{content:attr(data-tooltip);position:absolute;z-index:50;top:calc(100% + 7px);left:50%;transform:translateX(-50%);padding:6px 8px;border:1px solid var(--line-strong);border-radius: 3px;background:#0e110e;color:#e9ede8;font-size:9px;white-space:nowrap;box-shadow:0 7px 18px #0008;pointer-events:none}
 .layout { grid-template-columns:258px minmax(320px,1fr) 302px;transition:grid-template-columns .18s ease }.layout.left-closed{grid-template-columns:0 minmax(320px,1fr) 302px}.layout.right-closed{grid-template-columns:258px minmax(320px,1fr) 0}.layout.left-closed.right-closed{grid-template-columns:0 minmax(320px,1fr) 0}.layout.left-closed .library,.layout.right-closed .sidebar.right{visibility:hidden;opacity:0}.sidebar{background:var(--surface);transition:opacity .15s}.side-head{height:57px;padding:0 12px}.side-head>div:first-child{display:flex;flex-direction:column;gap:3px}.side-head h2{font-size:12px;letter-spacing:.01em;text-transform:none}.head-actions{display:flex;align-items:center;gap:7px}.head-actions>span{color:#788176;font: 9px/1.4 var(--mono)}.collapse-button{width:26px;height:26px;display:grid;place-items:center;border:1px solid transparent;background:transparent;color:#727b70;border-radius: 3px;cursor:pointer}.collapse-button:hover{background:var(--surface-3);color:#fff}.collapse-button .ui-icon{width:13px}
 .library-tools{padding:10px 10px 9px}.search-wrap{position:relative}.search-wrap>svg{position:absolute;left:10px;top:10px;width:14px;height:14px;fill:none;stroke:#737c71;stroke-width:1.7}.library-tools input{height:35px;padding:0 9px 0 31px;background:#0f120f;background-image:none;border-color:#303630;font-size:10px}.category-tabs{margin-top:8px}.category-pill{height:26px;font-size:9px}.category-pill.on{background:#2b3526;color:#d9ff9a;border-color:#4a5b3d}
 .library .side-scroll{padding:3px 8px 20px}.library-section .section-label{margin:5px 0 3px;padding:8px 5px 3px;font-size:9px}.part-thumbnail{width:42px;height:42px;flex:none;display:grid;place-items:center;border:1px solid #30372f;border-radius: 3px;background:linear-gradient(145deg,#e1dfd6,#b9b8b0);overflow:hidden;box-shadow:inset 0 0 0 1px #fff3}.part-thumbnail svg{width:38px;height:38px}.part-thumbnail.large{width:50px;height:50px;border-radius: 3px}.part-thumbnail.large svg{width:46px;height:46px}.part-copy strong{font-size:11px;letter-spacing:-.01em}.part-copy small{font: 8.5px/1.4 var(--mono);text-transform:none;margin-top:4px}.part-copy small b{font-weight:500;color:#a3aba0}.add-part{min-width:30px;height:24px;display:grid;place-items:center;border:1px solid transparent;border-radius: 3px;color:#6f786e;font-size:8px;text-transform:uppercase}.component-row:hover .add-part,.component-row:focus-visible .add-part{color:#d5ff92;border-color:#46533c;background:#293124}.empty-library{display:flex;flex-direction:column;gap:5px;padding:35px 16px}.empty-library strong{font-size:11px}.empty-library span{color:var(--muted);font-size:9px}
@@ -229,7 +229,7 @@ body { color:var(--ink); background:var(--surface); }
 .tool-button:hover { background:var(--surface-3); border-color:var(--faint); }
 .tool-button.primary { color:var(--on-ink); background:var(--ink); border-color:var(--ink); }
 .export-button { box-shadow:none; }
-[data-tooltip]:hover::after { color:var(--surface); background:var(--ink); border-color:var(--ink); }
+[data-tooltip]::after { color:var(--surface); background:var(--ink); border-color:var(--ink); }
 
 .sidebar { background:var(--surface); border-color:var(--line); }
 .side-head,.library-tools,.inspector-tabs { border-color:var(--line); }
@@ -631,3 +631,92 @@ button:focus-visible,input:focus-visible,select:focus-visible { outline-color:va
   opacity: 0; translate: 0 -2px; transition: opacity var(--fast) var(--ease), translate var(--fast) var(--ease);
 }
 .part-card:hover .add-part, .part-card:focus-visible .add-part { opacity: 1; translate: 0 0; }
+
+
+/* ==== craft ========================================================
+   Confirmations and state changes, each answering in --fast. Nothing here
+   waits on an animation: a press works on pointerdown. */
+
+/* Anything pressable goes down a pixel, linearly. */
+.tool-button, .icon-button, .quiet, .segmented button, .canvas-toolbar button, .category-pill,
+.action-grid button, .status-control, .collapse-button, .finish-card, .template, .export-options button,
+.inspector-tabs button, .layer-toggle, .surface-upload, .surface-remove, .project-actions button, .part-card {
+  transition: color var(--fast) var(--ease), background-color var(--fast) var(--ease), border-color var(--fast) var(--ease), box-shadow var(--fast) var(--ease), translate var(--press) linear;
+}
+.tool-button:active, .icon-button:active, .quiet:active, .segmented button:active, .canvas-toolbar button:active, .category-pill:active,
+.action-grid button:active, .status-control:active, .collapse-button:active, .finish-card:active, .template:active, .export-options button:active,
+.inspector-tabs button:active, .layer-toggle:active, .surface-upload:active, .surface-remove:active, .project-actions button:active { translate: 0 1px; }
+
+/* The primary button and the wordmark swell along the width axis. */
+.tool-button.primary { font-stretch: 100%; transition: font-stretch var(--fast) var(--ease), background-color var(--fast) var(--ease), border-color var(--fast) var(--ease), translate var(--press) linear; }
+.tool-button.primary:hover { font-stretch: 108%; }
+.brand strong { transition: font-stretch var(--slow) var(--ease); }
+.brand:hover strong { font-stretch: 100%; letter-spacing: -.02em; }
+
+/* Tooltips arrive after a beat, so a quick pass never triggers one, and
+   anchor to the control so they flip away from the viewport edge. */
+[data-tooltip]::after { opacity: 0; visibility: hidden; translate: 0 -3px; transition: opacity var(--fast) var(--ease), translate var(--fast) var(--ease), visibility 0s linear var(--fast); }
+[data-tooltip]:hover::after, [data-tooltip]:focus-visible::after { opacity: 1; visibility: visible; translate: 0 0; transition-delay: 320ms, 320ms, 320ms; }
+@supports (position-try-fallbacks: flip-block) {
+  [data-tooltip] { position: static; anchor-name: --tip-host; }
+  [data-tooltip]::after { position: absolute; position-anchor: --tip-host; top: anchor(bottom); left: anchor(center); transform: translateX(-50%); margin-top: 7px; position-try-fallbacks: flip-block, flip-inline; }
+}
+
+/* Overlays fade and rise in; they close instantly, because closing is not
+   a state anyone needs explained. */
+.modal-backdrop { transition: opacity var(--fast) var(--ease); }
+.modal, .palette { transition: opacity var(--fast) var(--ease), translate var(--fast) var(--ease); }
+@starting-style {
+  .modal-backdrop { opacity: 0; }
+  .modal, .palette { opacity: 0; translate: 0 6px; }
+}
+.toast { transition: opacity var(--fast) var(--ease), transform var(--fast) var(--ease); }
+.selection-bar { transition: opacity var(--fast) var(--ease), transform var(--fast) var(--ease); }
+.layout { transition: grid-template-columns var(--fast) var(--ease); }
+.sidebar { transition: opacity var(--fast) var(--ease); }
+
+/* Sections that unfold rather than pop. */
+details::details-content { height: 0; overflow: hidden; transition: height var(--fast) var(--ease), content-visibility var(--fast) allow-discrete; }
+details[open]::details-content { height: auto; }
+
+/* The save landed; the export went. A hairline that blinks once. */
+@keyframes flash-ok { from { box-shadow: inset 0 0 0 1px var(--pass); } to { box-shadow: inset 0 0 0 1px transparent; } }
+.flash-ok { animation: flash-ok .45s var(--ease); }
+/* The verdict changed: a two-frame dip so the eye registers the change. */
+@keyframes dip { 50% { opacity: .3; } }
+.statusbar .swap { animation: dip var(--fast) var(--ease); }
+#warning-count { transition: color var(--slow) var(--ease); }
+
+/* The readout that travels with the pointer over the canvas. Sized off the
+   canvas itself, so it stays legible whatever the panes are doing. */
+.cursor-tag {
+  position: absolute; z-index: 4; left: 0; top: 0; pointer-events: none;
+  translate: calc(var(--cx, 0px) + 14px) calc(var(--cy, 0px) + 14px);
+  padding: 2px 5px; font-size: clamp(9px, 1.1cqi, 11px); letter-spacing: .02em; white-space: nowrap;
+  color: var(--on-ink); background: var(--ink); border-radius: 2px;
+  opacity: 0; transition: opacity var(--fast) var(--ease);
+}
+.cursor-tag.on { opacity: .92; }
+
+/* A part being dragged lifts off the panel: a shadow and a hair of scale. */
+.part-body { transform-box: fill-box; transform-origin: center; transition: scale var(--fast) var(--ease), filter var(--fast) var(--ease); }
+.panel-item.lifting .part-body { scale: 1.03; filter: drop-shadow(0 .9px 1.2px rgb(0 0 0 / .4)); }
+.panel-item.lifting { cursor: grabbing !important; }
+
+/* The marquee's ants only march while it is being drawn — and it is only
+   ever on screen while it is being drawn. */
+@keyframes ants { to { stroke-dashoffset: -2.1; } }
+.marquee { animation: ants .5s linear infinite; }
+
+/* A guide that has just snapped ticks: heavier for a frame, then settles. */
+@keyframes snap-tick { from { stroke-width: 1.8; opacity: 1; } }
+.smart-line.fresh { animation: snap-tick 150ms var(--ease); }
+
+/* Selection and focus rings land on the part rather than appear around it. */
+@keyframes land { from { scale: 1.07; opacity: .4; } }
+.selection-ui.landing > rect:first-child, .focus-ring.landing { transform-box: fill-box; transform-origin: center; animation: land var(--fast) var(--ease); }
+
+/* Layer rows slide to their new order under a view transition; the rest
+   of the page does not cross-fade. */
+::view-transition-old(root), ::view-transition-new(root) { animation: none; mix-blend-mode: normal; }
+::view-transition-group(*) { animation-duration: var(--slow); animation-timing-function: var(--ease); }

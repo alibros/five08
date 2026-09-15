@@ -11,6 +11,7 @@ import {newProjectId,saveProject,setActiveId} from './store';
 import {registerOffline} from './offline';
 import {applyTheme,nextTheme,readTheme,watchSystemTheme,type Theme} from './theme-site';
 import {units} from './units';
+import {pulse,roll} from './roll';
 import {rackSceneSvg} from './rack-scene';
 import {esc} from './svg';
 
@@ -367,12 +368,6 @@ function setHp(hp:number){
 }
 
 let lastVerdict='';
-/** Writes a figure into a rolling readout: the digits animate, the hidden text is what a reader or a test sees. */
-function roll(host:HTMLElement,vars:Record<string,number>,text:string){
-  const digits=host.firstElementChild as HTMLElement;
-  Object.entries(vars).forEach(([k,v])=>digits.style.setProperty(`--${k}`,String(v)));
-  host.lastElementChild!.textContent=text;
-}
 function describe(){
   const w=panelWidth(project.panel);
   const found=preflight(project,catalogMap);
@@ -384,7 +379,7 @@ function describe(){
     :'clear';
   caption.innerHTML=`${units(`A ${project.panel.hp} HP panel, ${w.toFixed(2)} × ${PANEL_H} mm, drawn in Five08 and rendered here by the same code the editor uses.`)} Preflight: <b class="${counts.errors?'bad':counts.warnings?'warn':'good'}">${units(verdict)}</b>.`;
   // A two-frame dip so the eye registers that the verdict changed, not just what it says now.
-  if(lastVerdict&&verdict!==lastVerdict){caption.classList.remove('swap');void caption.offsetWidth;caption.classList.add('swap');}
+  if(lastVerdict&&verdict!==lastVerdict)pulse(caption,'swap');
   lastVerdict=verdict;
 }
 
