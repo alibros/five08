@@ -11,7 +11,7 @@ await page.addStyleTag({content:'html{scroll-behavior:auto!important}'});
 if(Number(scroll))await page.evaluate(y=>window.scrollTo(0,y),Number(scroll));
 if(hover){await page.hover(hover);await page.waitForTimeout(500);}
 await page.waitForTimeout(700);
-const opts={path:out,fullPage:full==='1'};
+const opts={path:out,fullPage:full==='1',...(out.endsWith('.jpg')?{type:'jpeg',quality:88}:{})};
 if(clip){const [x,y,cw,ch]=clip.split(',').map(Number);opts.clip={x,y,width:cw,height:ch};}
 await page.screenshot(opts);
 if(errors.length)console.log('ERRORS',errors);

@@ -148,7 +148,7 @@ body { min-width:760px; background:var(--bg); }
 .brand { min-width:182px; margin-right:0; }.brand-mark { width:30px;height:30px;border-color:#495249 }.brand strong{font-size:13px}.brand small{font: 8px/1.4 var(--mono);color:#798278;margin-top:2px}
 .top-divider { width:1px;height:28px;background:var(--line);margin:0 6px; }.project-identity { display:flex;flex-direction:column;justify-content:center;gap:1px }.eyebrow { color:#717a70;font: 8px/1.4 var(--mono);text-transform:uppercase;letter-spacing:.13em }.project-name { width:190px;height:27px;padding:2px 5px;font-size:12px }.project-name:hover,.project-name:focus{background:#1c211c}
 .history-group,.file-group{display:flex;gap:4px}.history-group{margin-left:6px}.file-group{padding-right:8px;border-right:1px solid var(--line)}
-.ui-icon { width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round }.tool-button .ui-icon{width:14px;height:14px}
+.ui-icon { width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round;flex:none }.tool-button .ui-icon{width:14px;height:14px}
 .icon-button { position:relative;width:32px;height:32px;display:grid;place-items:center;border:1px solid transparent;border-radius: 3px;background:transparent;color:#9aa298;cursor:pointer }.icon-button:hover{background:var(--surface-3);color:#fff;border-color:var(--line)}.icon-button:disabled{opacity:.28;cursor:default}.icon-button.danger:not(:disabled):hover{color:#ff9075;background:#2a1c18;border-color:#503126}
 .tool-button { height:34px;border-radius: 3px;font-size:10px }.tool-button.subtle{border-color:transparent;background:transparent;color:#aab1a7}.tool-button.subtle:hover{background:var(--surface-3);border-color:var(--line);color:#fff}.export-button{height:36px;padding:0 15px;box-shadow:0 0 0 1px #d8ff8d22,0 4px 16px #b9ff4020}
 [data-tooltip]{position:relative}[data-tooltip]::after{content:attr(data-tooltip);position:absolute;z-index:50;top:calc(100% + 7px);left:50%;transform:translateX(-50%);padding:6px 8px;border:1px solid var(--line-strong);border-radius: 3px;background:#0e110e;color:#e9ede8;font-size:9px;white-space:nowrap;box-shadow:0 7px 18px #0008;pointer-events:none}
@@ -720,3 +720,31 @@ details[open]::details-content { height: auto; }
    of the page does not cross-fade. */
 ::view-transition-old(root), ::view-transition-new(root) { animation: none; mix-blend-mode: normal; }
 ::view-transition-group(*) { animation-duration: var(--slow); animation-timing-function: var(--ease); }
+
+
+/* ==== icons and the plotted sheet ================================== */
+.statusbar .dot { display:inline-block; width:6px; height:6px; margin-right:6px; border-radius:50%; background:currentColor; vertical-align:middle; transform:translateY(-1px); }
+.statusbar .ui-icon, #warning-count .ui-icon { width:11px; height:11px; margin-right:5px; vertical-align:-2px; }
+.canvas-toolbar .ui-icon { width:13px; height:13px; }
+.layer-toggle { color:var(--faint); }
+.layer-toggle.on { color:var(--ink-3); }
+.layer-toggle .ui-icon { width:13px; height:13px; }
+.finish-card>b { display:grid; place-items:center; width:16px; height:16px; }
+.finish-card>b .ui-icon { width:12px; height:12px; }
+.locked-size-note>span .ui-icon, .surface-upload-icon .ui-icon { width:16px; height:16px; }
+.preflight .issue-mark { display:grid; place-items:center; height:16px; }
+.preflight .issue-mark .ui-icon { width:12px; height:12px; }
+.clear-state { align-items:center; gap:8px; }
+.clear-state .ui-icon { width:13px; height:13px; }
+.export-preflight strong { display:flex; align-items:center; gap:7px; font-size:11px; }
+.export-preflight .ui-icon { width:13px; height:13px; }
+.export-options button>span { display:grid; place-items:center; width:34px; height:34px; flex:none; border:1px solid var(--rule); border-radius:3px; background:var(--field); color:var(--ink-2); font-size:0; }
+.export-options button>span .ui-icon { width:16px; height:16px; }
+.export-options button:hover>span { color:var(--signal); border-color:var(--signal-line); }
+
+/* The plotted sheet is white whatever the theme: it is a piece of paper. */
+.plot-preview { margin:16px 20px 0; }
+.plot-preview .plot-sheet { display:block; width:100%; max-height:230px; background:#fff; border:1px solid var(--rule); border-radius:2px; box-shadow:0 1px 0 rgb(255 255 255 / .5), 0 6px 18px -6px rgb(var(--shadow-ink) / .3); }
+.plot-preview figcaption { margin-top:8px; font-size:10px; line-height:1.5; color:var(--muted); }
+.export-modal { width:min(560px,94vw); max-height:92vh; overflow:auto; }
+.plot-preview .plot-sheet { max-height:250px; }

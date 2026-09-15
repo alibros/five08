@@ -217,6 +217,56 @@ export function templateSvg(p:Project,definitions:Map<string,ComponentDefinition
 }
 
 /**
+ * The drawing a panel shop receives, before they receive it. Every DXF layer
+ * in its own colour — outline, cutouts, mounting, engraving — with a centre
+ * mark in every hole and a title block saying what the sheet is. Rendered
+ * from the same geometry the DXF writer uses, so what you see is what goes.
+ */
+export function plotSheetSvg(p:Project,definitions:Map<string,ComponentDefinition>,opts:{engrave?:boolean;date?:string}={}){
+  const w=panelWidth(p.panel),m=8,block=76;
+  const sheetW=w+m*2+block+6,sheetH=PANEL_H+m*2;
+  const mounting=mountingShapes(p.panel),cuts=cutoutShapes(p.items,definitions);
+  const marks=[...mounting,...cuts].map(s=>{
+    const reach=s.kind==='circle'?Math.min(s.r*.6,1.6):Math.min(Math.min(s.w,s.h)*.3,1.6);
+    return`<path d="M${s.cx-reach} ${s.cy}H${s.cx+reach}M${s.cx} ${s.cy-reach}V${s.cy+reach}"/>`;
+  }).join('');
+  const engraving=opts.engrave?p.items.filter(i=>i.label&&!i.hidden).map(i=>{
+    const d=definitions.get(i.componentId);
+    if(!d)return'';
+    const size=d.renderer==='text'?i.height:2;
+    const y=d.renderer==='text'?i.y:i.y+i.height/2+3.6;
+    return`<text x="${i.x}" y="${y}" font-size="${size}" text-anchor="middle" dominant-baseline="middle" transform="rotate(${i.rotation} ${i.x} ${i.y})">${esc(i.label.split('\n')[0].toUpperCase())}</text>`;
+  }).join(''):'';
+  const bx=m+w+6,rows:Array<[string,string]>=[
+    ['Title',p.name||'Untitled panel'],
+    ['Panel',`${p.panel.hp} HP · ${w.toFixed(2)} × ${PANEL_H} mm`],
+    ['Material',`${p.panel.material} · ${p.panel.thickness} mm`],
+    ['Mounting',{none:'None',two:'2 slots, centred',diagonal:'2 slots, diagonal',four:'4 slots'}[p.panel.mounting]],
+    ['Cutouts',`${cuts.length} · ${mounting.length} mounting`],
+    ['Date',opts.date??new Date().toISOString().slice(0,10)],
+    ['Scale · units','1:1 · mm'],
+  ];
+  const rowH=9.2,top=m;
+  const table=rows.map(([k,v],n)=>`<g transform="translate(${bx} ${top+n*rowH})"><path d="M0 ${rowH}H${block}" stroke="#bbb" stroke-width=".18"/><text x="2.2" y="3.2" font-size="1.7" letter-spacing=".2" fill="#888">${k.toUpperCase()}</text><text x="2.2" y="7.4" font-size="2.5" fill="#111">${esc(v)}</text></g>`).join('');
+  const legendTop=top+rows.length*rowH+4;
+  const layers:Array<[string,string]>=[['PANEL_OUTLINE','#111'],['CUTOUTS','#d11'],['MOUNTING','#1a5cc8'],['ENGRAVING','#7a7a7a']];
+  const legend=layers.map(([name,colour],n)=>`<g transform="translate(${bx+2.2} ${legendTop+6+n*5})"><path d="M0 0H8" stroke="${colour}" stroke-width=".5"/><text x="11" y="1" font-size="2" fill="#333">${name}</text></g>`).join('');
+  return`<svg class="plot-sheet" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${sheetW} ${sheetH}" aria-label="Preview of the cutout drawing">
+    <rect width="${sheetW}" height="${sheetH}" fill="#fff"/>
+    <rect x="1.5" y="1.5" width="${sheetW-3}" height="${sheetH-3}" fill="none" stroke="#111" stroke-width=".25"/>
+    <g transform="translate(${m} ${m})" font-family="ui-monospace,monospace">
+      <rect width="${w}" height="${PANEL_H}" fill="none" stroke="#111" stroke-width=".35"/>
+      <g fill="none" stroke="#1a5cc8" stroke-width=".3">${mounting.map(shapePath).join('')}</g>
+      <g fill="none" stroke="#d11" stroke-width=".3">${cuts.map(shapePath).join('')}</g>
+      <g fill="none" stroke="#7a7a7a" stroke-width=".16">${marks}</g>
+      <g fill="#7a7a7a">${engraving}</g>
+    </g>
+    <g font-family="ui-monospace,monospace"><rect x="${bx}" y="${top}" width="${block}" height="${rows.length*rowH}" fill="none" stroke="#111" stroke-width=".25"/>${table}
+      <text x="${bx+2.2}" y="${legendTop+2}" font-size="1.7" letter-spacing=".2" fill="#888">LAYERS</text>${legend}</g>
+  </svg>`;
+}
+
+/**
  * The module in its case: rails above and below, neighbours either side.
  * Panels are designed one at a time but they never live that way — this shows
  * whether a control sits too close to whatever is bolted next to it.

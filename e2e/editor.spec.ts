@@ -122,6 +122,46 @@ test.describe('editor',()=>{
     expect(errors).toEqual([]);
   });
 
+  test('the bench reads back what the pointer is over',async({page})=>{
+    const errors=watchConsole(page);
+    await openTemplate(page,'voice');
+    const stage=(await page.locator('#panel-stage').boundingBox())!;
+    await page.mouse.move(stage.x+stage.width/2,stage.y+stage.height*.3);
+    await expect(page.locator('#cursor-tag')).toHaveClass(/on/);
+    await expect(page.locator('#cursor-tag')).toHaveText(/\d+\.\d\s+\d+\.\d/);
+    // Rulers carry real ticks, numbered every 10 mm
+    await expect(page.locator('#ruler-x text',{hasText:/^50$/})).toHaveCount(1);
+    expect(errors).toEqual([]);
+  });
+
+  test('the light table fades the hardware and keeps the artwork',async({page})=>{
+    const errors=watchConsole(page);
+    await openTemplate(page,'voice');
+    await page.click('[data-component="text-label"]');
+    await page.check('#light-table');
+    await expect(page.locator('#panel-svg .panel-finish')).toHaveCSS('opacity','0.1');
+    await expect(page.locator('.panel-item[data-kind="text"]').first()).toHaveCSS('opacity','1');
+    await expect(page.locator('.panel-item[data-kind="knob"]').first()).toHaveCSS('opacity','0.2');
+    await page.uncheck('#light-table');
+    await expect(page.locator('#panel-svg .panel-finish')).toHaveCSS('opacity','1');
+    expect(errors).toEqual([]);
+  });
+
+  test('the export dialog shows the drawing the shop will get',async({page})=>{
+    const errors=watchConsole(page);
+    await openTemplate(page,'mixer');
+    await page.click('#export');
+    const sheet=page.locator('.plot-sheet');
+    await expect(sheet).toBeVisible();
+    await expect(sheet).toContainText('CUTOUTS');
+    await expect(sheet).toContainText('Four channel mixer');
+    // Engraving only appears on the sheet once it is going into the DXF
+    await expect(sheet.locator('text',{hasText:'MASTER'})).toHaveCount(0);
+    await page.check('#export-engrave');
+    await expect(page.locator('.plot-sheet').locator('text',{hasText:'MASTER'})).toHaveCount(1);
+    expect(errors).toEqual([]);
+  });
+
   test('the command palette runs its commands',async({page})=>{
     const errors=watchConsole(page);
     await openTemplate(page,'voice');
