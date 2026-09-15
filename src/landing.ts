@@ -4,12 +4,14 @@ import {panelFinishes} from './finishes';
 import {demoPanel} from './demo';
 import {HP_MM,PANEL_H,panelWidth} from './model';
 import {issueCounts,preflight} from './preflight';
-import {componentSvg,mountingSvg,panelFinishDefs,panelFinishSurface,shapePath} from './svg';
-import {mountingShapes} from './geometry';
+import {componentSvg,finishSwatchSvg,mountingSvg,panelFinishDefs,panelFinishSurface,screwsSvg,shapePath} from './svg';
+import {cutoutLabel,mountingShapes} from './geometry';
+import type {ComponentDefinition,Item} from './model';
 import {newProjectId,saveProject,setActiveId} from './store';
 import {registerOffline} from './offline';
 import {applyTheme,nextTheme,readTheme,watchSystemTheme,type Theme} from './theme-site';
 import {units} from './units';
+import {esc} from './svg';
 
 const project=demoPanel();
 let view:'design'|'cutout'|'rear'='design';
@@ -18,7 +20,7 @@ const DEMO_FINISHES=['brushed-silver','black-anodized','powder-white','fr4-green
 
 const mounting=()=>view==='rear'?''
   :view==='cutout'?`<g class="cut">${mountingShapes(project.panel).map(shapePath).join('')}</g>`
-  :mountingSvg(project);
+  :mountingSvg(project)+screwsSvg(project);
 
 /* The two LEDs read the FOLD knob, so turning it lights the panel up. A module
    behaves; a picture of a module does not. */
@@ -34,11 +36,43 @@ function panelSvg(){
   const w=panelWidth(project.panel);
   syncIndicators();
   const parts=project.items.map(i=>componentSvg(i,catalogMap.get(i.componentId)!,project,false,view)).join('');
-  return`<svg class="panel-render" viewBox="0 0 ${w} ${PANEL_H}" role="img" aria-label="A 12 HP Eurorack panel drawn in Five08, shown in ${view==='design'?'hardware':view==='cutout'?'cutout':'rear clearance'} view">
+  // The panel sits in a body that carries its shadow and the sheen that
+  // follows the pointer; the SVG itself stays exactly what the editor draws.
+  return`<div class="panel-body"><svg class="panel-render" viewBox="0 0 ${w} ${PANEL_H}" role="img" aria-label="A 12 HP Eurorack panel drawn in Five08, shown in ${view==='design'?'hardware':view==='cutout'?'cutout':'rear clearance'} view">
     <defs>${panelFinishDefs(project)}<filter id="glow" x="-75%" y="-75%" width="250%" height="250%"><feGaussianBlur stdDeviation="1" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
     <style>.cut{fill:none;stroke:#ef523c;stroke-width:.45}</style></defs>
-    ${panelFinishSurface(project,w)}${mounting()}${parts}
-  </svg>`;
+    ${panelFinishSurface(project,w)}${mounting()}${parts}<g id="hero-notes" pointer-events="none"></g>
+  </svg><i class="sheen" aria-hidden="true"></i></div>`;
+}
+
+/* ---------- annotations ----------
+   Hover a part and the sheet dimensions it: where it sits from the edges, and
+   what hole it needs. Drawn in the same language as the editor's guides and
+   the datasheet the numbers came from. */
+function noteSvg(item:Item,d:ComponentDefinition,w:number){
+  const l=item.x-item.width/2,b=item.y+item.height/2,r=item.x+item.width/2;
+  const ink=project.inkColor,f=(v:number)=>v.toFixed(2);
+  const text=(x:number,y:number,label:string,anchor='middle',cls='')=>`<text class="note-text ${cls}" x="${f(x)}" y="${f(y)}" text-anchor="${anchor}" fill="${ink}">${esc(label)}</text>`;
+  const tick=(x:number,y:number)=>`<path class="note-line" pathLength="1" d="M${f(x-.6)} ${f(y+.6)}l1.2-1.2" stroke="${ink}"/>`;
+  // Nothing is drawn on the panel but extension lines. The figures live in
+  // the margins, the way a drawing keeps its dimensions off the part.
+  const hy=PANEL_H+3.6;
+  const horizontal=`<path class="note-line" pathLength="1" d="M${f(item.x)} ${f(b+.8)}V${f(hy+1.2)}M0 ${f(PANEL_H+.8)}V${f(hy+1.2)}M0 ${f(hy)}H${f(item.x)}" stroke="${ink}"/>${tick(0,hy)}${tick(item.x,hy)}${text(item.x/2,hy+2.9,item.x.toFixed(1))}`;
+  // Y comes down the near side to the part's centreline, where the leader
+  // meets it; the figures sit together at the junction.
+  const right=item.x>=w/2;
+  const vx=right?w+3.6:-3.6,ex=right?r+.8:l-.8;
+  const vertical=`<path class="note-line" pathLength="1" d="M${f(right?w+.8:-.8)} 0H${f(right?vx+1.2:vx-1.2)}M${f(vx)} 0V${f(item.y)}M${f(ex)} ${f(item.y)}H${f(right?vx+1.2:vx-1.2)}" stroke="${ink}"/>${tick(vx,0)}${tick(vx,item.y)}<circle class="note-dot" cx="${f(ex)}" cy="${f(item.y)}" r=".4" fill="${ink}"/>`;
+  const tx=right?vx+1.6:vx-1.6,anchor=right?'start':'end';
+  const block=text(tx,item.y-2.2,item.y.toFixed(1),anchor)+text(tx,item.y+.6,cutoutLabel(d),anchor,'note-strong')+text(tx,item.y+3.4,units(`${item.width} × ${item.height} mm`),anchor);
+  return horizontal+vertical+block;
+}
+function showNote(id:string|null){
+  const layer=panelHost.querySelector('#hero-notes');
+  if(!layer)return;
+  const item=id?project.items.find(i=>i.id===id):undefined;
+  const d=item&&catalogMap.get(item.componentId);
+  layer.innerHTML=item&&d&&view==='design'&&d.renderer!=='text'?noteSvg(item,d,panelWidth(project.panel)):'';
 }
 
 /* ---------- copy ---------- */
@@ -193,7 +227,7 @@ ${sheetFrame}
           <button data-view="rear">Rear</button>
         </div>
         <div class="swatches" id="finishes" role="group" aria-label="Panel finish">
-          ${DEMO_FINISHES.map(id=>{const f=panelFinishes.find(x=>x.id===id)!;return`<button data-finish="${f.id}" class="${f.id===project.panel.finish?'on':''}" title="${f.name}" aria-label="${f.name}"><span style="background:${f.panel}"></span></button>`;}).join('')}
+          ${DEMO_FINISHES.map(id=>{const f=panelFinishes.find(x=>x.id===id)!;return`<button data-finish="${f.id}" class="${f.id===project.panel.finish?'on':''}" title="${f.name}" aria-label="${f.name}">${finishSwatchSvg(f,21)}</button>`;}).join('')}
         </div>
       </div>
       <figcaption>
@@ -286,6 +320,7 @@ ${sheetFrame}
 
 const panelHost=document.querySelector<HTMLDivElement>('#demo-panel')!;
 const redraw=()=>{panelHost.innerHTML=panelSvg();};
+const reducedMotion=window.matchMedia('(prefers-reduced-motion: reduce)');
 
 /* ---------- panel width ----------
    "Set the width in HP" is the first thing the page claims the tool does, so
@@ -343,7 +378,52 @@ document.querySelector('#hp-up')!.addEventListener('click',()=>setHp(project.pan
 
 const turnable=(i:{componentId:string})=>catalogMap.get(i.componentId)?.renderer==='knob';
 const readout=document.querySelector<HTMLElement>('#demo-readout')!;
-let dragging:{id:string;startY:number;startValue:number}|null=null;
+let dragging:{id:string;startY:number;startValue:number;lastY:number;lastT:number;velocity:number}|null=null;
+let spinning=0;
+
+/* The light and the tilt follow the pointer across the panel: a sheen
+   slides over the metal and the whole thing leans a couple of degrees, the
+   way a panel does when you look at it from off-axis. Hover only — a finger
+   covering the screen has no viewpoint to track. */
+const hoverable=window.matchMedia('(hover: hover)');
+function lookAt(e:PointerEvent|null){
+  if(!hoverable.matches||reducedMotion.matches){return;}
+  if(!e){panelHost.style.removeProperty('--mx');panelHost.style.removeProperty('--my');panelHost.style.removeProperty('--tx');panelHost.style.removeProperty('--ty');return;}
+  const box=panelHost.getBoundingClientRect();
+  const px=(e.clientX-box.left)/box.width,py=(e.clientY-box.top)/box.height;
+  panelHost.style.setProperty('--mx',`${(px*100).toFixed(1)}%`);
+  panelHost.style.setProperty('--my',`${(py*100).toFixed(1)}%`);
+  panelHost.style.setProperty('--tx',`${((px-.5)*4).toFixed(2)}deg`);
+  panelHost.style.setProperty('--ty',`${((.5-py)*3).toFixed(2)}deg`);
+}
+panelHost.addEventListener('pointermove',e=>{if(!dragging)lookAt(e);});
+panelHost.addEventListener('pointerleave',()=>{lookAt(null);if(!dragging)showNote(null);});
+panelHost.addEventListener('pointerover',e=>{
+  if(dragging)return;
+  const group=(e.target as Element).closest<SVGGElement>('.panel-item');
+  showNote(group?.dataset.id??null);
+});
+
+/* A knob let go mid-turn keeps turning for a moment. Mechanical, not
+   springy: the velocity decays, and it stops dead at either end. */
+function spin(id:string,velocity:number){
+  window.cancelAnimationFrame(spinning);
+  if(reducedMotion.matches||Math.abs(velocity)<.0004)return;
+  let v=velocity,last=performance.now();
+  const step=(now:number)=>{
+    const item=project.items.find(i=>i.id===id);
+    if(!item)return;
+    const dt=Math.min(64,now-last);last=now;
+    const next=item.value+v*dt;
+    item.value=Math.max(0,Math.min(1,next));
+    v*=Math.pow(.15,dt/1000*4);
+    redraw();
+    readout.textContent=`${item.label||'VALUE'} ${Math.round(item.value*100)}%`;
+    if(next!==item.value||Math.abs(v)<.00005)return;
+    spinning=window.requestAnimationFrame(step);
+  };
+  spinning=window.requestAnimationFrame(step);
+}
 
 const panelPoint=(e:PointerEvent)=>{
   const svg=panelHost.querySelector<SVGSVGElement>('svg');
@@ -360,8 +440,10 @@ panelHost.addEventListener('pointerdown',e=>{
   if(!item||view!=='design')return;
   e.preventDefault();
   if(turnable(item)){
-    dragging={id:item.id,startY:e.clientY,startValue:item.value};
+    window.cancelAnimationFrame(spinning);
+    dragging={id:item.id,startY:e.clientY,startValue:item.value,lastY:e.clientY,lastT:e.timeStamp,velocity:0};
     panelHost.classList.add('turning');
+    showNote(null);
     return;
   }
   // Anything else on the panel is a switch: give it somewhere to go.
@@ -378,6 +460,8 @@ window.addEventListener('pointermove',e=>{
     // 120 px of travel covers the pot's full sweep, which feels about right
     // under a finger without being twitchy.
     item.value=Math.max(0,Math.min(1,dragging.startValue+(dragging.startY-e.clientY)/120));
+    const dt=e.timeStamp-dragging.lastT;
+    if(dt>0){dragging.velocity=(dragging.lastY-e.clientY)/120/dt;dragging.lastY=e.clientY;dragging.lastT=e.timeStamp;}
     redraw();
     readout.textContent=`${item.label||'VALUE'} ${Math.round(item.value*100)}%`;
     return;
@@ -390,10 +474,13 @@ window.addEventListener('pointermove',e=>{
   readout.classList.toggle('live',inside);
 });
 
-window.addEventListener('pointerup',()=>{
+window.addEventListener('pointerup',e=>{
   if(!dragging)return;
+  const {id,velocity,lastT}=dragging;
   dragging=null;
   panelHost.classList.remove('turning');
+  // Only a knob still moving when released carries on; one held still stops.
+  if(e.timeStamp-lastT<80)spin(id,velocity);
 });
 
 document.querySelectorAll<HTMLButtonElement>('[data-view]').forEach(b=>b.onclick=()=>{

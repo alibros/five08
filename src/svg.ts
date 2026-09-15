@@ -1,11 +1,100 @@
 import type {ComponentDefinition,Item,Project} from './model';
+import type {PanelFinish} from './finishes';
 import {dimensionLocked,FONT_STACK,PANEL_H,panelWidth} from './model';
 import {cutoutShapes,mountingShapes,type Shape} from './geometry';
 
 export const esc=(s:string)=>s.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]!));
 
-export function panelFinishDefs(p:Project){const f=p.panel.finish;let gradient=`<linearGradient id="panel-surface" x1="0" y1="0" x2="1" y2="0"><stop stop-color="${p.panelColor}"/><stop offset=".5" stop-color="${p.panelColor}"/><stop offset="1" stop-color="${p.panelColor}"/></linearGradient>`;let texture='';if(f==='brushed-silver')gradient=`<linearGradient id="panel-surface" x1="0" y1="0" x2="1" y2="0"><stop stop-color="#aeb1ae"/><stop offset=".12" stop-color="#e2e3df"/><stop offset=".48" stop-color="#c4c7c3"/><stop offset=".78" stop-color="#f0f0eb"/><stop offset="1" stop-color="#a9aca9"/></linearGradient>`;if(f==='black-anodized')gradient=`<linearGradient id="panel-surface" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#252926"/><stop offset=".5" stop-color="#111411"/><stop offset="1" stop-color="#202421"/></linearGradient>`;if(f==='powder-white')gradient=`<radialGradient id="panel-surface" cx="35%" cy="20%" r="95%"><stop stop-color="#fbfaf4"/><stop offset=".7" stop-color="#e8e6de"/><stop offset="1" stop-color="#d7d5ce"/></radialGradient>`;if(f==='smoke-acrylic')gradient=`<linearGradient id="panel-surface" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#53605d" stop-opacity=".92"/><stop offset=".35" stop-color="#202826" stop-opacity=".96"/><stop offset=".72" stop-color="#303b38" stop-opacity=".94"/><stop offset="1" stop-color="#141a18" stop-opacity=".98"/></linearGradient>`;if(f==='clear-acrylic')gradient=`<linearGradient id="panel-surface" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#f3ffff" stop-opacity=".93"/><stop offset=".35" stop-color="#c7dcda" stop-opacity=".78"/><stop offset=".55" stop-color="#ffffff" stop-opacity=".9"/><stop offset="1" stop-color="#a9c4c1" stop-opacity=".84"/></linearGradient>`;if(f==='fr4-green')gradient=`<linearGradient id="panel-surface" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#1d5542"/><stop offset=".5" stop-color="#103b2d"/><stop offset="1" stop-color="#082d22"/></linearGradient>`;if(f==='brushed-copper')gradient=`<linearGradient id="panel-surface" x1="0" y1="0" x2="1" y2="0"><stop stop-color="#70402f"/><stop offset=".15" stop-color="#c77b56"/><stop offset=".5" stop-color="#9b563b"/><stop offset=".78" stop-color="#d38a62"/><stop offset="1" stop-color="#6d3b2b"/></linearGradient>`;if(f==='walnut')gradient=`<radialGradient id="panel-surface" cx="35%" cy="22%" r="100%"><stop stop-color="#dedfd9"/><stop offset=".48" stop-color="#bfc0ba"/><stop offset="1" stop-color="#a7a9a3"/></radialGradient>`;if(['brushed-silver','black-anodized','brushed-copper'].includes(f))texture=`<pattern id="panel-texture" width="1" height="1.8" patternUnits="userSpaceOnUse"><path d="M0 .25H1M0 1.25H1" stroke="${f==='black-anodized'?'#fff':'#352d28'}" stroke-opacity=".07" stroke-width=".08"/></pattern>`;if(f==='fr4-green')texture=`<pattern id="panel-texture" width="7" height="7" patternUnits="userSpaceOnUse"><circle cx="1" cy="1" r=".12" fill="#e8c45d" opacity=".22"/><path d="M0 6Q3 3 7 5" fill="none" stroke="#65a57d" stroke-opacity=".08" stroke-width=".15"/></pattern>`;if(f==='walnut')texture=`<pattern id="panel-texture" width="3" height="3" patternUnits="userSpaceOnUse"><circle cx=".5" cy=".7" r=".08" fill="#fff" opacity=".18"/><circle cx="2.2" cy="1.8" r=".07" fill="#222" opacity=".1"/></pattern>`;if(f.includes('acrylic'))texture=`<linearGradient id="acrylic-shine" x1="0" y1="0" x2="1" y2="0"><stop stop-color="#fff" stop-opacity=".28"/><stop offset=".18" stop-color="#fff" stop-opacity=".03"/><stop offset=".72" stop-color="#fff" stop-opacity="0"/><stop offset="1" stop-color="#fff" stop-opacity=".18"/></linearGradient>`;return gradient+texture;}
-export function panelFinishSurface(p:Project,w:number){const f=p.panel.finish;let texture=f.includes('acrylic')?`<rect class="panel-finish" x=".7" y=".7" width="${w-1.4}" height="127.1" rx=".5" fill="url(#acrylic-shine)"/><path class="panel-finish" d="M2 2H${w-2}M2 2V126.5" stroke="#fff" stroke-opacity=".5" stroke-width=".45"/>`:`${['brushed-silver','black-anodized','brushed-copper','fr4-green','walnut'].includes(f)?`<rect class="panel-finish" width="${w}" height="128.5" rx=".6" fill="url(#panel-texture)"/>`:''}`;if(p.panelImage)texture=`<image class="panel-custom-image" href="${p.panelImage}" x="0" y="0" width="${w}" height="128.5" preserveAspectRatio="xMidYMid slice"/>`+texture;return`<g class="panel-finish"><rect width="${w}" height="128.5" rx=".6" fill="url(#panel-surface)"/>${texture}<rect x=".25" y=".25" width="${w-.5}" height="128" rx=".5" fill="none" stroke="${f.includes('acrylic')?'#eaffff':'#111'}" stroke-opacity="${f.includes('acrylic') ? .38 : .16}" stroke-width=".35"/></g>`;}
+/* ---- panel finishes ----
+   A surface is drawn in three layers: a gradient for the base colour and
+   the way light falls across it; a grain for the material — long streaks
+   for brushing, fine noise for anodising, orange-peel for powder coat,
+   a coarse stipple for bead blasting; and an edge — a chamfer catching the
+   light on metal, a lit edge on acrylic. The grain is fractal noise blended
+   onto the colour, so it is a texture, not a picture of one, and stays
+   seamless at any size. `prefix` keeps the ids apart when several finishes
+   share a document, as the swatches do. */
+
+type Grain={kind:'streaks'|'fine'|'peel'|'blast';opacity:number;blend:'overlay'|'soft-light'};
+const GRAIN:Record<string,Grain>={
+  'brushed-silver':{kind:'streaks',opacity:.6,blend:'overlay'},
+  'brushed-copper':{kind:'streaks',opacity:.55,blend:'overlay'},
+  'black-anodized':{kind:'fine',opacity:.5,blend:'soft-light'},
+  'powder-white':{kind:'peel',opacity:.28,blend:'overlay'},
+  'walnut':{kind:'blast',opacity:.45,blend:'overlay'},
+  'fr4-green':{kind:'fine',opacity:.3,blend:'soft-light'},
+};
+const NOISE:Record<Grain['kind'],string>={
+  streaks:'baseFrequency=".018 2.6" numOctaves="3" seed="3"',
+  fine:'baseFrequency="1.9" numOctaves="2" seed="11"',
+  peel:'baseFrequency=".5" numOctaves="3" seed="5"',
+  blast:'baseFrequency="2.8" numOctaves="1" seed="9"',
+};
+const METAL=['brushed-silver','black-anodized','powder-white','brushed-copper','walnut'];
+
+const SURFACE:Record<string,(c:string)=>string>={
+  'brushed-silver':()=>`<linearGradient id="ID" x1="0" y1="0" x2="1" y2="0"><stop stop-color="#b0b3b0"/><stop offset=".12" stop-color="#e4e5e1"/><stop offset=".48" stop-color="#c6c9c5"/><stop offset=".78" stop-color="#f1f1ec"/><stop offset="1" stop-color="#abaeab"/></linearGradient>`,
+  'black-anodized':()=>`<linearGradient id="ID" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#272b28"/><stop offset=".5" stop-color="#121512"/><stop offset="1" stop-color="#212522"/></linearGradient>`,
+  'powder-white':()=>`<radialGradient id="ID" cx="35%" cy="20%" r="95%"><stop stop-color="#fbfaf4"/><stop offset=".7" stop-color="#e8e6de"/><stop offset="1" stop-color="#d7d5ce"/></radialGradient>`,
+  'smoke-acrylic':()=>`<linearGradient id="ID" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#53605d" stop-opacity=".92"/><stop offset=".35" stop-color="#202826" stop-opacity=".96"/><stop offset=".72" stop-color="#303b38" stop-opacity=".94"/><stop offset="1" stop-color="#141a18" stop-opacity=".98"/></linearGradient>`,
+  'clear-acrylic':()=>`<linearGradient id="ID" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#f3ffff" stop-opacity=".93"/><stop offset=".35" stop-color="#c7dcda" stop-opacity=".78"/><stop offset=".55" stop-color="#ffffff" stop-opacity=".9"/><stop offset="1" stop-color="#a9c4c1" stop-opacity=".84"/></linearGradient>`,
+  'fr4-green':()=>`<linearGradient id="ID" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#1d5542"/><stop offset=".5" stop-color="#103b2d"/><stop offset="1" stop-color="#082d22"/></linearGradient>`,
+  'brushed-copper':()=>`<linearGradient id="ID" x1="0" y1="0" x2="1" y2="0"><stop stop-color="#70402f"/><stop offset=".15" stop-color="#c77b56"/><stop offset=".5" stop-color="#9b563b"/><stop offset=".78" stop-color="#d38a62"/><stop offset="1" stop-color="#6d3b2b"/></linearGradient>`,
+  'walnut':()=>`<radialGradient id="ID" cx="35%" cy="22%" r="100%"><stop stop-color="#dedfd9"/><stop offset=".48" stop-color="#bfc0ba"/><stop offset="1" stop-color="#a7a9a3"/></radialGradient>`,
+};
+
+export function panelFinishDefs(p:Project,prefix=''){
+  const f=p.panel.finish,id=(n:string)=>`${prefix}${n}`;
+  const surface=(SURFACE[f]??((c:string)=>`<linearGradient id="ID" x1="0" y1="0" x2="1" y2="0"><stop stop-color="${c}"/><stop offset="1" stop-color="${c}"/></linearGradient>`))(p.panelColor).replace('id="ID"',`id="${id('panel-surface')}"`);
+  const grain=GRAIN[f];
+  const texture=grain
+    ?`<filter id="${id('panel-grain-f')}" x="0" y="0" width="100%" height="100%" color-interpolation-filters="sRGB"><feTurbulence type="fractalNoise" ${NOISE[grain.kind]} stitchTiles="stitch"/><feColorMatrix type="saturate" values="0"/><feComponentTransfer><feFuncA type="linear" slope="0" intercept="1"/></feComponentTransfer></filter><pattern id="${id('panel-grain')}" width="48" height="24" patternUnits="userSpaceOnUse"><rect width="48" height="24" filter="url(#${id('panel-grain-f')})"/></pattern>`
+    :'';
+  const detail=f==='fr4-green'
+    ?`<pattern id="${id('panel-detail')}" width="7" height="7" patternUnits="userSpaceOnUse"><circle cx="1" cy="1" r=".12" fill="#e8c45d" opacity=".22"/><path d="M0 6Q3 3 7 5" fill="none" stroke="#65a57d" stroke-opacity=".08" stroke-width=".15"/></pattern>`
+    :f.includes('acrylic')
+    ?`<linearGradient id="${id('acrylic-shine')}" x1="0" y1="0" x2="1" y2="0"><stop stop-color="#fff" stop-opacity=".28"/><stop offset=".18" stop-color="#fff" stop-opacity=".03"/><stop offset=".72" stop-color="#fff" stop-opacity="0"/><stop offset="1" stop-color="#fff" stop-opacity=".18"/></linearGradient>`
+    :'';
+  return surface+texture+detail+screwDefs(prefix);
+}
+
+export function panelFinishSurface(p:Project,w:number,prefix=''){
+  const f=p.panel.finish,id=(n:string)=>`${prefix}${n}`,h=PANEL_H;
+  const grain=GRAIN[f];
+  const layers=[
+    p.panelImage?`<image class="panel-custom-image" href="${p.panelImage}" x="0" y="0" width="${w}" height="${h}" preserveAspectRatio="xMidYMid slice"/>`:'',
+    grain?`<rect class="panel-texture" width="${w}" height="${h}" rx=".6" fill="url(#${id('panel-grain')})" opacity="${grain.opacity}" style="mix-blend-mode:${grain.blend}"/>`:'',
+    f==='fr4-green'?`<rect class="panel-texture" width="${w}" height="${h}" rx=".6" fill="url(#${id('panel-detail')})"/>`:'',
+    f.includes('acrylic')?`<rect class="panel-texture" x=".7" y=".7" width="${w-1.4}" height="${h-1.4}" rx=".5" fill="url(#${id('acrylic-shine')})"/>`:'',
+  ].join('');
+  // The edge: a chamfer on metal catches light along the top and left and
+  // falls into shadow along the bottom and right; acrylic shows a lit edge.
+  const edge=f.includes('acrylic')
+    ?`<path d="M2 2H${w-2}M2 2V${h-2}" fill="none" stroke="#eaffff" stroke-opacity=".5" stroke-width=".45"/>`
+    :METAL.includes(f)
+    ?`<path d="M.4 ${h-.7}V.4H${w-.7}" fill="none" stroke="#fff" stroke-opacity="${f==='black-anodized'?.28:.6}" stroke-width=".35"/><path d="M${w-.4} .7V${h-.4}H.7" fill="none" stroke="#000" stroke-opacity="${f==='black-anodized'?.6:.28}" stroke-width=".35"/>`
+    :'';
+  return`<g class="panel-finish" style="isolation:isolate"><rect width="${w}" height="${h}" rx=".6" fill="url(#${id('panel-surface')})"/>${layers}${edge}<rect x=".2" y=".2" width="${w-.4}" height="${h-.4}" rx=".5" fill="none" stroke="${f.includes('acrylic')?'#eaffff':'#111'}" stroke-opacity="${f.includes('acrylic')?.38:.2}" stroke-width=".3"/></g>`;
+}
+
+/** A finish, drawn by the same code that draws the panel, small enough for a swatch. */
+export function finishSwatchSvg(f:PanelFinish,px=24){
+  const p:Project={version:2,name:'',panel:{hp:2,widthMode:'nominal',customWidth:10.16,thickness:2,material:f.material,finish:f.id,mounting:'none'},panelColor:f.panel,inkColor:f.ink,accentColor:f.accent,items:[],notes:''};
+  const prefix=`sw-${f.id}-`;
+  return`<svg class="finish-svg" viewBox="0 0 24 24" width="${px}" height="${px}" aria-hidden="true"><defs>${panelFinishDefs(p,prefix)}</defs><g transform="scale(.1868)">${panelFinishSurface(p,128.5,prefix)}</g></svg>`;
+}
+
+/* ---- screws ----
+   Button-head M3s sitting in the mounting slots: the module bolted into its
+   rails rather than floating. Slots stay visible around them, which is the
+   point of a slot. */
+function screwDefs(prefix=''){
+  return`<radialGradient id="${prefix}screw-head" cx="35%" cy="28%" r="78%"><stop stop-color="#f6f6f2"/><stop offset=".5" stop-color="#bdbeb9"/><stop offset="1" stop-color="#63645f"/></radialGradient>`;
+}
+const SLOT_ANGLES=[22,-38,63,-12,48,-27];
+export function screwsSvg(p:Project,prefix=''){
+  return mountingShapes(p.panel).map((s,n)=>`<g class="screw" transform="translate(${s.cx} ${s.cy})" pointer-events="none"><circle r="2.9" fill="#000" fill-opacity=".28" transform="translate(.12 .22)"/><circle r="2.75" fill="url(#${prefix}screw-head)" stroke="#2a2b28" stroke-opacity=".5" stroke-width=".22"/><circle r="2.2" fill="none" stroke="#fff" stroke-opacity=".22" stroke-width=".18"/><path d="M-1.75 0H1.75" stroke="#1a1b19" stroke-width=".5" stroke-linecap="round" transform="rotate(${SLOT_ANGLES[n%SLOT_ANGLES.length]})"/></g>`).join('');
+}
 
 /**
  * `wrapper` decides what the group is. On the panel it is an interactive item
@@ -23,7 +112,7 @@ export function componentSvg(i:Item,d:ComponentDefinition,p:Project,selected:boo
   else if(d.renderer==='slider'){const vertical=d.orientation!=='horizontal';body=vertical?`<rect x="-2" y="${-h/2}" width="4" height="${h}" rx="2" fill="#11120f"/><line y1="${-h/2+2}" y2="${h/2-2}" stroke="#777" stroke-width=".3"/><rect x="-5" y="${-h/2+h*(1-i.value)-2}" width="10" height="4" rx="1" fill="${c}" stroke="${ink}" stroke-width=".5"/>`:`<rect x="${-w/2}" y="-2" width="${w}" height="4" rx="2" fill="#11120f"/><line x1="${-w/2+2}" x2="${w/2-2}" stroke="#777" stroke-width=".3"/><rect x="${-w/2+w*i.value-2}" y="-5" width="4" height="10" rx="1" fill="${c}" stroke="${ink}" stroke-width=".5"/>`;}
   else if(d.renderer==='button'){const rectangular=d.id.includes('square')||d.id.includes('rect')||d.id.includes('wide'),lit=d.id.includes('lit'),metal=d.id.includes('metal'),arcade=d.id.includes('arcade');const shape=rectangular?`<rect x="${-w/2}" y="${-h/2}" width="${w}" height="${h}" rx="${d.id.includes('wide')?2:1.5}" fill="${c}" stroke="${ink}" stroke-width=".7"/>`:`<circle r="${Math.min(w,h)/2}" fill="${c}" stroke="${ink}" stroke-width=".7"/>`;const inset=rectangular?`<rect x="${-w*.39}" y="${-h*.34}" width="${w*.78}" height="${h*.68}" rx="1" fill="none" stroke="${lit?'#fff':ink}" stroke-opacity="${lit ? .62 : .22}" stroke-width=".45"/>`:`<circle r="${Math.min(w,h)*(arcade ? .38 : .34)}" fill="none" stroke="${metal?'#f4f6f2':ink}" stroke-opacity=".35" stroke-width=".45"/>`;const glow=lit?(rectangular?`<rect x="${-w*.34}" y="${-h*.29}" width="${w*.68}" height="${h*.58}" rx="1" fill="${c}" opacity=".58" filter="url(#glow)"/>`:`<circle r="${Math.min(w,h)*.24}" fill="${p.accentColor}" filter="url(#glow)"/>`):'';body=`${shape}${glow}${inset}`;}
   else if(d.renderer==='toggle'){body=d.orientation==='horizontal'?`<rect x="${-w/2}" y="${-h/2}" width="${w}" height="${h}" rx="1" fill="#222" stroke="${ink}" stroke-width=".5"/><rect x="${-w*.3}" y="${-h*.4}" width="${w*.38}" height="${h*.8}" rx=".8" fill="${c}"/>`:`<circle r="3" fill="none" stroke="${ink}" stroke-width=".6"/><line y2="${-h*.48}" stroke="${c}" stroke-width="2.2" stroke-linecap="round"/><circle cy="${-h*.48}" r="1.4" fill="${c}"/>`;}
-  else if(d.renderer==='led'){if(d.id==='led-ring')body=Array.from({length:12},(_,n)=>`<circle cx="${Math.cos(n*Math.PI/6)*w*.39}" cy="${Math.sin(n*Math.PI/6)*h*.39}" r="1.1" fill="${n<Math.round(i.value*12)?c:'#5b5d56'}"/>`).join('');else body=`<circle r="${Math.min(w,h)/2}" fill="${c}" stroke="${ink}" stroke-width=".3" filter="url(#glow)"/>`;}
+  else if(d.renderer==='led'){if(d.id==='led-ring')body=Array.from({length:12},(_,n)=>`<circle cx="${Math.cos(n*Math.PI/6)*w*.39}" cy="${Math.sin(n*Math.PI/6)*h*.39}" r="1.1" fill="${n<Math.round(i.value*12)?c:'#5b5d56'}"/>`).join('');else body=`<circle class="led-body" r="${Math.min(w,h)/2}" fill="${c}" stroke="${ink}" stroke-width=".3" filter="url(#glow)"/>`;}
   else if(d.renderer==='display'){if(d.id==='bargraph')body=Array.from({length:10},(_,n)=>`<rect x="${-w*.32}" y="${h/2-(n+1)*h/10+1}" width="${w*.64}" height="${h/12}" rx=".3" fill="${n<i.value*10?c:'#293029'}"/>`).join('');else body=`<rect x="${-w/2}" y="${-h/2}" width="${w}" height="${h}" rx="1" fill="#090d0b" stroke="${ink}" stroke-width=".5"/><text fill="${c}" font-family="ui-monospace,monospace" font-size="${Math.min(h*.42,4)}" text-anchor="middle" dominant-baseline="middle">${d.id==='seven-seg'?'12':d.id==='vu-meter'?'−12  0  +3':'WAVE 01'}</text>`;}
   else if(d.renderer==='connector')body=`<rect x="${-w/2}" y="${-h/2}" width="${w}" height="${h}" rx="${d.id==='midi-din'?h/2:1}" fill="#11120f" stroke="${ink}" stroke-width=".7"/>${d.id==='midi-din'?Array.from({length:5},(_,n)=>`<circle cx="${(n-2)*2.4}" cy="${n%2?1:-1}" r=".6" fill="#aaa"/>`).join(''):''}`;
   else if(d.renderer==='hole')body=d.orientation==='horizontal'?`<rect x="${-w/2}" y="${-h/2}" width="${w}" height="${h}" rx="${h/2}" fill="none" stroke="${ink}" stroke-width=".7"/>`:`<circle r="${w/2}" fill="none" stroke="${ink}" stroke-width=".7"/><line x1="${-w*.3}" x2="${w*.3}" stroke="${ink}" stroke-width=".3"/>`;

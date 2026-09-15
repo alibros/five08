@@ -175,6 +175,18 @@ test.describe('public page',()=>{
     expect(errors).toEqual([]);
   });
 
+  test('hovering a part dimensions it',async({page})=>{
+    const errors=watchConsole(page);
+    await page.goto('/');
+    await page.locator('.panel-item').nth(3).hover();
+    const notes=page.locator('#hero-notes');
+    await expect(notes.locator('text')).not.toHaveCount(0);
+    await expect(notes).toContainText('cutout');
+    await page.mouse.move(5,5);
+    await expect(notes.locator('text')).toHaveCount(0);
+    expect(errors).toEqual([]);
+  });
+
   test('narrowing the panel makes preflight object, live',async({page})=>{
     const errors=watchConsole(page);
     await page.goto('/');

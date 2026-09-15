@@ -154,7 +154,7 @@ main { max-width: var(--frame); margin: 0 auto; padding: 0 var(--gutter); }
 /* ---- lead ---- */
 .lead {
   position: relative;
-  display: grid; grid-template-columns: minmax(0,1fr) minmax(290px,400px); gap: 56px;
+  display: grid; grid-template-columns: minmax(0,1fr) minmax(300px,440px); gap: 48px;
   align-items: start; padding: 52px 0 54px;
 }
 .lead::before {
@@ -190,18 +190,63 @@ h1 { font-size: clamp(34px,4.4vw,56px); max-width: 14ch; line-height: 1.0; lette
 .demo-scale i { position: absolute; right: 0; top: 50%; width: 4px; height: 1px; background: var(--rule-strong); }
 .demo-scale span.major i { width: 7px; background: var(--ink-2); }
 .demo-panel {
-  flex: 1; position: relative; display: flex; justify-content: center; padding: 18px 11px;
-  /* Light falling across the panel from above left, the way it would in a rack. */
+  flex: 1; position: relative; display: flex; justify-content: center; padding: 18px 11px 34px;
+  /* Light falling across the panel from wherever the pointer is; from above
+     left when nobody is looking. */
+  --mx: 35%; --my: 20%; --tx: 0deg; --ty: 0deg;
   background:
-    radial-gradient(120% 90% at 30% 0%, color-mix(in srgb, var(--paper) 92%, white) 0%, transparent 60%),
+    radial-gradient(120% 90% at var(--mx) var(--my), color-mix(in srgb, var(--paper) 90%, white) 0%, transparent 60%),
     linear-gradient(var(--paper-2), var(--paper-3));
-  cursor: crosshair;
+  cursor: crosshair; perspective: 1400px;
+  transition: --mx var(--fast) var(--ease), --my var(--fast) var(--ease);
 }
 .demo-panel.turning { cursor: grabbing; }
 .demo-panel .panel-item { cursor: grab; }
 .demo-panel.turning .panel-item { cursor: grabbing; }
 .panel-render .panel-item { transition: opacity var(--fast) var(--ease); }
 .demo-panel:hover .panel-item:hover { opacity: .88; }
+
+/* The body carries what the SVG cannot: a real contact shadow (tight and
+   dark where the panel meets the surface, wide and soft beneath it), the
+   sheen that follows the pointer, and the lean. */
+.panel-body {
+  position: relative; display: block; border-radius: 2px;
+  box-shadow:
+    0 1px 0 rgb(255 255 255 / .45),
+    0 2px 3px rgb(0 0 0 / .28),
+    0 22px 34px -6px rgb(var(--shadow-ink) / .3);
+  transform: rotateX(var(--ty)) rotateY(var(--tx));
+  transition: transform var(--slow) var(--ease), box-shadow var(--slow) var(--ease);
+  transform-style: preserve-3d;
+}
+.panel-body .sheen {
+  position: absolute; inset: 0; border-radius: 2px; pointer-events: none;
+  mix-blend-mode: screen;
+  background: linear-gradient(100deg, transparent calc(var(--mx) - 24%), rgb(255 255 255 / .16) var(--mx), transparent calc(var(--mx) + 24%));
+}
+.panel-render {
+  display: block; width: auto; height: var(--panel-h); overflow: visible;
+  touch-action: none;
+}
+
+/* A lit indicator breathes while nobody is touching the panel — a module on
+   standby — and holds still the moment the pointer arrives. */
+.demo-panel .led-body[fill="#ff5d3b"] { animation: breathe 4s ease-in-out infinite; transform-box: fill-box; transform-origin: center; }
+.demo-panel:hover .led-body { animation-play-state: paused; }
+@keyframes breathe { 50% { opacity: .78; scale: .96; } }
+
+/* Annotations draw themselves: lines from zero length, then the figures. */
+.note-line { fill: none; stroke-width: .28; stroke-linecap: round; stroke-dasharray: 1; stroke-dashoffset: 1; animation: draw-note var(--slow) var(--ease) forwards; }
+.note-dot { opacity: 0; animation: show-note var(--fast) var(--ease) forwards; }
+.note-text {
+  font-family: var(--mono); font-size: 2.05px; letter-spacing: .02em; fill: var(--ink) !important;
+  opacity: 0; animation: show-note var(--slow) var(--ease) 160ms forwards;
+}
+.note-text.note-strong { font-weight: 600; }
+.note-line { stroke: var(--ink) !important; }
+.note-dot { fill: var(--ink) !important; }
+@keyframes draw-note { to { stroke-dashoffset: 0; } }
+@keyframes show-note { to { opacity: 1; } }
 
 .demo-readout {
   display: flex; align-items: baseline; gap: 14px; justify-content: space-between;
@@ -234,9 +279,9 @@ h1 { font-size: clamp(34px,4.4vw,56px); max-width: 14ch; line-height: 1.0; lette
 .switcher button:hover { color: var(--ink); }
 .switcher button.on { color: var(--on-ink); background: var(--ink); }
 .swatches { display: inline-flex; gap: 4px; margin-left: auto; }
-.swatches button { width: 27px; height: 27px; padding: 2px; cursor: pointer; background: var(--paper-2); border: 1px solid var(--rule); }
+.swatches button { width: 27px; height: 27px; padding: 2px; cursor: pointer; background: var(--paper-2); border: 1px solid var(--rule); display: grid; place-items: center; }
 .swatches button.on { border-color: var(--signal); box-shadow: inset 0 0 0 1px var(--signal); }
-.swatches span { display: block; width: 100%; height: 100%; }
+.swatches .finish-svg { display: block; }
 .demo figcaption { margin-top: 10px; padding-left: 36px; max-width: 50ch; font-size: 12.5px; line-height: 1.65; color: var(--muted); }
 
 /* ---- split lists ---- */
