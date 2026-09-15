@@ -542,3 +542,22 @@ button:focus-visible,input:focus-visible,select:focus-visible { outline-color:va
 .shortcut-grid h3 { color:var(--faint); }
 .shortcut-grid section>div span { color:var(--muted); }
 .modal.narrow { width:min(420px,92vw); }
+.layout-tools button, .segmented button, .canvas-toolbar button { white-space:nowrap; }
+.part-copy small { overflow:hidden; text-overflow:ellipsis; }
+
+/* ---- Narrow windows: drop labels, never letters ---- */
+@media (max-width:1330px) {
+  .command-hint span { display:none; }
+  .command-hint { padding-inline:8px; }
+}
+@media (max-width:1150px) {
+  /* The old rule squeezed "Align X" down to "A"; the floating selection bar
+     already carries these, so hide them outright instead. */
+  .layout-tools button { font-size:9px; }
+  .layout-tools button::first-letter { font-size:inherit; }
+  .layout-tools button:not(.icon-tool) { display:none; }
+  .precision-divider { display:none; }
+}
+@media (max-width:1150px) { .file-group .tool-button { width:auto; padding-inline:8px; } }
+.layout-tools .icon-tool { display:grid; place-items:center; width:30px; padding:0; }
+.layout-tools .icon-tool .ui-icon { width:14px; }

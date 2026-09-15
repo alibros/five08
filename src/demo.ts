@@ -20,7 +20,7 @@ export function demoPanel():Project{
   };
   const w=panelWidth(project.panel);
   project.items=[
-    place('text-label',w/2,12,'WAVEFOLDER',.5,{width:34,height:3.4}),
+    {...place('text-label',w/2,12,'WAVEFOLDER',.5,{width:34,height:3.4}),color:project.inkColor},
     place('knob-large',w/2,33,'FOLD',.62),
     place('knob-medium',13,62,'SYMMETRY',.38),
     place('knob-medium',w-13,62,'DRIVE',.71),

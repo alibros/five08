@@ -35,7 +35,8 @@ export function preflight(p:Project,definitions:Map<string,ComponentDefinition>)
   const issues:Issue[]=[],w=panelWidth(p.panel);
   const visible=p.items.filter(i=>!i.hidden);
   const parts=visible.flatMap(i=>{const d=definitions.get(i.componentId);return d?[{i,d,cut:cutoutShape(i,d)}]:[];});
-  const name=(i:Item,d:ComponentDefinition)=>i.label.trim()||d.name;
+  // "Small knob “2”" reads better in a warning than a bare label of "2".
+  const name=(i:Item,d:ComponentDefinition)=>i.label.trim()?`${d.name} \u201c${i.label.trim()}\u201d`:d.name;
 
   for(const{i,d,cut} of parts){
     const body=bodyBounds(i,d);
