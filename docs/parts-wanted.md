@@ -20,11 +20,11 @@ next person the search.
 - [x] **ISO 273 fine** — M3 clearance, behind the mounting hardware.
 - [x] **Song Huei 16K4** — 16 mm pot. The bushing is M7×0.75, not larger; the drawing gives a Ø7.5 panel hole and a Ø3 anti-rotation hole, which is not modelled. `knob-16mm`.
 - [x] **E-Switch 100 series** — miniature toggle, 1/4-40 bushing. The drawing gives a Ø6.35 panel hole; its keyway and locating-hole options are not modelled. `toggle-2`, `toggle-3`.
+- [x] **Bourns PTV09A** — 9 mm pot. It does **not** match M7×0.75: the only threaded bushing, PTV09A-6, is M9×0.75, so a 9.1 mm hole. The -1 and -5 bushings are plain sleeves and -4 has none; the datasheet gives no panel hole for those. `knob-ptv09`.
 
 ## Wanted
 
 ### Controls
-- [ ] **Bourns PTV09A** — 9 mm vertical pot, a very common Alpha alternative. Confirm whether the bushing matches M7×0.75.
 - [ ] **Alpha / Bourns 45 mm slide potentiometer** — slot width and length, and the travel versus the slot. Five08 currently derives the slot from the footprint.
 - [ ] **Alps RK09 / RK097** — 9 mm pot, another widespread alternative.
 
