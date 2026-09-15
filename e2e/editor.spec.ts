@@ -223,6 +223,25 @@ test.describe('public page',()=>{
     expect(errors).toEqual([]);
   });
 
+  test('the sheet edge stays a closed rectangle',async({page})=>{
+    // The frame used to sit behind everything, so the sticky header painted
+    // over its top edge and left a stub at each end.
+    const errors=watchConsole(page);
+    await page.goto('/');
+    const geo=await page.evaluate(()=>{
+      const frame=document.querySelector('.sheet-frame')!,head=document.querySelector('.masthead')!;
+      return{
+        frameTop:frame.getBoundingClientRect().top,
+        headTop:head.getBoundingClientRect().top,
+        frameZ:Number(getComputedStyle(frame).zIndex),
+        headZ:Number(getComputedStyle(head).zIndex),
+      };
+    });
+    expect(geo.headTop,'the header starts below the sheet edge').toBeGreaterThan(geo.frameTop);
+    expect(geo.frameZ,'the sheet edge draws above the header').toBeGreaterThan(geo.headZ);
+    expect(errors).toEqual([]);
+  });
+
   test('the hero panel can be used, not just looked at',async({page})=>{
     const errors=watchConsole(page);
     await page.goto('/');
