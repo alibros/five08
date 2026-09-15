@@ -19,6 +19,7 @@ next person the search.
 - [x] **Alps Alpine EC11** — encoder. M7×0.75 bushing.
 - [x] **ISO 273 fine** — M3 clearance, behind the mounting hardware.
 - [x] **Song Huei 16K4** — 16 mm pot. The bushing is M7×0.75, not larger; the drawing gives a Ø7.5 panel hole and a Ø3 anti-rotation hole, which is not modelled. `knob-16mm`.
+- [x] **E-Switch 100 series** — miniature toggle, 1/4-40 bushing. The drawing gives a Ø6.35 panel hole; its keyway and locating-hole options are not modelled. `toggle-2`, `toggle-3`.
 
 ## Wanted
 
