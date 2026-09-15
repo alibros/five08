@@ -98,6 +98,40 @@ test.describe('editor',()=>{
     expect(errors).toEqual([]);
   });
 
+  test('the focus ring is for the keyboard, not the pointer',async({page})=>{
+    const errors=watchConsole(page);
+    await openTemplate(page,'voice');
+    const ring=page.locator('.focus-ring');
+
+    // Clicking and dragging a part must not leave an outline behind
+    const knob=page.locator('.panel-item').nth(2);
+    const box=(await knob.boundingBox())!;
+    await page.mouse.move(box.x+box.width/2,box.y+box.height/2);
+    await page.mouse.down();
+    await page.mouse.move(box.x+box.width/2+20,box.y+box.height/2+14,{steps:4});
+    await page.mouse.up();
+    await expect(ring).toHaveCount(0);
+
+    // Tabbing to a part still draws one
+    await page.keyboard.press('Escape');
+    await page.locator('#skip-canvas').focus();
+    await page.keyboard.press('Enter');
+    await expect(ring).toHaveCount(1);
+
+    // And it goes away again as soon as a pointer takes over
+    await page.locator('.panel-item').nth(4).click({force:true});
+    await expect(ring).toHaveCount(0);
+
+    // Turning the option on outlines whatever is focused, however you got there
+    await page.keyboard.press('Control+k');
+    await page.locator('#palette-input').fill('focus ring');
+    await page.keyboard.press('Enter');
+    await expect(page.locator('#toast')).toContainText('always shown');
+    await page.locator('.panel-item').nth(3).click({force:true});
+    await expect(ring).toHaveCount(1);
+    expect(errors).toEqual([]);
+  });
+
   test('every export produces a file',async({page})=>{
     const errors=watchConsole(page);
     await openTemplate(page,'mixer');

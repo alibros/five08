@@ -112,7 +112,7 @@ describe('recovery snapshots',()=>{
 
 describe('preferences',()=>{
   it('round-trips and falls back to defaults for missing keys',()=>{
-    writePrefs({theme:'dark',grid:2.54,snap:false,smartGuides:true,showGrid:false,showSafe:true});
+    writePrefs({theme:'dark',grid:2.54,snap:false,smartGuides:true,showGrid:false,showSafe:true,focusRing:false});
     expect(readPrefs()).toMatchObject({theme:'dark',grid:2.54,snap:false});
     storage.setItem('five08:prefs',JSON.stringify({theme:'light'}));
     expect(readPrefs()).toMatchObject({theme:'light',grid:1,snap:true});

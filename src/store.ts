@@ -90,8 +90,8 @@ export function pushRecovery(project:Project){
 export const listRecovery=()=>readJson<RecoverySnapshot[]>(RECOVERY_KEY,[]).filter(s=>s&&typeof s.savedAt==='string');
 export const clearRecovery=()=>{const s=store();try{s?.removeItem(RECOVERY_KEY);}catch{/* private mode */}};
 
-export type Prefs={theme:'system'|'light'|'dark';grid:number;snap:boolean;smartGuides:boolean;showGrid:boolean;showSafe:boolean};
-export const defaultPrefs:Prefs={theme:'system',grid:1,snap:true,smartGuides:true,showGrid:true,showSafe:true};
+export type Prefs={theme:'system'|'light'|'dark';grid:number;snap:boolean;smartGuides:boolean;showGrid:boolean;showSafe:boolean;focusRing:boolean};
+export const defaultPrefs:Prefs={theme:'system',grid:1,snap:true,smartGuides:true,showGrid:true,showSafe:true,focusRing:false};
 export const readPrefs=():Prefs=>({...defaultPrefs,...readJson<Partial<Prefs>>(PREFS_KEY,{})});
 export const writePrefs=(prefs:Prefs)=>{writeJson(PREFS_KEY,prefs);};
 

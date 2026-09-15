@@ -303,9 +303,16 @@ h1 { font-size: clamp(34px,4.4vw,58px); max-width: 14ch; line-height: 1.0; lette
 .rack figcaption span:last-child { max-width: var(--measure); }
 
 /* ---- split lists ---- */
-.split { display: grid; grid-template-columns: repeat(auto-fit,minmax(310px,1fr)); gap: 40px; }
-@media (min-width: 961px) { .split { grid-template-columns: minmax(0,1.25fr) minmax(0,1fr); } }
+.split { --split-gap: 40px; display: grid; grid-template-columns: minmax(0,1.25fr) minmax(0,1fr); column-gap: var(--split-gap); }
 .split h3 { font-size: 15px; padding-bottom: 9px; border-bottom: 1px solid var(--ink); }
+/* One rule under both headings. The left column's bridges the gutter so the
+   line runs the width of the section instead of stopping either side of it:
+   a sheet has rules across it, not a rule per column. */
+.split > div:first-child h3 { margin-right: calc(var(--split-gap) * -1); padding-right: var(--split-gap); }
+@media (max-width: 780px) {
+  .split { grid-template-columns: minmax(0,1fr); row-gap: 38px; }
+  .split > div:first-child h3 { margin-right: 0; padding-right: 0; }
+}
 .split ul { margin: 0; padding: 0; list-style: none; }
 .split li {
   position: relative; display: grid; grid-template-columns: 20px 1fr; gap: 8px;
@@ -330,7 +337,7 @@ h1 { font-size: clamp(34px,4.4vw,58px); max-width: 14ch; line-height: 1.0; lette
 .spec tbody tr:hover th, .spec tbody tr:hover .figure { color: var(--signal); }
 .spec .origin { font-family: var(--mono); font-size: 9.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--faint); }
 /* The compact form: a label in small caps, a figure in mono, a note. */
-.spec.compact { font-size: 13px; border-top: 1px solid var(--ink); }
+.spec.compact { font-size: 13px; }
 .spec.compact tbody th { width: 22%; font-family: var(--sans); font-size: 11px; font-weight: 560; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-2); }
 .spec.compact .figure { width: 24%; text-align: right; padding-right: 20px; color: var(--ink); font-size: 12px; }
 .spec.compact td:last-child { font-size: 12.5px; line-height: 1.5; }

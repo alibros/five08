@@ -25,6 +25,10 @@ let project=load(projectId), selection=new Set<string>();
 const history=new History(project);
 let gridIndex=grids.indexOf(prefs.grid)<0?1:grids.indexOf(prefs.grid);
 let snap=prefs.snap,smartGuides=prefs.smartGuides,showSafe=prefs.showSafe,showGrid=prefs.showGrid,theme:Theme=prefs.theme;
+/* The focus ring is a keyboard affordance. It follows :focus-visible rather
+   than focus — a part clicked or dragged with a pointer does not wear one —
+   unless someone turns it on for good. */
+let focusRing=prefs.focusRing,usingKeyboard=false;
 let showRack=false;
 let zoom=fitZoom(),view:'design'|'cutout'|'rear'='design',libraryQuery='',activeCategory='All',inspectorTab:'context'|'panel'|'layers'='context',leftOpen=true,rightOpen=true;
 let issues:Issue[]=[];
@@ -117,7 +121,7 @@ function setSaveStatus(state:'saving'|'saved'|'quota'|'unavailable'){
   // A green hairline that blinks once: the save landed, no toast required.
   if(state==='saved'&&wasSaving)pulse(el,'flash-ok');
 }
-function savePrefs(){writePrefs({theme,grid:grids[gridIndex],snap,smartGuides,showGrid,showSafe});}
+function savePrefs(){writePrefs({theme,grid:grids[gridIndex],snap,smartGuides,showGrid,showSafe,focusRing});}
 function saveRecovery(){pushRecovery(project);}
 function fitZoom(){
   const width=Math.max(320,window.innerWidth-(leftOpenAtBoot()?700:220));
@@ -428,11 +432,16 @@ function applyCanvasA11y(){
   drawFocusRing();
 }
 
-/** A focus ring distinct from the selection outline, so both can be seen at once. */
+/**
+ * A focus ring distinct from the selection outline, so both can be seen at
+ * once — but only for the people it is for. Clicking or dragging a part sets
+ * focusedId, which is what Tab resumes from; drawing a ring around it as well
+ * leaves a blue outline sitting on the panel after every move.
+ */
 function drawFocusRing(){
   const layer=document.querySelector('#focus-layer');
   if(!layer)return;
-  const item=project.items.find(i=>i.id===focusedId&&!i.hidden);
+  const item=focusRing||usingKeyboard?project.items.find(i=>i.id===focusedId&&!i.hidden):undefined;
   layer.innerHTML=item
     ?`<rect class="focus-ring ${item.id!==lastFocusId?'landing':''}" x="${item.x-item.width/2-2}" y="${item.y-item.height/2-2}" width="${item.width+4}" height="${item.height+4}"/>`
     :'';
@@ -938,6 +947,7 @@ function commands():Command[]{
     {id:'rack-toggle',group:'View',title:'Show the panel in a rack',keywords:'case neighbours rails context',run:()=>{showRack=!showRack;render();}},
     {id:'grid-size',group:'View',title:`Cycle the grid step (now ${grids[gridIndex]} mm)`,run:cycleGrid},
     {id:'theme',group:'View',title:`Theme: ${theme} — switch to ${nextTheme(theme)}`,keywords:'dark light appearance',run:()=>setTheme(nextTheme(theme))},
+    {id:'focus-ring',group:'View',title:`Focus ring: ${focusRing?'always shown':'only when tabbing'}`,detail:focusRing?'Outline every focused part, pointer or keyboard':'Outline a part only when the keyboard put focus on it',keywords:'outline blue accessibility a11y keyboard highlight',run:()=>{focusRing=!focusRing;savePrefs();notify(focusRing?'Focus ring always shown':'Focus ring only when tabbing');drawFocusRing();}},
 
     {id:'panel-tab',group:'Panel',title:'Panel settings',run:()=>{rightOpen=true;inspectorTab='panel';render();}},
     {id:'layers-tab',group:'Panel',title:'Object layers',run:()=>{rightOpen=true;inspectorTab='layers';render();}},
@@ -1075,6 +1085,7 @@ function helpDialog(){
     <div class="modal-head"><span class="eyebrow">Five08</span><h2 id="shortcuts-title">Shortcuts</h2><p>Drag a part onto the panel, or click a library row to drop it at the centre.</p></div>
     <div class="shortcut-grid">${SHORTCUTS.map(([title,rows])=>`<section><h3>${title}</h3>${rows.map(([label,keys])=>`<div><span>${label}</span><kbd>${keys}</kbd></div>`).join('')}</section>`).join('')}</div>
     <div class="guide-tip"><strong>Smart guides</strong><span>Blue lines align centres and edges while you drag. Red measurements show the gap to the nearest neighbour, and a matching “=” badge means two gaps are equal. Hold Alt to place a part anywhere, ignoring the grid.</span></div>
+    <div class="guide-tip"><strong>Focus ring</strong><span>Tab into the panel and the part you are on wears a blue outline. Clicking or dragging never draws one. To outline whatever is focused however you got there, search “focus ring” in the command palette.</span></div>
     <div class="guide-tip"><strong>Before you cut metal</strong><span>Preflight checks edge margins, cutout walls, mounting clashes, jack spacing and part depth. Generic component dimensions are starting points — check every one against the real datasheet.</span></div>
     <div class="modal-actions"><button class="tool-button primary" id="cancel-modal">Close</button></div>
   </div></div>`);
@@ -1259,6 +1270,10 @@ window.addEventListener('resize',()=>renderRuler(panelWidth(project.panel)));
 window.addEventListener('beforeunload',flush);
 
 const typing=(t:EventTarget|null)=>{const el=t as HTMLElement|null;return!!el&&(['INPUT','SELECT','TEXTAREA'].includes(el.tagName)||el.isContentEditable);};
+
+/* Which input put focus where, decided the way :focus-visible decides it. */
+window.addEventListener('keydown',()=>{usingKeyboard=true;},{capture:true});
+window.addEventListener('pointerdown',()=>{if(!usingKeyboard)return;usingKeyboard=false;drawFocusRing();},{capture:true});
 
 window.addEventListener('keyup',e=>{if(e.code==='Space'){spaceHeld=false;canvasEl().classList.remove('pannable');}});
 
