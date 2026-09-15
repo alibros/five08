@@ -50,6 +50,7 @@ needs to settle. The question, with both readings and page references, is in
 
 - [ ] **USB-C panel receptacle** — the current 9.5 × 3.5 mm opening is an estimate. Needs a specific part number before there is a drawing to read.
 - [ ] **16 mm illuminated momentary** — panel hole and the flat, if any. Needs a specific part, and no catalog part matches: `button-lit` is 12 mm and `button-metal` is not illuminated. APEM's A6 and AV16 ranges are candidates.
+- [ ] **Illuminated encoder** — `encoder-ring` needs a specific part before its 8 mm hole can be traced. It used to cite the Alps EC11, which is not illuminated. The nearest drawing read, the Bourns [PEL12T](https://www.bourns.com/docs/product-datasheets/PEL12T.pdf), lights its shaft rather than a halo, and its bushing variants are M9×0.75 (p.3), which would be a 9.1 mm hole.
 - [ ] **Slide switch** — the current 8 × 3 mm slot is an estimate. Needs a specific part number.
 - [ ] **3 mm and 5 mm LED bezels** — the bezel, not the bare LED. Needs a specific bezel: panel holes vary widely between snap-in holders and metal bezels, so a generic figure would be a guess.
 - [ ] **Analogue VU meter** — needs a specific model; cutouts vary between rectangular and round.

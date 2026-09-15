@@ -150,7 +150,6 @@ export const catalog:ComponentDefinition[]=[
     description:'Endless push encoder with illuminated halo',
     depth:18,
     tags:['encoder','endless','push','illuminated','led ring','rotary'],
-    source:SOURCE.ec11,
   }),
   part({
     id:'encoder-metal', name:'Metal encoder + push',
