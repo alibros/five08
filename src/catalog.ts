@@ -80,7 +80,9 @@ export const catalog:ComponentDefinition[]=[
   part('cutout-rect','Rectangular cutout','Panel hardware','shape',18,10,18,21,'#30312d','','Rectangular opening, cut at the size you draw it',{cutoutShape:'rect',cutoutInset:1}),
   part('standoff','PCB standoff','Panel hardware','hole',3,3,3,6,'#8e9188','','PCB mounting reference',{depth:8}),
 
-  part('text-label','Text label','Graphics','text',20,4,undefined,0,'#f2f2eb','LABEL','Editable panel typography'),
+  part('text-label','Text label','Graphics','text',20,4,undefined,0,'#f2f2eb','LABEL','Panel legend — multi-line, with a choice of font, weight and alignment',{tags:['text','label','legend','type','font']}),
+  part('knob-scale','Knob scale','Graphics','scale',26,26,undefined,0,'#f2f2eb','','270° tick arc to print around a knob',{resizable:true,tags:['scale','ticks','dial','marks','knob']}),
+  part('arrow','Signal arrow','Graphics','arrow',14,2.6,undefined,0,'#f2f2eb','','Flow arrow — rotate it to aim',{resizable:true,tags:['arrow','signal','flow','routing']}),
   part('section-title','Section title','Graphics','text',28,6,undefined,0,'#f2f2eb','SECTION','Large section heading'),
   part('divider','Divider line','Graphics','shape',28,1,undefined,0,'#ff5d3b','','Graphic section divider'),
   part('shape-circle','Circle','Graphics','shape',12,12,undefined,0,'#ff5d3b','','Graphic circle or ring'),

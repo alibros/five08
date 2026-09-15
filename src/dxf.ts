@@ -70,10 +70,15 @@ export function panelDxf(p:Project,definitions:Map<string,ComponentDefinition>,o
   const mounting=mountingShapes(p.panel).map(s=>shapeEntity('MOUNTING',s)).join('');
   const cutouts=cutoutShapes(p.items,definitions).map(s=>shapeEntity('CUTOUTS',s)).join('');
   const engraving=options.engraveLabels
-    ?p.items.filter(i=>!i.hidden&&i.label.trim()).map(i=>{
-        const d=definitions.get(i.componentId);if(!d)return'';
-        const baseline=d.renderer==='text'?i.y:i.y+i.height/2+3.6;
-        return text('ENGRAVING',flip(i.x,baseline),d.renderer==='text'?i.height:2,i.label.toUpperCase(),-i.rotation*Math.PI/180);
+    ?p.items.filter(i=>!i.hidden&&i.label.trim()).flatMap(i=>{
+        const d=definitions.get(i.componentId);if(!d)return[];
+        const rotation=-i.rotation*Math.PI/180;
+        if(d.renderer!=='text')return[text('ENGRAVING',flip(i.x,i.y+i.height/2+3.6),2,i.label.toUpperCase(),rotation)];
+        // Multi-line legends engrave as one TEXT entity per line, laid out the
+        // same way the artwork renders them.
+        const lines=i.label.split('\n').slice(0,8),leading=i.height*1.25;
+        const top=i.y-(lines.length-1)*leading/2;
+        return lines.map((line,n)=>text('ENGRAVING',flip(i.x,top+n*leading),i.height,line.toUpperCase(),rotation));
       }).join('')
     :'';
 

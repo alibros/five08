@@ -1,5 +1,5 @@
 export type Category = 'Controls'|'Jacks & connectors'|'Switches & buttons'|'Indicators & displays'|'Panel hardware'|'Graphics';
-export type Renderer = 'knob'|'jack'|'slider'|'button'|'toggle'|'led'|'display'|'connector'|'hole'|'text'|'shape'|'touch'|'image';
+export type Renderer = 'knob'|'jack'|'slider'|'button'|'toggle'|'led'|'display'|'connector'|'hole'|'text'|'shape'|'touch'|'image'|'scale'|'arrow';
 export type PartStatus = 'generic'|'verified';
 
 /**
@@ -26,6 +26,25 @@ export type Item = {
   role:'none'|'param'|'input'|'output'|'light'|'custom'; identifier:string; imageData?:string;
   /** What to actually order: "B10k lin", "SPDT on-off-on". Appears in the BOM. */
   spec?:string;
+  /* Typography, for text and anything else that carries a legend. */
+  font?:TextFont; weight?:number; align?:TextAlign; tracking?:number;
+  /** Repeat count for parts made of a series: scale ticks, ring segments. */
+  count?:number;
+};
+
+export type TextFont='sans'|'condensed'|'mono';
+export type TextAlign='start'|'middle'|'end';
+
+/**
+ * Fonts named in an exported SVG have to exist on whatever opens it, so the
+ * choices map to stacks every machine already has. For fabrication, outline the
+ * text in a vector editor before sending it — a substituted font changes the
+ * artwork silently.
+ */
+export const FONT_STACK:Record<TextFont,string>={
+  sans:'Arial, Helvetica, sans-serif',
+  condensed:'"Arial Narrow", "Helvetica Neue", Arial, sans-serif',
+  mono:'"Courier New", ui-monospace, monospace',
 };
 
 export type PanelProfile = {
@@ -60,9 +79,20 @@ export function parseProject(raw:unknown, definitions:Map<string,ComponentDefini
   const mounting=['none','two','diagonal','four'].includes(String(panel.mounting))?String(panel.mounting) as PanelProfile['mounting']:base.panel.mounting;
   const hp=clamp(num(panel.hp,12),2,84),material=safeText(panel.material,40,base.panel.material);
   const roles:Item['role'][]=['none','param','input','output','light','custom'];const seen=new Set<string>();
-  const items=(r.items as unknown[]).slice(0,1000).flatMap(value=>{if(!value||typeof value!=='object')return[];const x=value as Record<string,unknown>,componentId=String(x.componentId||''),d=definitions.get(componentId);if(!d)return[];let id=safeText(x.id,80,uid());if(seen.has(id))id=uid();seen.add(id);const role=roles.includes(String(x.role) as Item['role'])?String(x.role) as Item['role']:'none',imageData=validPng(x.imageData);return[{id,componentId,x:clamp(num(x.x,10),-500,1000),y:clamp(num(x.y,20),-500,1000),rotation:clamp(num(x.rotation,0),-3600,3600),width:clamp(num(x.width,d.width),.5,500),height:clamp(num(x.height,d.height),.5,500),value:clamp(num(x.value,.5),0,1),label:safeText(x.label,200,''),color:validColor(x.color,d.color),locked:!!x.locked,hidden:!!x.hidden,role,identifier:safeText(x.identifier,100,''),...(imageData?{imageData}:{}),...(safeText(x.spec,80,'')?{spec:safeText(x.spec,80,'')}:{})}];});
+  const items=(r.items as unknown[]).slice(0,1000).flatMap(value=>{if(!value||typeof value!=='object')return[];const x=value as Record<string,unknown>,componentId=String(x.componentId||''),d=definitions.get(componentId);if(!d)return[];let id=safeText(x.id,80,uid());if(seen.has(id))id=uid();seen.add(id);const role=roles.includes(String(x.role) as Item['role'])?String(x.role) as Item['role']:'none',imageData=validPng(x.imageData);return[{id,componentId,x:clamp(num(x.x,10),-500,1000),y:clamp(num(x.y,20),-500,1000),rotation:clamp(num(x.rotation,0),-3600,3600),width:clamp(num(x.width,d.width),.5,500),height:clamp(num(x.height,d.height),.5,500),value:clamp(num(x.value,.5),0,1),label:safeText(x.label,200,''),color:validColor(x.color,d.color),locked:!!x.locked,hidden:!!x.hidden,role,identifier:safeText(x.identifier,100,''),...(imageData?{imageData}:{}),...(safeText(x.spec,80,'')?{spec:safeText(x.spec,80,'')}:{}),...textStyle(x)}];});
   const panelImage=validPng(r.panelImage);
   return{version:2,name:safeText(r.name,120,base.name),panel:{hp,widthMode,customWidth:clamp(num(panel.customWidth,hp*HP_MM),5,430),thickness:clamp(num(panel.thickness,2),.5,10),material,finish:safeText(panel.finish,50,finishForMaterial(material)),mounting},panelColor:validColor(r.panelColor,base.panelColor),inkColor:validColor(r.inkColor,base.inkColor),accentColor:validColor(r.accentColor,base.accentColor),...(panelImage?{panelImage}:{}),items,notes:safeText(r.notes,10000,'')};
+}
+const fonts:TextFont[]=['sans','condensed','mono'];
+const aligns:TextAlign[]=['start','middle','end'];
+function textStyle(x:Record<string,unknown>){
+  const out:Partial<Item>={};
+  if(fonts.includes(x.font as TextFont))out.font=x.font as TextFont;
+  if(aligns.includes(x.align as TextAlign))out.align=x.align as TextAlign;
+  if(Number.isFinite(Number(x.weight)))out.weight=clamp(Math.round(Number(x.weight)/100)*100,100,900);
+  if(Number.isFinite(Number(x.tracking)))out.tracking=clamp(Number(x.tracking),-.2,1);
+  if(Number.isFinite(Number(x.count)))out.count=clamp(Math.round(Number(x.count)),2,64);
+  return out;
 }
 export const clamp=(v:number,min:number,max:number)=>Math.max(min,Math.min(max,v));
 const num=(v:unknown,fallback:number)=>Number.isFinite(Number(v))?Number(v):fallback;

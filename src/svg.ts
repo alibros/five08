@@ -1,5 +1,5 @@
 import type {ComponentDefinition,Item,Project} from './model';
-import {dimensionLocked,PANEL_H,panelWidth} from './model';
+import {dimensionLocked,FONT_STACK,PANEL_H,panelWidth} from './model';
 import {cutoutShapes,mountingShapes,type Shape} from './geometry';
 
 export const esc=(s:string)=>s.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]!));
@@ -21,13 +21,48 @@ export function componentSvg(i:Item,d:ComponentDefinition,p:Project,selected:boo
   else if(d.renderer==='display'){if(d.id==='bargraph')body=Array.from({length:10},(_,n)=>`<rect x="${-w*.32}" y="${h/2-(n+1)*h/10+1}" width="${w*.64}" height="${h/12}" rx=".3" fill="${n<i.value*10?c:'#293029'}"/>`).join('');else body=`<rect x="${-w/2}" y="${-h/2}" width="${w}" height="${h}" rx="1" fill="#090d0b" stroke="${ink}" stroke-width=".5"/><text fill="${c}" font-family="ui-monospace,monospace" font-size="${Math.min(h*.42,4)}" text-anchor="middle" dominant-baseline="middle">${d.id==='seven-seg'?'12':d.id==='vu-meter'?'−12  0  +3':'WAVE 01'}</text>`;}
   else if(d.renderer==='connector')body=`<rect x="${-w/2}" y="${-h/2}" width="${w}" height="${h}" rx="${d.id==='midi-din'?h/2:1}" fill="#11120f" stroke="${ink}" stroke-width=".7"/>${d.id==='midi-din'?Array.from({length:5},(_,n)=>`<circle cx="${(n-2)*2.4}" cy="${n%2?1:-1}" r=".6" fill="#aaa"/>`).join(''):''}`;
   else if(d.renderer==='hole')body=d.orientation==='horizontal'?`<rect x="${-w/2}" y="${-h/2}" width="${w}" height="${h}" rx="${h/2}" fill="none" stroke="${ink}" stroke-width=".7"/>`:`<circle r="${w/2}" fill="none" stroke="${ink}" stroke-width=".7"/><line x1="${-w*.3}" x2="${w*.3}" stroke="${ink}" stroke-width=".3"/>`;
-  else if(d.renderer==='text')body=`<text fill="${c}" font-family="system-ui,sans-serif" font-size="${h}" font-weight="700" text-anchor="middle" dominant-baseline="middle" letter-spacing=".04em">${esc(i.label)}</text>`;
+  else if(d.renderer==='text')body=textSvg(i,c);
+  else if(d.renderer==='scale')body=scaleSvg(i,ink);
+  else if(d.renderer==='arrow')body=arrowSvg(i,c);
   else if(d.renderer==='image')body=i.imageData?`<image href="${i.imageData}" x="${-w/2}" y="${-h/2}" width="${w}" height="${h}" preserveAspectRatio="none"/>`:`<g opacity=".6"><rect x="${-w/2}" y="${-h/2}" width="${w}" height="${h}" rx="1" fill="none" stroke="${ink}" stroke-width=".4" stroke-dasharray="1 1"/><path d="M${-w*.35} ${h*.3}l${w*.25}-${h*.28} ${w*.18} ${h*.16} ${w*.2}-${h*.24} ${w*.22} ${h*.2}" fill="none" stroke="${ink}" stroke-width=".5"/><circle cx="${-w*.2}" cy="${-h*.22}" r="${Math.min(w,h)*.07}" fill="${c}"/></g>`;
   else if(d.renderer==='touch')body=d.id==='joystick'?`<circle r="${w/2}" fill="#20221e" stroke="${ink}" stroke-width=".7"/><circle cx="${(i.value-.5)*w*.35}" cy="${(i.value-.5)*-h*.35}" r="${w*.18}" fill="${c}" stroke="${ink}" stroke-width=".5"/>`:`<rect x="${-w/2}" y="${-h/2}" width="${w}" height="${h}" rx="${w/2}" fill="#20221e" stroke="${c}" stroke-width=".6"/>`;
   else body=d.id==='divider'?`<line x1="${-w/2}" x2="${w/2}" stroke="${c}" stroke-width="${h}"/>`:`<${d.id.includes('circle')?'ellipse':'rect'} ${d.id.includes('circle')?`rx="${w/2}" ry="${h/2}"`:`x="${-w/2}" y="${-h/2}" width="${w}" height="${h}" rx="1"`} fill="none" stroke="${c}" stroke-width=".6"/>`;
   const label=i.label&&d.renderer!=='text'&&view==='design'?`<text y="${h/2+3.6}" fill="${ink}" font-family="ui-monospace,monospace" font-size="2" font-weight="600" text-anchor="middle" letter-spacing=".06em">${esc(i.label.toUpperCase())}</text>`:'';
   const selection=selected?`<g class="selection-ui"><rect x="${-w/2-1.3}" y="${-h/2-1.3}" width="${w+2.6}" height="${h+2.6}" fill="none" stroke="${p.accentColor}" stroke-width=".45" stroke-dasharray="1.3 1" pointer-events="none"/>${dimensionLocked(d)?'':[['nw',-w/2-1.3,-h/2-1.3],['ne',w/2+1.3,-h/2-1.3],['sw',-w/2-1.3,h/2+1.3],['se',w/2+1.3,h/2+1.3]].map(([corner,x,y])=>`<rect class="resize-handle" data-resize="${corner}" x="${Number(x)-1.15}" y="${Number(y)-1.15}" width="2.3" height="2.3" rx=".35" fill="${p.accentColor}" stroke="#fff" stroke-width=".25" vector-effect="non-scaling-stroke" style="cursor:${corner==='nw'||corner==='se'?'nwse-resize':'nesw-resize'}"/>`).join('')}</g>`:'';
   return `<g class="panel-item" data-id="${i.id}" transform="translate(${i.x} ${i.y}) rotate(${i.rotation})" opacity="${i.locked?.75:1}" style="cursor:${i.locked?'not-allowed':'move'}">${body}${label}${selection}</g>`;
+}
+
+/** Panel legends: multi-line, aligned, in a font that will survive the trip to a fabricator. */
+export function textSvg(i:Item,colour:string){
+  const lines=i.label.split('\n').slice(0,8);
+  const anchor=i.align??'middle';
+  const x=anchor==='start'?-i.width/2:anchor==='end'?i.width/2:0;
+  const leading=i.height*1.25;
+  const top=-(lines.length-1)*leading/2;
+  const rows=lines.map((line,n)=>`<tspan x="${x}" y="${(top+n*leading).toFixed(3)}">${esc(line)}</tspan>`).join('');
+  return`<text fill="${colour}" font-family="${FONT_STACK[i.font??'sans']}" font-size="${i.height}" font-weight="${i.weight??700}" text-anchor="${anchor}" dominant-baseline="middle" letter-spacing="${i.tracking??.04}em">${rows}</text>`;
+}
+
+/** The tick arc printed around a knob. 270° of sweep, matching the pot's travel. */
+export function scaleSvg(i:Item,ink:string){
+  const count=Math.max(2,i.count??11);
+  const outer=Math.min(i.width,i.height)/2;
+  const inner=outer-Math.max(.9,outer*.16);
+  const sweep=270,start=135;
+  const ticks=Array.from({length:count},(_,n)=>{
+    const angle=(start+sweep*(n/(count-1)))*Math.PI/180;
+    const major=n===0||n===count-1||(count>4&&n===(count-1)/2);
+    const from=major?inner-Math.max(.6,outer*.1):inner;
+    return`<line x1="${(Math.cos(angle)*from).toFixed(3)}" y1="${(Math.sin(angle)*from).toFixed(3)}" x2="${(Math.cos(angle)*outer).toFixed(3)}" y2="${(Math.sin(angle)*outer).toFixed(3)}" stroke="${ink}" stroke-width="${major?.45:.3}" stroke-linecap="round"/>`;
+  }).join('');
+  return ticks;
+}
+
+/** A signal-flow arrow. Drawn along its own width so rotation aims it. */
+export function arrowSvg(i:Item,colour:string){
+  const half=i.width/2,head=Math.min(i.height*1.1,i.width*.4);
+  return`<path d="M${-half} 0H${half-head*.55}" stroke="${colour}" stroke-width="${Math.max(.3,i.height*.28)}" stroke-linecap="round"/>`
+    +`<path d="M${half} 0L${half-head} ${-head*.5}L${half-head} ${head*.5}Z" fill="${colour}"/>`;
 }
 
 export function mountingSvg(p:Project){return mountingShapes(p.panel).map(s=>`<g class="mounting" transform="translate(${s.cx} ${s.cy})"><rect x="${-s.w/2}" y="${-s.h/2}" width="${s.w}" height="${s.h}" rx="${s.h/2}" fill="none" stroke="${p.inkColor}" stroke-width=".5"/><line x1="-1" x2="1" stroke="${p.inkColor}" stroke-width=".25"/></g>`).join('');}
