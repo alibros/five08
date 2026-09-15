@@ -21,6 +21,7 @@ next person the search.
 - [x] **Song Huei 16K4** — 16 mm pot. The bushing is M7×0.75, not larger; the drawing gives a Ø7.5 panel hole and a Ø3 anti-rotation hole, which is not modelled. `knob-16mm`.
 - [x] **E-Switch 100 series** — miniature toggle, 1/4-40 bushing. The drawing gives a Ø6.35 panel hole; its keyway and locating-hole options are not modelled. `toggle-2`, `toggle-3`.
 - [x] **Bourns PTV09A** — 9 mm pot. It does **not** match M7×0.75: the only threaded bushing, PTV09A-6, is M9×0.75, so a 9.1 mm hole. The -1 and -5 bushings are plain sleeves and -4 has none; the datasheet gives no panel hole for those. `knob-ptv09`.
+- [x] **ISO 273 fine, M2.5 and M4** — 2.7 mm and 4.3 mm clearance holes, reached as size presets on the M3 hole. `mount-hole-m25`, `mount-hole-m4`.
 
 ## Wanted
 
@@ -48,8 +49,6 @@ next person the search.
 
 ### Hardware
 - [ ] **Doepfer mounting slot** — confirm the 6.5 × 3.2 mm obround against the official spec, and the 3 mm inset from the edge.
-- [ ] **M2.5 and M4 clearance** — for the less common fixings, same ISO 273 basis as M3.
-
 ## Not traceable as drawn
 
 Nothing yet. If a part turns out to be un-modellable rather than merely

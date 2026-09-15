@@ -15,7 +15,9 @@ const SOURCE={
   ptv09:{note:'Bourns PTV09A-6 9 mm potentiometer — M9×0.75 metal threaded bushing, p.3 drawing and Mounting Hardware inset',url:'https://www.bourns.com/docs/Product-Datasheets/PTV09.pdf'},
   eswitch100:{note:'E-Switch 100 series miniature toggle — Ø6.35 panel hole for the 1/4-40 bushing, p.7 Panel Mounting inset',url:'https://configured-product-images.s3.amazonaws.com/Datasheets/100.pdf'},
   sh16k4:{note:'Song Huei 16K4 16 mm potentiometer — Ø7.5 panel hole for the M7×0.75 bushing, drawing 16K-043 mounting-hole inset',url:'https://www.song-huei.com/proimages/PDF/16K4.pdf'},
+  m25fine:{note:'ISO 273 fine series clearance hole for M2.5',url:'https://www.iso.org/standard/4183.html'},
   m3fine:{note:'ISO 273 fine series clearance hole for M3',url:'https://www.iso.org/standard/4183.html'},
+  m4fine:{note:'ISO 273 fine series clearance hole for M4',url:'https://www.iso.org/standard/4183.html'},
 } satisfies Record<string,PartSource>;
 
 /**
@@ -620,6 +622,33 @@ export const catalog:ComponentDefinition[]=[
     source:SOURCE.m3fine,
     manufacturer:'ISO 273',
     partNumber:'M3 fine',
+    sizePresets:[{label:'M2.5',componentId:'mount-hole-m25'},{label:'M3',componentId:'mount-hole'},{label:'M4',componentId:'mount-hole-m4'}],
+  }),
+  part({
+    id:'mount-hole-m25', name:'M2.5 mounting hole',
+    category:'Panel hardware', renderer:'hole',
+    width:2.7, height:2.7, keepout:4.5,
+    cutout:2.7,
+    color:'#999b94', label:'',
+    description:'M2.5 clearance hole',
+    status:'verified',
+    libraryHidden:true,
+    source:SOURCE.m25fine,
+    manufacturer:'ISO 273',
+    partNumber:'M2.5 fine',
+  }),
+  part({
+    id:'mount-hole-m4', name:'M4 mounting hole',
+    category:'Panel hardware', renderer:'hole',
+    width:4.3, height:4.3, keepout:6.5,
+    cutout:4.3,
+    color:'#999b94', label:'',
+    description:'M4 clearance hole',
+    status:'verified',
+    libraryHidden:true,
+    source:SOURCE.m4fine,
+    manufacturer:'ISO 273',
+    partNumber:'M4 fine',
   }),
   part({
     id:'mount-slot', name:'M3 mounting slot',
