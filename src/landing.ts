@@ -92,15 +92,19 @@ const issues=preflight(project,catalogMap);
 const mark=`<svg viewBox="0 0 64 64" aria-hidden="true"><path d="M18 11h28M18 53h28"/><rect x="21" y="8" width="22" height="48" rx="4"/><circle class="signal" cx="32" cy="32" r="7"/><circle cx="32" cy="32" r="2.5"/></svg>`;
 
 const row=([term,value,note]:[string,string,string])=>`<tr><th scope="row">${term}</th><td class="figure">${value}</td><td>${note}</td></tr>`;
+const head=(no:string,title:string,note?:string)=>
+  `<div class="band-head"><span class="section-no">${no}</span><h2>${title}</h2>${note?`<p>${note}</p>`:''}</div>`;
 
 document.querySelector<HTMLDivElement>('#app')!.innerHTML=`
 <a class="skip" href="#main">Skip to content</a>
 <header class="masthead">
-  <a class="wordmark" href="/">${mark}<span>five08</span></a>
+  <a class="wordmark" href="/">${mark}<b>five08</b></a>
+  <span class="rev">Eurorack panel layout · MIT</span>
   <nav aria-label="Sections">
-    <a href="#about">What it is</a>
-    <a href="#reference">Panel reference</a>
-    <a href="#exports">Exports</a>
+    <a href="#about">1.0 What it is</a>
+    <a href="#reference">2.0 Reference</a>
+    <a href="#exports">3.0 Exports</a>
+    <a href="#checks">4.0 Preflight</a>
     <a href="https://github.com/alibros/five08" rel="noreferrer">Source</a>
   </nav>
   <button id="theme" class="ghost" aria-label="Switch theme">Theme</button>
@@ -110,6 +114,7 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML=`
 <main id="main">
   <section class="lead">
     <div class="lead-copy">
+      <span class="section-no">0.0</span>
       <h1>A layout tool for Eurorack front panels.</h1>
       <p class="standfirst">Set the width in HP, place parts in millimetres, and check the spacing before anything is cut. Five08 exports the artwork, the cutout geometry, a DXF for the shop, a parts list, and a sheet you can print at 1:1 and drill through.</p>
       <p class="terms">Free and MIT licensed. Runs in the browser. No account. Nothing you draw is uploaded.</p>
@@ -149,65 +154,65 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML=`
   </section>
 
   <section class="band" id="about">
-    <div class="split">
+    ${head('1.0','Scope','What the tool covers, and where it stops. The second list is the more useful one.')}
+    <div class="band-body split">
       <div>
-        <h2>What it does</h2>
+        <h3>What it does</h3>
         <ul class="ticks">${DOES.map(t=>`<li>${t}</li>`).join('')}</ul>
       </div>
       <div>
-        <h2>What it does not do</h2>
+        <h3>What it does not do</h3>
         <ul class="crosses">${DOES_NOT.map(t=>`<li>${t}</li>`).join('')}</ul>
       </div>
     </div>
   </section>
 
   <section class="band" id="reference">
-    <div class="band-head">
-      <h2>Panel reference</h2>
-      <p>The numbers Five08 works from. The first four are the Eurorack standard; the rest are this tool's defaults, and you can argue with any of them.</p>
-    </div>
+    ${head('2.0','Panel reference',"The numbers Five08 works from. The first four are the Eurorack standard; the rest are this tool's defaults, and you can argue with any of them.")}
+    <div class="band-body">
     <table class="spec">
       <caption class="sr-only">Eurorack panel dimensions and Five08 defaults</caption>
       <thead><tr><th scope="col">Measure</th><th scope="col">Value</th><th scope="col">Where it comes from</th></tr></thead>
       <tbody>${REFERENCE.map(row).join('')}</tbody>
     </table>
-    <p class="hp-note"><span>1 HP = ${HP_MM} mm.</span> Everything on the panel — width, positions, rulers, exports — is a multiple or a measurement of that.</p>
+    <p class="hp-note"><b>1 HP = ${HP_MM} mm.</b> Everything on the panel — width, positions, rulers, exports — is a multiple or a measurement of that.</p>
+    </div>
   </section>
 
   <section class="band" id="exports">
-    <div class="band-head">
-      <h2>Exports</h2>
-      <p>Everything comes out at physical size. The DXF and the cutout SVG are generated from the same geometry, so they cannot disagree.</p>
-    </div>
+    ${head('3.0','Exports','Everything comes out at physical size. The DXF and the cutout SVG are generated from the same geometry, so they cannot disagree.')}
+    <div class="band-body">
     <table class="spec">
       <caption class="sr-only">Export formats</caption>
       <thead><tr><th scope="col">Format</th><th scope="col">File</th><th scope="col">What is in it</th></tr></thead>
       <tbody>${EXPORTS.map(row).join('')}</tbody>
     </table>
+    </div>
   </section>
 
   <section class="band" id="checks">
-    <div class="band-head">
-      <h2>What preflight looks for</h2>
-      <p>Run before an export, or any time from the panel inspector. Clicking an issue selects the part that caused it.</p>
-    </div>
+    ${head('4.0','What preflight looks for','Run before an export, or any time from the panel inspector. Clicking an issue selects the part that caused it.')}
+    <div class="band-body">
     <ol class="checks">${CHECKS.map(([name,detail],n)=>`<li><span class="check-no">${String(n+1).padStart(2,'0')}</span><strong>${name}</strong><span>${detail}</span></li>`).join('')}</ol>
-    <p class="caveat"><strong>None of this replaces a datasheet.</strong> Generic dimensions are useful for planning and wrong often enough to cost you a panel. Verify every cutout, tolerance, mounting point and material thickness against the real part before you pay anyone to cut metal.</p>
+    <p class="caveat"><b>None of this replaces a datasheet.</b> Generic dimensions are useful for planning and wrong often enough to cost you a panel. Verify every cutout, tolerance, mounting point and material thickness against the real part before you pay anyone to cut metal.</p>
+    </div>
   </section>
 
   <section class="band closing">
-    <h2>Open it and draw something.</h2>
+    ${head('5.0','Open it and draw something.')}
+    <div class="band-body">
     <p>Nothing to install, nothing to sign up for. If it is missing a part you need, the library is a single file — send a pull request.</p>
     <div class="lead-actions">
       <a class="button" href="/app/">Open the designer</a>
       <a class="quiet-link" href="https://github.com/alibros/five08" rel="noreferrer">Read the source</a>
+    </div>
     </div>
   </section>
 </main>
 
 <footer class="colophon">
   <div>
-    <a class="wordmark" href="/">${mark}<span>five08</span></a>
+    <a class="wordmark" href="/">${mark}<b>five08</b></a>
     <p>Built by <a href="https://forestofrods.com" rel="noreferrer">Ali Bross</a>. MIT licensed.</p>
   </div>
   <nav aria-label="Elsewhere">

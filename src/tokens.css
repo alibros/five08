@@ -1,0 +1,136 @@
+/* Five08 design tokens.
+   ------------------------------------------------------------------
+   The look is a hardware datasheet, not a product page: two typefaces
+   with a job each, hairline rules instead of cards, and a palette taken
+   from the materials panels are actually made of.
+
+   Archivo carries display and interface text — a grotesque with a width
+   axis, so headings can be condensed the way panel legends are.
+   IBM Plex Mono carries every number, unit, label and identifier. A
+   measurement never appears in the sans. */
+
+@import '@fontsource-variable/archivo/standard.css';
+@import '@fontsource/ibm-plex-mono/400.css';
+@import '@fontsource/ibm-plex-mono/500.css';
+@import '@fontsource/ibm-plex-mono/600.css';
+
+:root {
+  --sans: 'Archivo Variable', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+  /* Condensed widths for headings; normal width for anything read in quantity. */
+  --width-tight: 88%;
+  --width-normal: 100%;
+
+  /* Aluminium, anodising and silkscreen rather than cream and coral. */
+  color-scheme: light;
+  --paper:#f0f0ee;
+  --paper-2:#e8e8e5;
+  --paper-3:#dededa;
+  --paper-4:#d2d2cd;
+  --rule:#cacac5;
+  --rule-strong:#a6a6a1;
+  --ink:#16181a;
+  --ink-2:#343a3f;
+  --ink-3:#4e555b;
+  --muted:#697076;
+  --faint:#8b9298;
+  --on-ink:#f7f7f5;
+  --field:#fbfbfa;
+
+  /* One signal colour, used like a fault lamp — never for decoration. */
+  --signal:#c8321e;
+  --signal-ink:#8e2415;
+  --signal-wash:#f7e7e3;
+  --signal-line:#e2b5ab;
+  --pass:#2f6b3a;
+  --pass-wash:#e3ecdf;
+  --pass-line:#aac3a4;
+  --trace:#2563a8;
+}
+
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  color-scheme: dark;
+  --paper:#121416;
+  --paper-2:#191c1f;
+  --paper-3:#212529;
+  --paper-4:#0c0e10;
+  --rule:#2a2f33;
+  --rule-strong:#414951;
+  --ink:#e9ecee;
+  --ink-2:#c3c9ce;
+  --ink-3:#a8afb5;
+  --muted:#8c939a;
+  --faint:#6b7278;
+  --on-ink:#121416;
+  --field:#0f1113;
+  --signal:#ff6a4d;
+  --signal-ink:#ffb3a1;
+  --signal-wash:#2a1712;
+  --signal-line:#5b2d21;
+  --pass:#7fc98d;
+  --pass-wash:#14231a;
+  --pass-line:#2f4a37;
+  --trace:#6aa5e8;
+} }
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --paper:#121416;
+  --paper-2:#191c1f;
+  --paper-3:#212529;
+  --paper-4:#0c0e10;
+  --rule:#2a2f33;
+  --rule-strong:#414951;
+  --ink:#e9ecee;
+  --ink-2:#c3c9ce;
+  --ink-3:#a8afb5;
+  --muted:#8c939a;
+  --faint:#6b7278;
+  --on-ink:#121416;
+  --field:#0f1113;
+  --signal:#ff6a4d;
+  --signal-ink:#ffb3a1;
+  --signal-wash:#2a1712;
+  --signal-line:#5b2d21;
+  --pass:#7fc98d;
+  --pass-wash:#14231a;
+  --pass-line:#2f4a37;
+  --trace:#6aa5e8;
+}
+
+/* Shared primitives ------------------------------------------------ */
+
+.display {
+  font-family: var(--sans);
+  font-stretch: var(--width-tight);
+  font-weight: 620;
+  letter-spacing: -.015em;
+  line-height: 1.04;
+}
+
+/* Every figure, unit, part number and coordinate. Tabular so columns line up. */
+.figure, .mono {
+  font-family: var(--mono);
+  font-feature-settings: 'tnum' 1, 'zero' 1;
+  font-variant-numeric: tabular-nums slashed-zero;
+}
+
+/* Datasheet section numbers: 1.0, 2.0 — set in mono, never bold. */
+.section-no {
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: .06em;
+  color: var(--signal);
+}
+
+/* A label in the manner of a panel legend. */
+.legend {
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: .13em;
+  text-transform: uppercase;
+  color: var(--faint);
+}
