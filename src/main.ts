@@ -27,6 +27,7 @@ type MarqueeDrag={mode:'marquee';startX:number;startY:number;x:number;y:number;b
 type PanDrag={mode:'pan';startClientX:number;startClientY:number;scrollLeft:number;scrollTop:number;moved:boolean};
 let drag:null|MoveDrag|ResizeDrag|MarqueeDrag|PanDrag=null;
 let spaceHeld=false;
+let focusedId='';
 let toastTimer=0;
 let clipboard:Item[]=[];
 
@@ -38,10 +39,13 @@ const icon=(name:'undo'|'redo'|'folder'|'save'|'plus'|'export'|'trash'|'left'|'r
   grid:'M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z',undo:'M9 7H4V2M4 7l4-4M4 7a7 7 0 1 0 2-5',redo:'M15 7h5V2m0 5-4-4m4 4a7 7 0 1 1-2-5',folder:'M3 6h7l2 2h9v11H3z',save:'M5 3h12l2 2v16H5zM8 3v6h8V3M8 15h8v6H8z',plus:'M12 5v14M5 12h14',export:'M12 16V3m-5 5 5-5 5 5M5 14v7h14v-7',trash:'M4 7h16M9 7V4h6v3m-8 0 1 14h8l1-14',left:'m14 6-6 6 6 6',right:'m10 6 6 6-6 6',help:'M9.5 9a2.5 2.5 0 1 1 3 2.45c-.5.2-.5.8-.5 1.55M12 18h.01'};return`<svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="${paths[name]}"/></svg>`;};
 
 const app=document.querySelector<HTMLDivElement>('#app')!;
-app.innerHTML=`<main class="app">
+app.innerHTML=`<div class="skip-links">
+  <button class="skip" id="skip-canvas">Skip to the panel</button>
+  <button class="skip" id="skip-inspector">Skip to the inspector</button>
+</div><main class="app">
  <header class="topbar"><a class="brand" href="/" aria-label="Five08 home"><div class="brand-mark"></div><div><strong>five08</strong><small>Eurorack panel designer</small></div></a><span class="top-divider"></span><div class="project-identity"><span class="eyebrow">Panel</span><input class="project-name" id="project-name" aria-label="Panel name" spellcheck="false"></div><div class="history-group"><button class="icon-button" id="undo" aria-label="Undo" data-tooltip="Undo · ⌘Z">${icon('undo')}</button><button class="icon-button" id="redo" aria-label="Redo" data-tooltip="Redo · ⇧⌘Z">${icon('redo')}</button></div><span class="spacer"></span><button class="command-hint" id="open-palette" data-tooltip="All commands · ⌘K">${icon('command')}<span>Commands</span><kbd id="palette-key">⌘K</kbd></button><div class="file-group"><button class="tool-button subtle" id="new-project" data-tooltip="New panel">${icon('plus')}<span>New</span></button><button class="tool-button subtle" id="open-library" data-tooltip="Your panels · ⌘O">${icon('folder')}<span>Panels</span></button><button class="tool-button subtle" id="save-json" data-tooltip="Download .panel.json · ⌘S">${icon('save')}<span>Save</span></button></div><button class="tool-button primary export-button" id="export" data-tooltip="Export · ⌘E">${icon('export')} Export</button><button class="icon-button" id="theme-toggle" aria-label="Change theme">${icon('theme')}</button><button class="icon-button" id="help" aria-label="Keyboard shortcuts" data-tooltip="Help & shortcuts">${icon('help')}</button><input id="file-input" type="file" accept=".json,application/json" hidden></header>
  <div class="layout"><aside class="sidebar library"><div class="side-head"><div><span class="eyebrow">Create</span><h2>Components</h2></div><div class="head-actions"><span id="library-count"></span><button class="collapse-button" id="collapse-left" aria-label="Collapse component library">${icon('left')}</button></div></div><div class="library-tools"><div class="search-wrap"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6"/><path d="m16 16 4 4"/></svg><input id="library-search" type="search" placeholder="Search parts, families, makers…" aria-label="Search components"></div><div class="category-tabs" id="category-tabs"></div></div><div class="side-scroll" id="library"></div></aside>
- <section class="canvas-wrap"><div class="precision-bar"><button class="collapse-rail left-rail" id="open-left" aria-label="Show component library">${icon('right')}</button><div class="segmented" id="views" role="group" aria-label="Panel view"><button data-view="design">Hardware</button><button data-view="cutout">Cutouts</button><button data-view="rear">Rear clearance</button></div><div class="mode-context" id="mode-context"><span></span><small></small></div><span class="spacer"></span><div class="layout-tools" role="toolbar" aria-label="Alignment"><button class="quiet" id="align-x" data-tooltip="Align horizontal centres">Align X</button><button class="quiet" id="align-y" data-tooltip="Align vertical centres">Align Y</button><button class="quiet" id="distribute-h" data-tooltip="Equal horizontal spacing">Space H</button><button class="quiet" id="distribute-v" data-tooltip="Equal vertical spacing">Space V</button><button class="quiet" id="center-panel" data-tooltip="Centre the selection across the panel">Centre</button><span class="precision-divider"></span><button class="quiet icon-tool" id="tool-grid" data-tooltip="Arrange in a grid">${icon('grid')}</button><button class="quiet icon-tool" id="tool-mirror" data-tooltip="Mirror across the centreline · M">${icon('mirror')}</button><button class="quiet icon-tool" id="tool-rotate" data-tooltip="Rotate 90° · R">${icon('rotate')}</button></div><span class="precision-divider"></span><button class="quiet on" id="smart-guides">Smart guides</button><button class="quiet" id="toggle-safe">Safe zones</button><button class="collapse-rail right-rail" id="open-right" aria-label="Show inspector">${icon('left')}</button></div><div class="ruler-corner">0,0</div><div class="ruler ruler-x" id="ruler-x"></div><div class="ruler ruler-y" id="ruler-y"></div><div class="canvas" id="canvas"><div class="panel-stage" id="panel-stage"></div></div><div class="selection-bar" id="selection-bar"></div><div class="canvas-toolbar"><div class="toolbar-group"><button id="zoom-out" aria-label="Zoom out">−</button><button id="zoom-fit" data-tooltip="Fit panel · 0">Fit</button><button id="zoom-selection" data-tooltip="Zoom to selection · F">Selection</button><button id="zoom-100">100%</button><button id="zoom-in" aria-label="Zoom in">+</button></div><span></span><div class="toolbar-group"><button id="snap-toggle">Grid snap</button><button id="grid-cycle">1 mm</button><button id="grid-toggle">Grid</button></div></div></section>
+ <section class="canvas-wrap"><div class="precision-bar"><button class="collapse-rail left-rail" id="open-left" aria-label="Show component library">${icon('right')}</button><div class="segmented" id="views" role="group" aria-label="Panel view"><button data-view="design">Hardware</button><button data-view="cutout">Cutouts</button><button data-view="rear">Rear clearance</button></div><div class="mode-context" id="mode-context"><span></span><small></small></div><span class="spacer"></span><div class="layout-tools" role="toolbar" aria-label="Alignment"><button class="quiet" id="align-x" data-tooltip="Align horizontal centres">Align X</button><button class="quiet" id="align-y" data-tooltip="Align vertical centres">Align Y</button><button class="quiet" id="distribute-h" data-tooltip="Equal horizontal spacing">Space H</button><button class="quiet" id="distribute-v" data-tooltip="Equal vertical spacing">Space V</button><button class="quiet" id="center-panel" data-tooltip="Centre the selection across the panel">Centre</button><span class="precision-divider"></span><button class="quiet icon-tool" id="tool-grid" data-tooltip="Arrange in a grid">${icon('grid')}</button><button class="quiet icon-tool" id="tool-mirror" data-tooltip="Mirror across the centreline · M">${icon('mirror')}</button><button class="quiet icon-tool" id="tool-rotate" data-tooltip="Rotate 90° · R">${icon('rotate')}</button></div><span class="precision-divider"></span><button class="quiet on" id="smart-guides">Smart guides</button><button class="quiet" id="toggle-safe">Safe zones</button><button class="collapse-rail right-rail" id="open-right" aria-label="Show inspector">${icon('left')}</button></div><div class="ruler-corner">0,0</div><div class="ruler ruler-x" id="ruler-x"></div><div class="ruler ruler-y" id="ruler-y"></div><div class="canvas" id="canvas" tabindex="0" aria-label="Panel canvas. Press Enter to step through the parts on it."><div class="panel-stage" id="panel-stage"></div></div><div class="selection-bar" id="selection-bar"></div><div class="canvas-toolbar"><div class="toolbar-group"><button id="zoom-out" aria-label="Zoom out">−</button><button id="zoom-fit" data-tooltip="Fit panel · 0">Fit</button><button id="zoom-selection" data-tooltip="Zoom to selection · F">Selection</button><button id="zoom-100">100%</button><button id="zoom-in" aria-label="Zoom in">+</button></div><span></span><div class="toolbar-group"><button id="snap-toggle">Grid snap</button><button id="grid-cycle">1 mm</button><button id="grid-toggle">Grid</button></div></div></section>
  <aside class="sidebar right"><div class="side-head"><div><span class="eyebrow">Inspect</span><h2 id="inspector-title">Panel</h2></div><div class="head-actions"><button class="icon-button danger" id="delete" aria-label="Delete selection" data-tooltip="Delete selection">${icon('trash')}</button><button class="collapse-button" id="collapse-right" aria-label="Collapse inspector">${icon('right')}</button></div></div><nav class="inspector-tabs" aria-label="Inspector sections"><button data-inspector-tab="context">Context</button><button data-inspector-tab="panel">Panel</button><button data-inspector-tab="layers">Layers <span id="layers-count"></span></button></nav><div class="side-scroll" id="inspector"></div></aside></div>
  <footer class="statusbar"><button class="status-control ready" id="save-status">● Saved locally</button><span id="dimensions"></span><span id="selection-status"></span><span id="coordinates">X — · Y —</span><span class="spacer"></span><span id="zoom-status">100%</span><span id="snap-status">Snap · 1 mm</span><button class="status-control" id="warning-count"></button></footer>
 </main>
@@ -156,7 +160,7 @@ function partThumbnail(r:string,color:string,orientation?:string,id=''){const co
   if(r==='scale')return`<svg viewBox="0 0 40 40">${Array.from({length:9},(_,n)=>{const a=(135+270*(n/8))*Math.PI/180;return`<line x1="${20+Math.cos(a)*11}" y1="${20+Math.sin(a)*11}" x2="${20+Math.cos(a)*16}" y2="${20+Math.sin(a)*16}" stroke="#343831" stroke-width="1.6" stroke-linecap="round"/>`;}).join('')}</svg>`;
   if(r==='arrow')return`<svg viewBox="0 0 40 40"><path d="M9 20h17" stroke="#343831" stroke-width="2.4" stroke-linecap="round"/><path d="M31 20l-8-4.6v9.2z" fill="#343831"/></svg>`;if(r==='knob'){const enc=id.includes('encoder'),ring=id==='encoder-ring';s=`${ring?`<circle cx="18" cy="18" r="13" fill="none" stroke="#a9ff70" stroke-width="2" stroke-dasharray="3 2"/>`:''}<circle cx="18" cy="18" r="10" fill="${color}" ${common}/>${enc?`<circle cx="18" cy="18" r="4" fill="none" stroke="#737a71"/><circle cx="18" cy="11" r="1" fill="#c8ff5a"/>`:`<path d="M18 18l4-7" stroke="#ff7659" stroke-width="2"/>`}`;}else if(r==='jack')s=`<circle cx="18" cy="18" r="10" fill="#d8d6cd" ${common}/><circle cx="18" cy="18" r="5" fill="#171916"/>`;else if(r==='slider')s=orientation==='horizontal'?`<path d="M6 18h24" ${common}/><rect x="15" y="13" width="6" height="10" rx="2" fill="#ddd"/>`:`<path d="M18 5v26" ${common}/><rect x="12" y="14" width="12" height="7" rx="2" fill="#ddd"/>`;else if(r==='led')s=`<circle cx="18" cy="18" r="5" fill="${color}"/><circle cx="18" cy="18" r="9" fill="none" stroke="${color}" opacity=".2" stroke-width="3"/>`;else if(r==='display')s=`<rect x="5" y="10" width="26" height="16" rx="2" fill="#08100c" ${common}/><path d="M9 19l5-4 5 6 8-7" fill="none" stroke="${color}"/>`;else if(r==='button'){const rect=id.includes('square')||id.includes('rect')||id.includes('wide'),lit=id.includes('lit');s=rect?`<rect x="${id.includes('wide')?3:8}" y="${id.includes('wide')?11:8}" width="${id.includes('wide')?30:20}" height="${id.includes('wide')?14:20}" rx="3" fill="${color}" ${common}/>${lit?`<rect x="${id.includes('wide')?7:11}" y="${id.includes('wide')?14:11}" width="${id.includes('wide')?22:14}" height="${id.includes('wide')?8:14}" rx="2" fill="#fff" opacity=".32"/>`:''}`:`<circle cx="18" cy="18" r="${id.includes('arcade')?13:9}" fill="${color}" ${common}/>`;}else if(r==='toggle')s=`<circle cx="18" cy="21" r="6" fill="#ccc" ${common}/><path d="M18 18l5-10" stroke="#ddd" stroke-width="3" stroke-linecap="round"/>`;else s=`<rect x="8" y="8" width="20" height="20" rx="4" fill="none" ${common}/><text x="18" y="22" text-anchor="middle" fill="#9da294" font-size="10">${partIcon(r)}</text>`;return`<svg viewBox="0 0 36 36" aria-hidden="true">${s}</svg>`;}
 
-function renderCanvas(){const w=panelWidth(project.panel),stage=document.querySelector<HTMLDivElement>('#panel-stage')!;stage.style.width=`${w*PX*zoom}px`;stage.style.height=`${PANEL_H*PX*zoom}px`;const safe=showSafe?`<g class="design-guide"><rect x="3" y="3" width="${w-6}" height="${PANEL_H-6}" rx="1" fill="none" stroke="${project.accentColor}" stroke-opacity=".35" stroke-width=".3" stroke-dasharray="1 1"/><rect width="${w}" height="8" fill="${project.accentColor}" opacity=".045"/><rect y="${PANEL_H-8}" width="${w}" height="8" fill="${project.accentColor}" opacity=".045"/></g>`:'';const grid=showGrid?`<rect class="design-guide" width="${w}" height="${PANEL_H}" fill="url(#grid)"/>`:'';const visible=project.items.filter(i=>!i.hidden);stage.innerHTML=`<svg class="panel-svg" id="panel-svg" width="${w*PX}" height="${PANEL_H*PX}" viewBox="0 0 ${w} ${PANEL_H}" style="transform:scale(${zoom});transform-origin:top left"><defs>${panelFinishDefs(project)}<pattern id="grid" width="${grids[gridIndex]}" height="${grids[gridIndex]}" patternUnits="userSpaceOnUse"><path d="M ${grids[gridIndex]} 0H0V${grids[gridIndex]}" fill="none" stroke="${project.inkColor}" stroke-opacity=".08" stroke-width=".1"/></pattern><style>.cut{fill:none;stroke:#ef523c;stroke-width:.45}.panel-item:focus{outline:none}.smart-line{stroke:#168cff;stroke-width:.42;vector-effect:non-scaling-stroke}.measure-line{stroke:#ff4fad;stroke-width:.35;vector-effect:non-scaling-stroke}.measure-text{fill:#fff;font:1.75px ui-monospace,monospace;paint-order:stroke;stroke:#a52065;stroke-width:.7px}.equal-pill{fill:#ff4fad}.equal-text{fill:#fff;font:bold 1.45px ui-monospace,monospace}.marquee{fill:#2e8fff22;stroke:#2e8fff;stroke-width:.3;vector-effect:non-scaling-stroke}.marquee-hit{fill:none;stroke:#2e8fff;stroke-width:.35;stroke-dasharray:1 .8;vector-effect:non-scaling-stroke}</style></defs>${panelFinishSurface(project,w)}${grid}${safe}${view!=='rear'?mountingSvg(project):''}${visible.map(i=>componentSvg(i,catalogMap.get(i.componentId)!,project,selection.has(i.id),view)).join('')}<g id="smart-guide-layer" pointer-events="none"></g><g id="overlay-layer" pointer-events="none"></g>${project.items.length===0?`<g class="empty-panel"><text x="${w/2}" y="${PANEL_H/2-4}" text-anchor="middle" font-size="3" fill="${project.inkColor}" opacity=".6">Blank ${project.panel.hp} HP panel</text><text x="${w/2}" y="${PANEL_H/2+2}" text-anchor="middle" font-size="2.1" fill="${project.inkColor}" opacity=".42">Drag a part in from the left,</text><text x="${w/2}" y="${PANEL_H/2+6}" text-anchor="middle" font-size="2.1" fill="${project.inkColor}" opacity=".42">or press ${'\u2318'}K for a template.</text></g>`:''}</svg>`;bindCanvas();renderRuler(w);}
+function renderCanvas(){const w=panelWidth(project.panel),stage=document.querySelector<HTMLDivElement>('#panel-stage')!;stage.style.width=`${w*PX*zoom}px`;stage.style.height=`${PANEL_H*PX*zoom}px`;const safe=showSafe?`<g class="design-guide"><rect x="3" y="3" width="${w-6}" height="${PANEL_H-6}" rx="1" fill="none" stroke="${project.accentColor}" stroke-opacity=".35" stroke-width=".3" stroke-dasharray="1 1"/><rect width="${w}" height="8" fill="${project.accentColor}" opacity=".045"/><rect y="${PANEL_H-8}" width="${w}" height="8" fill="${project.accentColor}" opacity=".045"/></g>`:'';const grid=showGrid?`<rect class="design-guide" width="${w}" height="${PANEL_H}" fill="url(#grid)"/>`:'';const visible=project.items.filter(i=>!i.hidden);stage.innerHTML=`<svg class="panel-svg" id="panel-svg" width="${w*PX}" height="${PANEL_H*PX}" viewBox="0 0 ${w} ${PANEL_H}" style="transform:scale(${zoom});transform-origin:top left"><defs>${panelFinishDefs(project)}<pattern id="grid" width="${grids[gridIndex]}" height="${grids[gridIndex]}" patternUnits="userSpaceOnUse"><path d="M ${grids[gridIndex]} 0H0V${grids[gridIndex]}" fill="none" stroke="${project.inkColor}" stroke-opacity=".08" stroke-width=".1"/></pattern><style>.cut{fill:none;stroke:#ef523c;stroke-width:.45}.panel-item:focus{outline:none}.smart-line{stroke:#168cff;stroke-width:.42;vector-effect:non-scaling-stroke}.measure-line{stroke:#ff4fad;stroke-width:.35;vector-effect:non-scaling-stroke}.measure-text{fill:#fff;font:1.75px ui-monospace,monospace;paint-order:stroke;stroke:#a52065;stroke-width:.7px}.equal-pill{fill:#ff4fad}.equal-text{fill:#fff;font:bold 1.45px ui-monospace,monospace}.marquee{fill:#2e8fff22;stroke:#2e8fff;stroke-width:.3;vector-effect:non-scaling-stroke}.marquee-hit{fill:none;stroke:#2e8fff;stroke-width:.35;stroke-dasharray:1 .8;vector-effect:non-scaling-stroke}.focus-ring{fill:none;stroke:#2e8fff;stroke-width:1.6;stroke-dasharray:2 1.4;vector-effect:non-scaling-stroke;paint-order:stroke}</style></defs>${panelFinishSurface(project,w)}${grid}${safe}${view!=='rear'?mountingSvg(project):''}${visible.map(i=>componentSvg(i,catalogMap.get(i.componentId)!,project,selection.has(i.id),view)).join('')}<g id="smart-guide-layer" pointer-events="none"></g><g id="overlay-layer" pointer-events="none"></g><g id="focus-layer" pointer-events="none"></g>${project.items.length===0?`<g class="empty-panel"><text x="${w/2}" y="${PANEL_H/2-4}" text-anchor="middle" font-size="3" fill="${project.inkColor}" opacity=".6">Blank ${project.panel.hp} HP panel</text><text x="${w/2}" y="${PANEL_H/2+2}" text-anchor="middle" font-size="2.1" fill="${project.inkColor}" opacity=".42">Drag a part in from the left,</text><text x="${w/2}" y="${PANEL_H/2+6}" text-anchor="middle" font-size="2.1" fill="${project.inkColor}" opacity=".42">or press ${'\u2318'}K for a template.</text></g>`:''}</svg>`;bindCanvas();renderRuler(w);}
 function renderRuler(w:number){
   const rx=document.querySelector<HTMLDivElement>('#ruler-x'),ry=document.querySelector<HTMLDivElement>('#ruler-y');
   const canvas=document.querySelector<HTMLDivElement>('#canvas'),stage=document.querySelector<HTMLDivElement>('#panel-stage');
@@ -224,6 +228,7 @@ function bindCanvas(){
     const p=point(e,svg);
     document.querySelector('#coordinates')!.textContent=`X ${p.x.toFixed(1)} · Y ${p.y.toFixed(1)}`;
   };
+  applyCanvasA11y();
   svg.ondragover=e=>e.preventDefault();
   svg.ondrop=e=>{e.preventDefault();const id=e.dataTransfer?.getData('component');if(id){const p=point(e,svg);add(id,p.x,p.y);}};
 }
@@ -309,6 +314,57 @@ function focusSelection(){
   canvas.scrollLeft=stage.offsetLeft+(box.l+box.r)/2*PX*zoom-canvas.clientWidth/2;
   canvas.scrollTop=stage.offsetTop+(box.t+box.b)/2*PX*zoom-canvas.clientHeight/2;
   renderRuler(panelWidth(project.panel));
+}
+
+/**
+ * The canvas is a multi-select listbox: Tab enters it, Tab and Shift+Tab walk
+ * the parts in layer order, Escape hands focus back to the page. Without this
+ * there is no way to select anything without a pointer.
+ */
+function applyCanvasA11y(){
+  const svg=document.querySelector<SVGSVGElement>('#panel-svg');
+  if(!svg)return;
+  svg.setAttribute('role','listbox');
+  svg.setAttribute('aria-multiselectable','true');
+  svg.setAttribute('aria-label','Panel components');
+  const visible=project.items.filter(i=>!i.hidden);
+  if(focusedId&&!visible.some(i=>i.id===focusedId))focusedId='';
+  const tabStop=focusedId;
+  svg.querySelectorAll<SVGGElement>('.panel-item').forEach(g=>{
+    const id=g.dataset.id;if(!id)return;
+    const item=project.items.find(i=>i.id===id);if(!item)return;
+    const d=catalogMap.get(item.componentId);
+    g.setAttribute('role','option');
+    g.setAttribute('tabindex',id===tabStop?'0':'-1');
+    g.setAttribute('aria-selected',String(selection.has(id)));
+    g.setAttribute('aria-label',`${d?.name??'Component'}${item.label.trim()?` ${item.label.replace(/\n/g,' ')}`:''}, ${item.x.toFixed(1)} by ${item.y.toFixed(1)} millimetres${item.locked?', locked':''}`);
+    g.onfocus=()=>{focusedId=id;drawFocusRing();};
+  });
+  drawFocusRing();
+}
+
+/** A focus ring distinct from the selection outline, so both can be seen at once. */
+function drawFocusRing(){
+  const layer=document.querySelector('#focus-layer');
+  if(!layer)return;
+  const item=project.items.find(i=>i.id===focusedId&&!i.hidden);
+  layer.innerHTML=item
+    ?`<rect class="focus-ring" x="${item.x-item.width/2-2}" y="${item.y-item.height/2-2}" width="${item.width+4}" height="${item.height+4}"/>`
+    :'';
+}
+
+function moveFocus(delta:number){
+  const visible=project.items.filter(i=>!i.hidden);
+  if(!visible.length)return false;
+  const at=visible.findIndex(i=>i.id===focusedId);
+  const next=visible[((at<0?(delta>0?-1:0):at)+delta+visible.length)%visible.length];
+  focusedId=next.id;
+  selectIds([next.id]);
+  render();
+  const g=document.querySelector<SVGGElement>(`.panel-item[data-id="${next.id}"]`);
+  g?.focus({preventScroll:true});
+  focusSelection();
+  return true;
 }
 
 const marqueeRect=(d:MarqueeDrag)=>({l:Math.min(d.startX,d.x),r:Math.max(d.startX,d.x),t:Math.min(d.startY,d.y),b:Math.max(d.startY,d.y)});
@@ -1067,7 +1123,23 @@ window.addEventListener('keydown',e=>{
   if(e.key==='Escape'){
     if(document.querySelector('#palette')){document.querySelector('#palette')!.remove();return;}
     if(document.querySelector('#modal')){closeModal();return;}
-    if(!typing(e.target)&&selection.size){selection.clear();render();return;}
+    if(!typing(e.target)&&(selection.size||focusedId)){
+      // Park focus on the canvas itself rather than nowhere: blurring to <body>
+      // leaves the browser resuming Tab from inside the parts it just left.
+      const inCanvas=(document.activeElement as HTMLElement|null)?.closest?.('.panel-item');
+      selection.clear();focusedId='';render();
+      if(inCanvas)canvasEl().focus({preventScroll:true});
+      return;
+    }
+  }
+  if(e.key==='Tab'&&!typing(e.target)&&!document.querySelector('#modal,#palette')
+     &&(document.activeElement as HTMLElement|null)?.closest?.('.panel-item')){
+    if(moveFocus(e.shiftKey?-1:1))e.preventDefault();
+    return;
+  }
+  if((e.key==='Enter'||e.key==='ArrowDown')&&document.activeElement===canvasEl()&&!typing(e.target)){
+    if(moveFocus(1))e.preventDefault();
+    return;
   }
   if(meta&&key==='k'){e.preventDefault();openPalette(commands());return;}
   if(typing(e.target))return;
@@ -1111,6 +1183,18 @@ window.addEventListener('keydown',e=>{
 });
 
 document.querySelector('#palette-key')!.textContent=apple?'⌘K':'Ctrl K';
+document.querySelector('#skip-canvas')!.addEventListener('click',()=>{
+  const visible=project.items.filter(i=>!i.hidden);
+  if(!visible.length){notify('The panel is empty — add a part from the library first');return;}
+  focusedId=focusedId||visible[0].id;
+  selectIds([focusedId]);
+  render();
+  document.querySelector<SVGGElement>(`.panel-item[data-id="${focusedId}"]`)?.focus();
+});
+document.querySelector('#skip-inspector')!.addEventListener('click',()=>{
+  rightOpen=true;renderChrome();
+  document.querySelector<HTMLElement>('#inspector input,#inspector select,#inspector button')?.focus();
+});
 bindCanvasSurface();
 registerOffline(()=>notify('A new version of Five08 is ready — reload to use it'));
 applyTheme(theme);

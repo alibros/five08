@@ -546,3 +546,19 @@ button:focus-visible,input:focus-visible,select:focus-visible { outline-color:va
   border:1px solid var(--rule); border-radius:3px;
 }
 .form-row textarea:focus { outline:none; border-color:var(--ink); }
+.panel-item:focus { outline:none; }
+.panel-item:focus-visible { outline:none; }
+
+/* ---- keyboard entry points ---- */
+.skip-links { position:absolute; top:0; left:0; z-index:60; }
+.skip {
+  position:absolute; left:-9999px; top:0;
+  font:inherit; font-size:12px; white-space:nowrap; cursor:pointer;
+  padding:9px 14px; color:var(--on-ink); background:var(--ink);
+  border:1px solid var(--ink); border-radius:0 0 3px 0;
+}
+.skip:focus { left:0; }
+.skip-links .skip:nth-child(2):focus { left:150px; }
+.focus-ring { pointer-events:none; }
+.canvas:focus { outline:none; }
+.canvas:focus-visible { outline:2px solid var(--trace); outline-offset:-2px; }
