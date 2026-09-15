@@ -20,7 +20,8 @@
     "build": "npm run typecheck && vite build",
     "preview": "vite preview",
     "test:e2e": "playwright test",
-    "verify": "npm run typecheck && npm test && npm run build && npm run test:e2e"
+    "verify": "npm run typecheck && npm test && npm run build && npm run test:e2e",
+    "check:citations": "node --experimental-strip-types scripts/check-citations.mjs"
   },
   "engines": {
     "node": ">=20"

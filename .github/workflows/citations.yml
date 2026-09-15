@@ -1,0 +1,54 @@
+name: Citations
+on:
+  schedule:
+    # Weekly. Datasheet links rot slowly, and a failure opens an issue.
+    - cron: '17 6 * * 1'
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - id: check
+        run: npm run check:citations 2>&1 | tee citation-report.txt
+      - name: Open an issue when a datasheet link has gone
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const report = fs.readFileSync('citation-report.txt', 'utf8');
+            const title = 'A datasheet citation no longer resolves';
+            const {data: open} = await github.rest.issues.listForRepo({
+              owner: context.repo.owner, repo: context.repo.repo,
+              state: 'open', labels: 'parts',
+            });
+            const existing = open.find(issue => issue.title === title);
+            const body = [
+              'The weekly citation check could not reach one or more datasheets.',
+              '',
+              '```',
+              report.trim(),
+              '```',
+              '',
+              'A figure the interface presents as traced has to stay checkable. Either find',
+              'the document at its new home and update the `url`, or drop the citation so the',
+              'part falls back to generic.',
+            ].join('\n');
+            if (existing) await github.rest.issues.createComment({
+              owner: context.repo.owner, repo: context.repo.repo,
+              issue_number: existing.number, body,
+            });
+            else await github.rest.issues.create({
+              owner: context.repo.owner, repo: context.repo.repo,
+              title, body, labels: ['parts'],
+            });

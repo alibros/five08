@@ -1,0 +1,56 @@
+name: Wrong or missing part dimensions
+description: Report a cutout, depth or footprint that does not match the real component
+labels: ["parts"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Dimensions are the reason people trust Five08, so this is the most
+        useful kind of report. A link to the drawing matters more than anything
+        else here — without one the figure cannot be corrected, only swapped for
+        a different guess.
+  - type: input
+    id: part
+    attributes:
+      label: Which part
+      description: The name as it appears in the Five08 library, or its id from src/catalog.ts
+      placeholder: Standard knob / knob-medium
+    validations:
+      required: true
+  - type: textarea
+    id: wrong
+    attributes:
+      label: What is wrong
+      description: Which figure, what Five08 says, and what it should be
+      placeholder: |
+        Cutout is 7 mm. The bushing on the part I bought is M8, so the hole needs to be 8.2 mm.
+    validations:
+      required: true
+  - type: input
+    id: partnumber
+    attributes:
+      label: Manufacturer and part number
+      placeholder: Taiwan Alpha RD901F-40-15R1-B10K
+    validations:
+      required: true
+  - type: input
+    id: datasheet
+    attributes:
+      label: Link to the datasheet
+      description: The manufacturer's PDF, or a distributor's mirror of it. A shop listing is not a datasheet.
+    validations:
+      required: true
+  - type: input
+    id: figure
+    attributes:
+      label: Where on the datasheet
+      description: Page and figure, so it can be checked quickly
+      placeholder: p.2, "recommended panel cutout" inset
+  - type: checkboxes
+    id: measured
+    attributes:
+      label: How do you know
+      options:
+        - label: I read it off the datasheet
+        - label: I measured the physical part
+        - label: I cut a panel and it did not fit

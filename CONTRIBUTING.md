@@ -28,6 +28,21 @@ The unit tests cover the pure modules. The editor itself is one module with top-
 
 ## Adding or correcting a part
 
+The whole procedure — finding the datasheet, reading the drawing, filling in the
+fields, citing the dimension — is written down in
+[`.claude/skills/add-part/SKILL.md`](.claude/skills/add-part/SKILL.md). If you
+use Claude Code it will pick that up automatically; if not, it reads perfectly
+well as a checklist.
+
+[`docs/parts-wanted.md`](docs/parts-wanted.md) is a ranked queue of parts whose
+dimensions are still estimates, ordered by how often they turn up on a panel.
+
+One thing that procedure insists on, and this repository will keep insisting on:
+**if you cannot reach the datasheet, leave the part generic.** A figure sourced
+from a search snippet or from memory, with a citation attached, is worse than an
+honest estimate — it looks checked.
+
+
 Dimensions are the reason people trust this tool, so the library records where each one came from.
 
 - Add a `source: {note, url}` to any part whose **cutout** you can trace to a datasheet. The note should name the manufacturer, the part and the relevant dimension — `'Taiwan Alpha RD901F 9 mm potentiometer — M7×0.75 bushing'` — not just "datasheet".

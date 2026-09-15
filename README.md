@@ -139,6 +139,11 @@ Import the repository into Vercel and use the detected Vite settings. No environ
 
 Bug reports and focused pull requests are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md).
 
+The most useful contribution is a traced dimension. [`docs/parts-wanted.md`](docs/parts-wanted.md)
+lists the parts still running on estimates, and
+[`.claude/skills/add-part/SKILL.md`](.claude/skills/add-part/SKILL.md) is the
+procedure for tracing one to its datasheet and citing it.
+
 Created by [Ali Bross](https://forestofrods.com).
 
 Released under the [MIT License](LICENSE).
