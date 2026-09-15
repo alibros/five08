@@ -11,6 +11,7 @@ import {newProjectId,saveProject,setActiveId} from './store';
 import {registerOffline} from './offline';
 import {applyTheme,nextTheme,readTheme,watchSystemTheme,type Theme} from './theme-site';
 import {units} from './units';
+import {rackSceneSvg} from './rack-scene';
 import {esc} from './svg';
 
 const project=demoPanel();
@@ -77,14 +78,15 @@ function showNote(id:string|null){
 
 /* ---------- copy ---------- */
 
-const DOES=[
-  'Exact Eurorack geometry: 128.5 mm tall, HP widths nominal or with the Doepfer allowance, or a custom width in millimetres.',
-  `${catalog.length} parts — knobs, encoders, jacks, sliders, switches, displays, LEDs, mounting hardware, text and imported PNG artwork.`,
-  'Millimetre placement with grid snapping, centre and edge guides, live gap measurements and equal-gap detection.',
-  'Hardware, cutout and rear-clearance views of the same layout.',
-  'Layout checks before you commit: edge margins, cutout walls, mounting clashes, jack spacing, part depth.',
-  'Provenance on every figure — the inspector and the bill of materials say whether a dimension came from a datasheet or a guess, and link to the source.',
-  'Undo, autosave, named projects, portable project files.',
+const DOES:Array<[string,string,string]>=[
+  ['Geometry','128.5 mm × 2–84 HP','Nominal, with the Doepfer allowance, or a custom width in millimetres'],
+  ['Parts',`${catalog.length}`,'Knobs, encoders, jacks, sliders, switches, displays, LEDs, mounting hardware, text, tick scales, PNG and SVG artwork'],
+  ['Placement','0.1 mm','Grid snapping, centre and edge guides, live gap measurements, equal-gap detection'],
+  ['Views','3 + rack','Hardware, cutout and rear clearance, and the module between its neighbours'],
+  ['Checks','8','Edge margins, cutout walls, mounting clashes, jack pitch, part depth, off-HP widths'],
+  ['Provenance','Per figure','Datasheet or estimate, with the source linked from the inspector and the parts list'],
+  ['Persistence','Local','Undo, autosave, named projects, a portable .panel.json'],
+  ['Exports','8 formats','SVG, DXF, PNG, a 1:1 drilling template, VCV Rack, CSV, the project file'],
 ];
 
 const DOES_NOT=[
@@ -237,11 +239,19 @@ ${sheetFrame}
     </figure>
   </section>
 
+  <figure class="rack">
+    <div class="rack-scene-host" id="rack-scene">${rackSceneSvg(project)}</div>
+    <figcaption><span class="section-no">Fig. 1</span><span>The same panel bolted between two other modules, patched. What gets drawn here is what ends up in the case — the render, the neighbours and the cables come from the same part library.</span></figcaption>
+  </figure>
+
   ${band('1.0','about','Scope','What the tool covers, and where it stops. The second list is the more useful one.',`
     <div class="band-body split">
       <div>
         <h3>What it does</h3>
-        <ul class="ticks">${DOES.map(t=>`<li>${units(t)}</li>`).join('')}</ul>
+        <table class="spec compact">
+          <caption class="sr-only">What Five08 does</caption>
+          <tbody>${DOES.map(row).join('')}</tbody>
+        </table>
       </div>
       <div>
         <h3>What it does not do</h3>
@@ -319,7 +329,15 @@ ${sheetFrame}
 /* ---------- behaviour ---------- */
 
 const panelHost=document.querySelector<HTMLDivElement>('#demo-panel')!;
-const redraw=()=>{panelHost.innerHTML=panelSvg();};
+const rackHost=document.querySelector<HTMLDivElement>('#rack-scene')!;
+let rackTimer=0;
+const redraw=()=>{
+  panelHost.innerHTML=panelSvg();
+  // The rack follows the hero, but not at drag rate: it is a second full
+  // scene, and nobody is watching it while they turn a knob.
+  window.clearTimeout(rackTimer);
+  rackTimer=window.setTimeout(()=>{rackHost.innerHTML=rackSceneSvg(project);},120);
+};
 const reducedMotion=window.matchMedia('(prefers-reduced-motion: reduce)');
 
 /* ---------- panel width ----------

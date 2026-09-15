@@ -3,7 +3,7 @@
 import {chromium} from '@playwright/test';
 const [,, url='/', out='shot.png', theme='light', w='1400', h='900', full='0', scroll='0', hover='', clip='']=process.argv;
 const browser=await chromium.launch();
-const ctx=await browser.newContext({viewport:{width:Number(w),height:Number(h)},colorScheme:theme,deviceScaleFactor:1});
+const ctx=await browser.newContext({viewport:{width:Number(w),height:Number(h)},colorScheme:theme,deviceScaleFactor:Number(process.env.DSF||1)});
 const page=await ctx.newPage();
 const errors=[];page.on('pageerror',e=>errors.push(e.message));page.on('console',m=>{if(m.type()==='error')errors.push(m.text());});
 await page.goto('http://localhost:4173'+url,{waitUntil:'networkidle'});

@@ -164,7 +164,7 @@ main { max-width: var(--frame); margin: 0 auto; padding: 0 var(--gutter); }
 .lead-copy { display: grid; grid-template-columns: 72px minmax(0,1fr); gap: 0 18px; }
 .lead-copy > * { grid-column: 2; }
 .lead-copy > .section-no { grid-column: 1; grid-row: 1; padding-top: 8px; position: relative; z-index: 1; background: var(--paper); padding-bottom: 4px; }
-h1 { font-size: clamp(34px,4.4vw,56px); max-width: 14ch; line-height: 1.0; letter-spacing: -.02em; }
+h1 { font-size: clamp(34px,4.4vw,58px); max-width: 14ch; line-height: 1.0; letter-spacing: -.022em; font-stretch: 85%; font-weight: 640; }
 .standfirst { margin-top: 18px; max-width: var(--measure); font-size: 16px; line-height: 1.6; color: var(--ink-2); }
 .terms {
   margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--rule);
@@ -284,8 +284,27 @@ h1 { font-size: clamp(34px,4.4vw,56px); max-width: 14ch; line-height: 1.0; lette
 .swatches .finish-svg { display: block; }
 .demo figcaption { margin-top: 10px; padding-left: 36px; max-width: 50ch; font-size: 12.5px; line-height: 1.65; color: var(--muted); }
 
+/* ---- the rack ----
+   A photograph, except drawn: the panel in a case with its neighbours out
+   of focus and a few cables. Wider than the frame so the row runs off both
+   edges. */
+.rack { margin: 0; padding: 0 0 8px; border-top: 1px solid var(--rule); }
+.rack-scene-host {
+  height: clamp(300px, 38vw, 470px); overflow: hidden; display: flex; justify-content: center;
+  background: #1b1c19; border-radius: 2px;
+  box-shadow: inset 0 0 0 1px rgb(0 0 0 / .4), 0 1px 0 rgb(255 255 255 / .35);
+}
+.rack-scene { display: block; height: 100%; width: 100%; }
+.rack figcaption {
+  display: grid; grid-template-columns: 72px minmax(0, 1fr); gap: 0 18px;
+  padding: 12px 0 0; max-width: 78ch; font-size: 12.5px; line-height: 1.6; color: var(--muted);
+}
+.rack figcaption .section-no { padding-top: 3px; }
+.rack figcaption span:last-child { max-width: var(--measure); }
+
 /* ---- split lists ---- */
 .split { display: grid; grid-template-columns: repeat(auto-fit,minmax(310px,1fr)); gap: 40px; }
+@media (min-width: 961px) { .split { grid-template-columns: minmax(0,1.25fr) minmax(0,1fr); } }
 .split h3 { font-size: 15px; padding-bottom: 9px; border-bottom: 1px solid var(--ink); }
 .split ul { margin: 0; padding: 0; list-style: none; }
 .split li {
@@ -310,6 +329,11 @@ h1 { font-size: clamp(34px,4.4vw,56px); max-width: 14ch; line-height: 1.0; lette
 .spec .figure { font-family: var(--mono); font-size: 12.5px; font-variant-numeric: tabular-nums; color: var(--ink-2); width: 27%; white-space: nowrap; }
 .spec tbody tr:hover th, .spec tbody tr:hover .figure { color: var(--signal); }
 .spec .origin { font-family: var(--mono); font-size: 9.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--faint); }
+/* The compact form: a label in small caps, a figure in mono, a note. */
+.spec.compact { font-size: 13px; border-top: 1px solid var(--ink); }
+.spec.compact tbody th { width: 22%; font-family: var(--sans); font-size: 11px; font-weight: 560; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-2); }
+.spec.compact .figure { width: 24%; text-align: right; padding-right: 20px; color: var(--ink); font-size: 12px; }
+.spec.compact td:last-child { font-size: 12.5px; line-height: 1.5; }
 
 .hp-note { margin-top: 22px; max-width: var(--measure); font-size: 13.5px; line-height: 1.65; color: var(--muted); }
 .hp-note b { font-family: var(--mono); color: var(--ink); }
@@ -407,6 +431,8 @@ h1 { font-size: clamp(34px,4.4vw,56px); max-width: 14ch; line-height: 1.0; lette
   .tb-title { grid-column: span 3; }
   .tb-links { justify-content: flex-start; }
   .lead::before, .band::before { display: none; }
+  .rack figcaption { grid-template-columns: 1fr; }
+  .spec.compact .figure { text-align: left; padding-right: 0; }
   .lead-copy, .band-head { grid-template-columns: 1fr; }
   .lead-copy > .section-no, .band-head .section-no { grid-column: 1; grid-row: auto; padding: 0 0 6px; }
   .lead-copy > *, .band-head > p { grid-column: 1; }
