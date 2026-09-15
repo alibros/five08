@@ -2,10 +2,12 @@
    ------------------------------------------------------------------
    The look is a hardware datasheet, not a product page: two typefaces
    with a job each, hairline rules instead of cards, and a palette taken
-   from the materials panels are actually made of.
+   from the materials panels are actually made of — set on paper, not on
+   a white screen.
 
    Archivo carries display and interface text — a grotesque with a width
-   axis, so headings can be condensed the way panel legends are.
+   axis, so headings can be condensed the way panel legends are and zone
+   marks can be set wide the way sheet borders are.
    IBM Plex Mono carries every number, unit, label and identifier. A
    measurement never appears in the sans. */
 
@@ -14,89 +16,150 @@
 @import '@fontsource/ibm-plex-mono/500.css';
 @import '@fontsource/ibm-plex-mono/600.css';
 
+/* Custom properties the browser may interpolate. Registering them is what
+   lets a number roll and a light move instead of jumping. */
+@property --n { syntax: '<integer>'; inherits: false; initial-value: 0; }
+@property --w { syntax: '<integer>'; inherits: false; initial-value: 0; }
+@property --f { syntax: '<integer>'; inherits: false; initial-value: 0; }
+@property --mx { syntax: '<percentage>'; inherits: true; initial-value: 35%; }
+@property --my { syntax: '<percentage>'; inherits: true; initial-value: 20%; }
+
 :root {
   --sans: 'Archivo Variable', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
   --mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 
-  /* Condensed widths for headings; normal width for anything read in quantity. */
+  /* Three widths of one face: condensed for headings, normal for anything
+     read in quantity, wide for the marks a sheet border carries. */
   --width-tight: 88%;
   --width-normal: 100%;
+  --width-wide: 118%;
 
-  /* Aluminium, anodising and silkscreen rather than cream and coral. */
+  /* Motion. Two durations only: one for anything answering the pointer,
+     one for anything structural or ambient. One easing, except presses,
+     which are mechanical and therefore linear. */
+  --fast: 140ms;
+  --slow: 400ms;
+  --ease: cubic-bezier(.2, .7, .2, 1);
+  --press: 60ms;
+  interpolate-size: allow-keywords;
+
+  /* Warm paper and near-black ink with a hint of blue-grey, the way a
+     photocopied datasheet reads. Never pure white, never pure black. */
   color-scheme: light;
-  --paper:#f0f0ee;
-  --paper-2:#e8e8e5;
-  --paper-3:#dededa;
-  --paper-4:#d2d2cd;
-  --rule:#cacac5;
-  --rule-strong:#a6a6a1;
-  --ink:#16181a;
-  --ink-2:#343a3f;
-  --ink-3:#4e555b;
-  --muted:#697076;
-  --faint:#8b9298;
-  --on-ink:#f7f7f5;
-  --field:#fbfbfa;
+  --paper:#f2efe6;
+  --paper-2:#e9e6dc;
+  --paper-3:#dfdcd1;
+  --paper-4:#d3d0c4;
+  --rule:#cbc8bc;
+  --rule-strong:#a5a296;
+  --ink:#191b1e;
+  --ink-2:#34383c;
+  --ink-3:#4f555a;
+  --muted:#6a7076;
+  --faint:#8e9399;
+  --on-ink:#f6f4ec;
+  --field:#faf8f2;
+  --grain-blend: multiply;
+  --grain-opacity: .045;
+  --ink-blend: multiply;
+  --shadow-ink: 25 22 16;
 
   /* One signal colour, used like a fault lamp — never for decoration. */
   --signal:#c8321e;
   --signal-ink:#8e2415;
-  --signal-wash:#f7e7e3;
-  --signal-line:#e2b5ab;
+  --signal-wash:#f6e6e0;
+  --signal-line:#e1b3a7;
   --pass:#2f6b3a;
-  --pass-wash:#e3ecdf;
-  --pass-line:#aac3a4;
+  --pass-wash:#e3ebdc;
+  --pass-line:#aac2a1;
   --trace:#2563a8;
 }
 
+/* Dark is charcoal with warm ink, not blue-black: the same sheet under a
+   bench lamp, not a different product. */
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
   color-scheme: dark;
-  --paper:#121416;
-  --paper-2:#191c1f;
-  --paper-3:#212529;
-  --paper-4:#0c0e10;
-  --rule:#2a2f33;
-  --rule-strong:#414951;
-  --ink:#e9ecee;
-  --ink-2:#c3c9ce;
-  --ink-3:#a8afb5;
-  --muted:#8c939a;
-  --faint:#6b7278;
-  --on-ink:#121416;
-  --field:#0f1113;
+  --paper:#1a1917;
+  --paper-2:#211f1c;
+  --paper-3:#2a2824;
+  --paper-4:#131211;
+  --rule:#34312c;
+  --rule-strong:#4d4943;
+  --ink:#ece8dd;
+  --ink-2:#cbc6b9;
+  --ink-3:#aca79b;
+  --muted:#8f8a81;
+  --faint:#6e6a62;
+  --on-ink:#1a1917;
+  --field:#161513;
+  --grain-blend: screen;
+  --grain-opacity: .05;
+  --ink-blend: screen;
+  --shadow-ink: 0 0 0;
   --signal:#ff6a4d;
   --signal-ink:#ffb3a1;
-  --signal-wash:#2a1712;
-  --signal-line:#5b2d21;
-  --pass:#7fc98d;
-  --pass-wash:#14231a;
-  --pass-line:#2f4a37;
+  --signal-wash:#2c1812;
+  --signal-line:#5d2f22;
+  --pass:#8acb92;
+  --pass-wash:#17241a;
+  --pass-line:#324b38;
   --trace:#6aa5e8;
 } }
 
 :root[data-theme="dark"] {
   color-scheme: dark;
-  --paper:#121416;
-  --paper-2:#191c1f;
-  --paper-3:#212529;
-  --paper-4:#0c0e10;
-  --rule:#2a2f33;
-  --rule-strong:#414951;
-  --ink:#e9ecee;
-  --ink-2:#c3c9ce;
-  --ink-3:#a8afb5;
-  --muted:#8c939a;
-  --faint:#6b7278;
-  --on-ink:#121416;
-  --field:#0f1113;
+  --paper:#1a1917;
+  --paper-2:#211f1c;
+  --paper-3:#2a2824;
+  --paper-4:#131211;
+  --rule:#34312c;
+  --rule-strong:#4d4943;
+  --ink:#ece8dd;
+  --ink-2:#cbc6b9;
+  --ink-3:#aca79b;
+  --muted:#8f8a81;
+  --faint:#6e6a62;
+  --on-ink:#1a1917;
+  --field:#161513;
+  --grain-blend: screen;
+  --grain-opacity: .05;
+  --ink-blend: screen;
+  --shadow-ink: 0 0 0;
   --signal:#ff6a4d;
   --signal-ink:#ffb3a1;
-  --signal-wash:#2a1712;
-  --signal-line:#5b2d21;
-  --pass:#7fc98d;
-  --pass-wash:#14231a;
-  --pass-line:#2f4a37;
+  --signal-wash:#2c1812;
+  --signal-line:#5d2f22;
+  --pass:#8acb92;
+  --pass-wash:#17241a;
+  --pass-line:#324b38;
   --trace:#6aa5e8;
+}
+
+/* Paper grain. Fixed to the viewport so content scrolls over the sheet
+   rather than with it; blended so it sits in the surface instead of on top.
+   One tile of fractal noise, painted once and repeated. */
+.grain::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 2147483000;
+  pointer-events: none;
+  opacity: var(--grain-opacity);
+  mix-blend-mode: var(--grain-blend);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n' x='0' y='0'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .5 0 0 0 0 .5 0 0 0 0 .5 0 0 0 .9 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size: 220px 220px;
+}
+
+/* Reduced motion: nothing moves that does not have to. The durations are
+   zeroed rather than the properties removed, so every state still lands. */
+@media (prefers-reduced-motion: reduce) {
+  :root { --fast: 0ms; --slow: 0ms; --press: 0ms; }
+  *, *::before, *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 
 /* Shared primitives ------------------------------------------------ */
@@ -109,7 +172,8 @@
   line-height: 1.04;
 }
 
-/* Every figure, unit, part number and coordinate. Tabular so columns line up. */
+/* Every figure, unit, part number and coordinate. Tabular so columns line
+   up; slashed zero so 0 and O never get confused on a cutting list. */
 .figure, .mono {
   font-family: var(--mono);
   font-feature-settings: 'tnum' 1, 'zero' 1;
@@ -134,3 +198,34 @@
   text-transform: uppercase;
   color: var(--faint);
 }
+
+/* A figure that rolls to its new value instead of jumping. The real text
+   stays in the element for readers and tests; the rolling digits are drawn
+   by a counter driven from a registered custom property. */
+.roll { position: relative; display: inline-block; }
+.roll > .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+.roll-int { counter-reset: n var(--n); transition: --n var(--slow) var(--ease); }
+.roll-int::before { content: counter(n) "\202f" attr(data-unit); }
+.roll-dec { counter-reset: w var(--w) f var(--f); transition: --w var(--slow) var(--ease), --f var(--slow) var(--ease); }
+.roll-dec::before { content: counter(w) "." counter(f, decimal-leading-zero) "\202f" attr(data-unit); }
+
+/* Focus rings that land rather than appear. Keyboard users get a ring that
+   arrives from outside and settles; pointer users see nothing. */
+:focus-visible { outline: 1.5px solid var(--signal); outline-offset: 3px; }
+@media (prefers-reduced-motion: no-preference) {
+  :focus-visible { animation: focus-land var(--fast) var(--ease); }
+}
+@keyframes focus-land { from { outline-offset: 8px; outline-color: transparent; } }
+
+/* Anything that can be pressed goes down when you press it. Mechanical:
+   no easing, no bounce. */
+.pressable:active { translate: 0 1px; transition-duration: var(--press); transition-timing-function: linear; }
+
+/* A link whose underline is drawn in from the left, over the resting rule. */
+.u-draw {
+  background:
+    linear-gradient(var(--signal), var(--signal)) no-repeat 0 100% / 0 1px,
+    linear-gradient(var(--rule-strong), var(--rule-strong)) no-repeat 0 100% / 100% 1px;
+  transition: background-size var(--fast) var(--ease), color var(--fast) var(--ease);
+}
+.u-draw:hover, .u-draw:focus-visible { background-size: 100% 1px, 100% 1px; color: var(--signal); }

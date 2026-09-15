@@ -158,7 +158,7 @@ test.describe('public page',()=>{
 
     // Hovering reads out millimetres, in the same language as the editor
     await page.mouse.move(box.x+box.width/2,box.y+box.height/2);
-    await expect(page.locator('#demo-readout')).toHaveText(/X [\d.]+\s+Y [\d.]+ mm/);
+    await expect(page.locator('#demo-readout')).toHaveText(/X [\d.]+\s+Y [\d.]+\smm/);
 
     // Dragging the FOLD knob turns it and lights the indicators
     await page.mouse.move(box.x+box.width/2,box.y+box.height*0.22);

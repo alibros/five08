@@ -9,6 +9,7 @@ import {mountingShapes} from './geometry';
 import {newProjectId,saveProject,setActiveId} from './store';
 import {registerOffline} from './offline';
 import {applyTheme,nextTheme,readTheme,watchSystemTheme,type Theme} from './theme-site';
+import {units} from './units';
 
 const project=demoPanel();
 let view:'design'|'cutout'|'rear'='design';
@@ -102,7 +103,7 @@ const CHECKS=[
 
 const mark=`<svg viewBox="0 0 64 64" aria-hidden="true"><path d="M18 11h28M18 53h28"/><rect x="21" y="8" width="22" height="48" rx="4"/><circle class="signal" cx="32" cy="32" r="7"/><circle cx="32" cy="32" r="2.5"/></svg>`;
 
-const row=([term,value,note]:[string,string,string])=>`<tr><th scope="row">${term}</th><td class="figure">${value}</td><td>${note}</td></tr>`;
+const row=([term,value,note]:[string,string,string])=>`<tr><th scope="row">${units(term)}</th><td class="figure">${units(value)}</td><td>${units(note)}</td></tr>`;
 const head=(no:string,title:string,note?:string)=>
   `<div class="band-head"><span class="section-no">${no}</span><h2>${title}</h2>${note?`<p>${note}</p>`:''}</div>`;
 
@@ -137,14 +138,14 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML=`
         <span class="legend">Panel width</span>
         <div class="stepper">
           <button id="hp-down" aria-label="Narrower">−</button>
-          <output id="hp-value" class="mono">12 HP</output>
+          <output id="hp-value" class="mono roll"><span class="roll-int" data-unit="HP" style="--n:12" aria-hidden="true"></span><span class="sr-only">12 HP</span></output>
           <button id="hp-up" aria-label="Wider">+</button>
         </div>
-        <span class="width-mm mono" id="hp-mm">60.56 mm</span>
+        <span class="width-mm mono roll" id="hp-mm"><span class="roll-dec" data-unit="mm" style="--w:60;--f:56" aria-hidden="true"></span><span class="sr-only">60.56 mm</span></span>
         <p class="width-note">Squeeze it and watch preflight start objecting.</p>
       </div>
       <dl class="glance">
-        <div><dt>Panel height</dt><dd>128.5 mm</dd></div>
+        <div><dt>Panel height</dt><dd>${units('128.5 mm')}</dd></div>
         <div><dt>Widths</dt><dd>2–84 HP</dd></div>
         <div><dt>Parts</dt><dd>${catalog.length}</dd></div>
         <div><dt>Export formats</dt><dd>${EXPORTS.length}</dd></div>
@@ -168,7 +169,7 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML=`
         </div>
       </div>
       <figcaption>
-        <span id="demo-caption">A 12 HP panel, ${panelWidth(project.panel).toFixed(2)} × ${PANEL_H} mm, drawn in Five08 and rendered here by the same code the editor uses. Preflight: clear.</span>
+        <span id="demo-caption">${units(`A 12 HP panel, ${panelWidth(project.panel).toFixed(2)} × ${PANEL_H} mm, drawn in Five08 and rendered here by the same code the editor uses.`)} Preflight: clear.</span>
         <button class="quiet-link" id="open-demo">Open this panel in the designer</button>
       </figcaption>
     </figure>
@@ -196,7 +197,7 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML=`
       <thead><tr><th scope="col">Measure</th><th scope="col">Value</th><th scope="col">Where it comes from</th></tr></thead>
       <tbody>${REFERENCE.map(row).join('')}</tbody>
     </table>
-    <p class="hp-note"><b>1 HP = ${HP_MM} mm.</b> Everything on the panel — width, positions, rulers, exports — is a multiple or a measurement of that.</p>
+    <p class="hp-note"><b>${units(`1 HP = ${HP_MM} mm`)}.</b> Everything on the panel — width, positions, rulers, exports — is a multiple or a measurement of that.</p>
     </div>
   </section>
 
@@ -274,16 +275,26 @@ function setHp(hp:number){
   describe();
 }
 
+let lastVerdict='';
+/** Writes a figure into a rolling readout: the digits animate, the hidden text is what a reader or a test sees. */
+function roll(host:HTMLElement,vars:Record<string,number>,text:string){
+  const digits=host.firstElementChild as HTMLElement;
+  Object.entries(vars).forEach(([k,v])=>digits.style.setProperty(`--${k}`,String(v)));
+  host.lastElementChild!.textContent=text;
+}
 function describe(){
   const w=panelWidth(project.panel);
   const found=preflight(project,catalogMap);
   const counts=issueCounts(found);
-  hpValue.value=`${project.panel.hp} HP`;
-  hpMm.textContent=`${w.toFixed(2)} mm`;
+  roll(hpValue,{n:project.panel.hp},units(`${project.panel.hp} HP`));
+  roll(hpMm,{w:Math.floor(w),f:Math.round((w-Math.floor(w))*100)},units(`${w.toFixed(2)} mm`));
   const verdict=counts.errors?`${counts.errors} error${counts.errors===1?'':'s'}`
     :counts.warnings?`${counts.warnings} warning${counts.warnings===1?'':'s'} — ${found.find(i=>i.severity==='warning')!.message.toLowerCase()}`
     :'clear';
-  caption.innerHTML=`A ${project.panel.hp} HP panel, ${w.toFixed(2)} × ${PANEL_H} mm, drawn in Five08 and rendered here by the same code the editor uses. Preflight: <b class="${counts.errors?'bad':counts.warnings?'warn':'good'}">${verdict}</b>.`;
+  caption.innerHTML=`${units(`A ${project.panel.hp} HP panel, ${w.toFixed(2)} × ${PANEL_H} mm, drawn in Five08 and rendered here by the same code the editor uses.`)} Preflight: <b class="${counts.errors?'bad':counts.warnings?'warn':'good'}">${units(verdict)}</b>.`;
+  // A two-frame dip so the eye registers that the verdict changed, not just what it says now.
+  if(lastVerdict&&verdict!==lastVerdict){caption.classList.remove('swap');void caption.offsetWidth;caption.classList.add('swap');}
+  lastVerdict=verdict;
 }
 
 describe();
@@ -337,7 +348,7 @@ window.addEventListener('pointermove',e=>{
   if(!at)return;
   const w=panelWidth(project.panel);
   const inside=at.x>=0&&at.x<=w&&at.y>=0&&at.y<=PANEL_H;
-  readout.textContent=inside?`X ${at.x.toFixed(1)}  Y ${at.y.toFixed(1)} mm`:'';
+  readout.textContent=inside?units(`X ${at.x.toFixed(1)}  Y ${at.y.toFixed(1)} mm`):'';
   readout.classList.toggle('live',inside);
 });
 

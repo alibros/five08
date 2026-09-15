@@ -18,12 +18,15 @@
 html { scroll-behavior: smooth; }
 body { margin: 0; background: var(--paper); -webkit-font-smoothing: antialiased; }
 a { color: inherit; text-decoration: none; }
-p { margin: 0; }
-h1, h2, h3 { margin: 0; font-stretch: var(--width-tight); font-weight: 620; letter-spacing: -.015em; line-height: 1.05; }
+p { margin: 0; text-wrap: pretty; }
+h1, h2, h3 { margin: 0; font-stretch: var(--width-tight); font-weight: 620; letter-spacing: -.015em; line-height: 1.05; text-wrap: balance; }
+/* Ink sits in the paper rather than on it. Only text blocks blend: anything
+   carrying a background of its own (section numbers, the panel) stays put. */
+h1, h2, h3, .standfirst, .terms, .band-head > p, .glance, .split, .spec, .hp-note,
+.checks, .caveat, .closing p, .colophon p, .width-note, .demo figcaption { mix-blend-mode: var(--ink-blend); }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
 .skip { position: absolute; left: -9999px; }
 .skip:focus { left: 16px; top: 12px; z-index: 9; padding: 9px 13px; background: var(--ink); color: var(--on-ink); }
-:focus-visible { outline: 2px solid var(--signal); outline-offset: 2px; }
 
 /* ---- masthead: a document header, not a nav bar ---- */
 .masthead {
@@ -40,7 +43,9 @@ h1, h2, h3 { margin: 0; font-stretch: var(--width-tight); font-weight: 620; lett
 .wordmark b {
   font-stretch: var(--width-tight); font-weight: 700; font-size: 17px;
   letter-spacing: -.03em;
+  transition: font-stretch var(--slow) var(--ease);
 }
+.wordmark:hover b { font-stretch: var(--width-normal); }
 .masthead .rev {
   font-family: var(--mono); font-size: 10px; letter-spacing: .08em;
   text-transform: uppercase; color: var(--faint);
@@ -50,17 +55,22 @@ h1, h2, h3 { margin: 0; font-stretch: var(--width-tight); font-weight: 620; lett
 .masthead nav a {
   font-family: var(--mono); font-size: 11px; color: var(--muted);
   padding: 5px 9px;
+  background:
+    linear-gradient(var(--ink), var(--ink)) no-repeat 9px 100% / 0 1px;
+  transition: background-size var(--fast) var(--ease), color var(--fast) var(--ease);
 }
-.masthead nav a:hover { color: var(--ink); background: var(--paper-3); }
+.masthead nav a:hover, .masthead nav a:focus-visible { color: var(--ink); background-size: calc(100% - 18px) 1px; }
 
 .button {
   display: inline-flex; align-items: center; height: 34px; padding: 0 15px;
-  font-family: var(--mono); font-size: 11.5px; font-weight: 500; letter-spacing: .04em;
-  text-transform: uppercase;
+  font-family: var(--sans); font-stretch: var(--width-tight); font-size: 12.5px; font-weight: 600;
+  letter-spacing: .07em; text-transform: uppercase;
   color: var(--on-ink); background: var(--ink); border: 1px solid var(--ink); border-radius: 2px;
   white-space: nowrap;
+  transition: font-stretch var(--fast) var(--ease), background-color var(--fast) var(--ease), border-color var(--fast) var(--ease), translate var(--press) linear;
 }
-.button:hover { background: var(--signal); border-color: var(--signal); color: #fff; }
+.button:hover { background: var(--signal); border-color: var(--signal); color: #fff; font-stretch: var(--width-normal); }
+.button:active { translate: 0 1px; }
 .ghost {
   height: 30px; padding: 0 10px; border-radius: 2px; cursor: pointer;
   font-family: var(--mono); font-size: 11px; letter-spacing: .04em; text-transform: uppercase;
@@ -69,10 +79,13 @@ h1, h2, h3 { margin: 0; font-stretch: var(--width-tight); font-weight: 620; lett
 .ghost:hover { color: var(--ink); border-color: var(--ink); }
 .quiet-link {
   font-family: var(--mono); font-size: 11.5px; color: var(--muted);
-  background: none; border: 0; padding: 0; cursor: pointer;
-  border-bottom: 1px solid var(--rule-strong);
+  border: 0; padding: 0 0 1px; cursor: pointer;
+  background:
+    linear-gradient(var(--signal), var(--signal)) no-repeat 0 100% / 0 1px,
+    linear-gradient(var(--rule-strong), var(--rule-strong)) no-repeat 0 100% / 100% 1px;
+  transition: background-size var(--fast) var(--ease), color var(--fast) var(--ease);
 }
-.quiet-link:hover { color: var(--signal); border-color: var(--signal); }
+.quiet-link:hover, .quiet-link:focus-visible { color: var(--signal); background-size: 100% 1px, 100% 1px; }
 
 main { max-width: var(--frame); margin: 0 auto; padding: 0 var(--gutter); }
 
@@ -137,7 +150,7 @@ h1 { font-size: clamp(34px,4.4vw,56px); max-width: 14ch; line-height: 1.0; lette
 .demo-panel.turning { cursor: grabbing; }
 .demo-panel .panel-item { cursor: grab; }
 .demo-panel.turning .panel-item { cursor: grabbing; }
-.panel-render .panel-item { transition: opacity .12s ease; }
+.panel-render .panel-item { transition: opacity var(--fast) var(--ease); }
 .demo-panel:hover .panel-item:hover { opacity: .88; }
 
 .demo-readout {
@@ -147,7 +160,7 @@ h1 { font-size: clamp(34px,4.4vw,56px); max-width: 14ch; line-height: 1.0; lette
 #demo-readout {
   font-size: 11px; letter-spacing: .04em; color: var(--faint);
   font-variant-numeric: tabular-nums;
-  transition: color .15s ease;
+  transition: color var(--fast) var(--ease);
 }
 #demo-readout.live { color: var(--signal); }
 .demo-hint {
@@ -230,8 +243,14 @@ h1 { font-size: clamp(34px,4.4vw,56px); max-width: 14ch; line-height: 1.0; lette
   border-top: 1px solid var(--ink);
 }
 .colophon p { margin-top: 8px; font-family: var(--mono); font-size: 11px; line-height: 1.7; color: var(--muted); }
-.colophon p a { border-bottom: 1px solid var(--rule-strong); }
-.colophon p a:hover { color: var(--signal); }
+.colophon p a {
+  padding-bottom: 1px;
+  background:
+    linear-gradient(var(--signal), var(--signal)) no-repeat 0 100% / 0 1px,
+    linear-gradient(var(--rule-strong), var(--rule-strong)) no-repeat 0 100% / 100% 1px;
+  transition: background-size var(--fast) var(--ease), color var(--fast) var(--ease);
+}
+.colophon p a:hover { color: var(--signal); background-size: 100% 1px, 100% 1px; }
 .colophon nav { display: flex; gap: 16px; font-family: var(--mono); font-size: 11px; color: var(--muted); }
 .colophon nav a:hover { color: var(--ink); }
 
@@ -258,25 +277,21 @@ h1 { font-size: clamp(34px,4.4vw,56px); max-width: 14ch; line-height: 1.0; lette
 
 /* ---- tactility ----
    Nothing here should be noticed. Together it is the difference between a page
-   that reacts and one that snaps. */
-.button, .ghost, .quiet-link, .switcher button, .swatches button,
-.masthead nav a, .colophon nav a, .spec tbody tr th, .spec tbody tr .figure {
-  transition: color .14s ease, background-color .14s ease, border-color .14s ease, transform .1s ease;
+   that reacts and one that snaps. Everything answers in --fast; presses are
+   linear because a switch does not ease. */
+.ghost, .switcher button, .swatches button, .stepper button,
+.colophon nav a, .spec tbody tr th, .spec tbody tr .figure {
+  transition: color var(--fast) var(--ease), background-color var(--fast) var(--ease), border-color var(--fast) var(--ease), translate var(--press) linear;
 }
-.button:active, .ghost:active, .switcher button:active { transform: translateY(1px); }
-.swatches button { transition: box-shadow .14s ease, border-color .14s ease, transform .1s ease; }
-.swatches button:hover { transform: translateY(-1px); }
-.swatches button:active { transform: translateY(0); }
-.spec tbody tr { transition: background-color .14s ease; }
+.ghost:active, .switcher button:active, .stepper button:active { translate: 0 1px; }
+.swatches button { transition: box-shadow var(--fast) var(--ease), border-color var(--fast) var(--ease), translate var(--press) linear; }
+.swatches button:active { translate: 0 1px; }
+.spec tbody tr { transition: background-color var(--fast) var(--ease); }
 .spec tbody tr:hover { background: color-mix(in srgb, var(--paper-2) 60%, transparent); }
-.checks li { transition: background-color .14s ease; }
+.checks li { transition: background-color var(--fast) var(--ease); }
 .checks li:hover { background: var(--paper-2); }
-.split li { transition: color .14s ease; }
+.split li { transition: color var(--fast) var(--ease); }
 .split li:hover { color: var(--ink); }
-
-@media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after { transition-duration: .01ms !important; animation-duration: .01ms !important; }
-}
 
 /* ---- panel width control ---- */
 .width-control {
@@ -293,7 +308,6 @@ h1 { font-size: clamp(34px,4.4vw,56px); max-width: 14ch; line-height: 1.0; lette
 .stepper button:first-child { border-right: 1px solid var(--rule); }
 .stepper button:last-child { border-left: 1px solid var(--rule); }
 .stepper button:hover { color: var(--on-ink); background: var(--ink); }
-.stepper button:active { transform: none; }
 .stepper output {
   min-width: 74px; padding: 7px 0; text-align: center;
   font-size: 13px; font-variant-numeric: tabular-nums; color: var(--ink);
@@ -301,7 +315,13 @@ h1 { font-size: clamp(34px,4.4vw,56px); max-width: 14ch; line-height: 1.0; lette
 .width-mm { font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
 .width-note { grid-column: 1 / -1; font-size: 12px; line-height: 1.5; color: var(--faint); }
 
-#demo-caption b { font-weight: 550; }
+#demo-caption b { font-weight: 550; transition: color var(--slow) var(--ease); }
+#demo-caption.swap { animation: dip var(--fast) var(--ease); }
+@keyframes dip { 50% { opacity: .35; } }
+
+/* First paint: the panel settles onto the page rather than popping. */
+.demo-panel { transition: opacity var(--slow) var(--ease), translate var(--slow) var(--ease); }
+@starting-style { .demo-panel { opacity: 0; translate: 0 6px; } }
 #demo-caption .good { color: var(--pass); }
 #demo-caption .warn { color: var(--signal); }
 #demo-caption .bad { color: var(--signal); }
