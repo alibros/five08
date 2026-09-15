@@ -68,7 +68,7 @@ const EXPORTS:Array<[string,string,string]>=[
   ['Cutout SVG','.svg','Outline, mounting slots and apertures, nothing decorative'],
   ['Cutout DXF','.dxf','R12, millimetres, layered — what a laser cutter or panel shop wants'],
   ['PNG render','.png','150 to 1200 dpi, for documentation and posts'],
-  ['Print at 1:1','paper','A drilling template you can tape to a blank'],
+  ['Print at 1:1','paper','Cutout template with centre marks and a 100 mm scale bar'],
   ['VCV Rack SVG','.svg','Artwork plus coloured component-role markers'],
   ['Bill of materials','.csv','Quantities, cutouts, rear depths, and whether a dimension is generic'],
   ['Project','.panel.json','The editable file — the only copy that leaves the browser'],

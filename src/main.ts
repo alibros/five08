@@ -2,7 +2,7 @@ import './style.css';
 import {catalog,catalogMap,categories} from './catalog';
 import {applyFinish,panelFinishes} from './finishes';
 import {clone,dimensionLocked,emptyProject,PANEL_H,panelWidth,parseProject,uid,type ComponentDefinition,type Item,type Project} from './model';
-import {componentSvg,cutoutSvg,esc,mountingSvg,panelFinishDefs,panelFinishSurface} from './svg';
+import {componentSvg,cutoutSvg,esc,mountingSvg,panelFinishDefs,panelFinishSurface,templateSvg} from './svg';
 import {applyPlacements,extent,flipVertical,gridPlacements,matchSize,mirrorPlacements,rotateGroup,rotatePlacements,spreadBetween} from './arrange';
 import {panelDxf} from './dxf';
 import {openPalette,type Command} from './palette';
@@ -735,7 +735,7 @@ const EXPORTS:Array<{id:string;mark:string;title:string;blurb:string}>=[
   {id:'cut',mark:'◎',title:'Cutout SVG',blurb:'Outline, slots and apertures only'},
   {id:'dxf',mark:'⬒',title:'Cutout DXF',blurb:'R12 file for laser cutters and panel shops'},
   {id:'png',mark:'▦',title:'PNG render',blurb:'Raster image for posts and documentation'},
-  {id:'print',mark:'⎙',title:'Print at 1:1',blurb:'Paper drilling template, actual size'},
+  {id:'print',mark:'⎙',title:'Print at 1:1',blurb:'Cutout template with centre marks and a scale bar'},
   {id:'vcv',mark:'⌁',title:'VCV Rack SVG',blurb:'Artwork with component-role markers'},
   {id:'bom',mark:'≡',title:'Bill of materials',blurb:'CSV of parts, cutouts and depths'},
   {id:'json',mark:'{}',title:'Project file',blurb:'Editable .panel.json you can re-open'},
@@ -829,7 +829,7 @@ async function doExport(type:string){
     if(type==='bom'){download(`${name}-bom.csv`,bomCsv(),'text/csv');notify('Bill of materials exported');return;}
     if(type==='cut'){download(`${name}-cut.svg`,cutoutSvg(project,catalogMap),'image/svg+xml');notify('Cutout SVG exported');return;}
     if(type==='dxf'){download(`${name}-cut.dxf`,panelDxf(project,catalogMap,{engraveLabels}),'application/dxf');notify(`DXF exported${engraveLabels?' with engraving layer':''}`);return;}
-    if(type==='print'){printSheet(exportableSvg('art'),`${project.name} · ${project.panel.hp} HP · printed at 1:1 — measure the ruler before drilling`);return;}
+    if(type==='print'){printSheet(templateSvg(project,catalogMap),`${esc(project.name)} · ${project.panel.hp} HP · ${panelWidth(project.panel).toFixed(2)} × ${PANEL_H} mm · cutout template at 1:1 — check the 100 mm bar with a ruler before you drill`);return;}
     if(type==='png'){
       const svg=exportableSvg('art');
       notify(`Rendering ${exportDpi} dpi PNG…`);

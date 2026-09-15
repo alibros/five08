@@ -46,3 +46,37 @@ export function cutoutSvg(p:Project,definitions:Map<string,ComponentDefinition>)
 }
 
 export const bounds=(i:Item,d:ComponentDefinition)=>({l:i.x-Math.max(i.width,d.keepout||0)/2,r:i.x+Math.max(i.width,d.keepout||0)/2,t:i.y-Math.max(i.height,d.keepout||0)/2,b:i.y+Math.max(i.height,d.keepout||0)/2});
+
+/**
+ * A drilling template printed at 1:1.
+ *
+ * Cutout geometry rather than artwork, a centre mark in every hole so it can be
+ * punched, and a 100 mm scale bar — the only way to tell whether the printer
+ * scaled the page before you drill into a blank.
+ */
+export function templateSvg(p:Project,definitions:Map<string,ComponentDefinition>){
+  const w=panelWidth(p.panel);
+  const shapes=[...mountingShapes(p.panel),...cutoutShapes(p.items,definitions)];
+  const marks=shapes.map(s=>{
+    const reach=s.kind==='circle'?Math.max(s.r+1.2,2.5):Math.max(Math.min(s.w,s.h)/2+1.2,2.5);
+    return`<path d="M${s.cx-reach} ${s.cy}H${s.cx+reach}M${s.cx} ${s.cy-reach}V${s.cy+reach}" stroke="#d11" stroke-width=".2"/>`;
+  }).join('');
+  const rulerY=PANEL_H+16;
+  const ticks=Array.from({length:11},(_,n)=>{
+    const x=n*10,major=n%5===0;
+    return`<path d="M${x} ${rulerY}V${rulerY-(major?4:2.4)}" stroke="#000" stroke-width=".25"/>`
+      +(major?`<text x="${x}" y="${rulerY-5.2}" font-family="ui-monospace,monospace" font-size="2.6" text-anchor="${n===10?'end':n===0?'start':'middle'}" fill="#000">${x}</text>`:'');
+  }).join('');
+  const sheetW=Math.max(w,100)+4;
+  return`<svg xmlns="http://www.w3.org/2000/svg" width="${sheetW.toFixed(2)}mm" height="${(rulerY+11).toFixed(2)}mm" viewBox="-2 -2 ${sheetW} ${rulerY+11}">
+    <g fill="none" stroke="#000" stroke-width=".25">
+      <rect width="${w}" height="${PANEL_H}"/>
+      ${shapes.map(shapePath).join('')}
+    </g>
+    <g fill="none">${marks}</g>
+    <g><path d="M0 ${rulerY}H100" stroke="#000" stroke-width=".25"/>${ticks}
+      <text x="0" y="${rulerY+4.6}" font-family="ui-monospace,monospace" font-size="2.3" fill="#000">This bar must measure exactly 100 mm.</text>
+      <text x="0" y="${rulerY+8.2}" font-family="ui-monospace,monospace" font-size="2.3" fill="#000">If it does not, the page was scaled \u2014 print again at 100%.</text>
+    </g>
+  </svg>`;
+}
