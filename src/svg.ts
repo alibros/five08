@@ -128,7 +128,7 @@ export function componentSvg(i:Item,d:ComponentDefinition,p:Project,selected:boo
   const place=`transform="translate(${i.x} ${i.y}) rotate(${i.rotation})"`;
   return wrapper==='preview'
     ? `<g class="part-preview" ${place} pointer-events="none">${inner}</g>`
-    : `<g class="panel-item" data-id="${i.id}" ${place} opacity="${i.locked?.75:1}" style="cursor:${i.locked?'not-allowed':'move'}">${inner}</g>`;
+    : `<g class="panel-item" data-id="${i.id}" data-kind="${d.renderer}" ${place} opacity="${i.locked?.75:1}" style="cursor:${i.locked?'not-allowed':'move'}">${inner}</g>`;
 }
 
 /** Panel legends: multi-line, aligned, in a font that will survive the trip to a fabricator. */

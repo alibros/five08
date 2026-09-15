@@ -140,7 +140,7 @@ test.describe('public page',()=>{
     const errors=watchConsole(page);
     await page.goto('/');
     await expect(page.locator('.panel-render')).toBeVisible();
-    await expect(page.locator('figcaption')).toContainText('Preflight: clear');
+    await expect(page.locator('#demo-caption')).toContainText('Preflight: clear');
     await page.click('[data-view="cutout"]');
     await expect(page.locator('#demo-panel .cut, #demo-panel circle')).not.toHaveCount(0);
     await page.click('#open-demo');
