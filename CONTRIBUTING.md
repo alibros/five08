@@ -37,10 +37,14 @@ well as a checklist.
 [`docs/parts-wanted.md`](docs/parts-wanted.md) is a ranked queue of parts whose
 dimensions are still estimates, ordered by how often they turn up on a panel.
 
-One thing that procedure insists on, and this repository will keep insisting on:
-**if you cannot reach the datasheet, leave the part generic.** A figure sourced
-from a search snippet or from memory, with a citation attached, is worse than an
-honest estimate — it looks checked.
+Two things that procedure insists on, and this repository will keep insisting on:
+
+- **If you cannot reach the datasheet, leave the part generic.** A figure
+  sourced from a search snippet or from memory, with a citation attached, is
+  worse than an honest estimate — it looks checked.
+- **An ambiguous drawing is deferred, not guessed.** The part stays generic and
+  the question goes in [`docs/parts-open-questions.md`](docs/parts-open-questions.md)
+  where someone who owns the part can settle it.
 
 
 Dimensions are the reason people trust this tool, so the library records where each one came from.
