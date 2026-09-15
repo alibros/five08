@@ -18,11 +18,11 @@ next person the search.
 - [x] **Taiwan Alpha RD901F** — 9 mm pot. M7×0.75 bushing, behind every knob cutout.
 - [x] **Alps Alpine EC11** — encoder. M7×0.75 bushing.
 - [x] **ISO 273 fine** — M3 clearance, behind the mounting hardware.
+- [x] **Song Huei 16K4** — 16 mm pot. The bushing is M7×0.75, not larger; the drawing gives a Ø7.5 panel hole and a Ø3 anti-rotation hole, which is not modelled. `knob-16mm`.
 
 ## Wanted
 
 ### Controls
-- [ ] **Song Huei SH-16K4 / equivalent 16 mm pot** — the other common pot size; bushing and panel hole.
 - [ ] **Bourns PTV09A** — 9 mm vertical pot, a very common Alpha alternative. Confirm whether the bushing matches M7×0.75.
 - [ ] **Alpha / Bourns 45 mm slide potentiometer** — slot width and length, and the travel versus the slot. Five08 currently derives the slot from the footprint.
 - [ ] **Alps RK09 / RK097** — 9 mm pot, another widespread alternative.

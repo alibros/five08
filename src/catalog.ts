@@ -12,6 +12,7 @@ const SOURCE={
   pj398sm:{note:'Thonkiconn PJ398SM / PJ301M-12 — 6 mm panel hole, 4.5 mm thread',url:'https://www.thonk.co.uk/shop/thonkiconn/'},
   alpha9:{note:'Taiwan Alpha RD901F 9 mm potentiometer — M7×0.75 bushing',url:'https://www.mouser.com/datasheet/3/140/1/RD901F.pdf'},
   ec11:{note:'Alps Alpine EC11 encoder — M7×0.75 bushing',url:'https://tech.alpsalpine.com/assets/products/catalog/ec11.en.pdf'},
+  sh16k4:{note:'Song Huei 16K4 16 mm potentiometer — Ø7.5 panel hole for the M7×0.75 bushing, drawing 16K-043 mounting-hole inset',url:'https://www.song-huei.com/proimages/PDF/16K4.pdf'},
   m3fine:{note:'ISO 273 fine series clearance hole for M3',url:'https://www.iso.org/standard/4183.html'},
 } satisfies Record<string,PartSource>;
 
@@ -166,6 +167,17 @@ export const catalog:ComponentDefinition[]=[
     description:'Dual concentric control',
     depth:18,
     source:SOURCE.alpha9,
+  }),
+  part({
+    id:'knob-16mm', name:'Knob on 16 mm pot',
+    category:'Controls', renderer:'knob',
+    width:20, height:20, keepout:23,
+    cutout:7.5,
+    color:'#242520', label:'CUTOFF',
+    description:'Song Huei 16K4 16 mm pot · Ø7.5 panel hole. The pot also wants a Ø3 anti-rotation hole 7.8 mm off-centre, which Five08 does not cut',
+    depth:9.3,
+    tags:['knob','16 mm','potentiometer','song huei','16k4'],
+    source:SOURCE.sh16k4,
   }),
   part({
     id:'slider-20', name:'Vertical slider',
