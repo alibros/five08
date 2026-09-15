@@ -1,5 +1,5 @@
-import {describe,expect,it} from 'vitest';
-import {applyPlacements,gridPlacements,matchSize,mirrorPlacements,rotateGroup,spreadBetween} from './arrange';
+import {beforeEach,describe,expect,it} from 'vitest';
+import {applyPlacements,expandGroups,gridPlacements,matchSize,mirrorPlacements,repeatItems,rotateGroup,spreadBetween} from './arrange';
 import {catalogMap} from './catalog';
 import type {Item} from './model';
 
@@ -69,5 +69,54 @@ describe('match size',()=>{
 describe('catalog integrity',()=>{
   it('keeps every size preset pointing at a real part',()=>{
     for(const d of catalogMap.values())for(const preset of d.sizePresets??[])expect(catalogMap.has(preset.componentId)).toBe(true);
+  });
+});
+
+describe('array repeat',()=>{
+  let n=0;
+  const ids=()=>`copy-${++n}`;
+  beforeEach(()=>{n=0;});
+
+  it('leaves the original in place and offsets each pass',()=>{
+    const copies=repeatItems([item('a',10,20)],4,15,0,ids);
+    expect(copies).toHaveLength(3);
+    expect(copies.map(c=>c.x)).toEqual([25,40,55]);
+    expect(copies.every(c=>c.y===20)).toBe(true);
+  });
+
+  it('repeats a whole strip together',()=>{
+    const strip=[item('knob',10,20),item('jack',10,60)];
+    const copies=repeatItems(strip,3,19,0,ids);
+    expect(copies).toHaveLength(4);
+    expect(copies.map(c=>[c.x,c.y])).toEqual([[29,20],[29,60],[48,20],[48,60]]);
+  });
+
+  it('gives every copy a fresh id and keeps the source untouched',()=>{
+    const source=[item('a',10,20)];
+    const copies=repeatItems(source,3,5,5,ids);
+    expect(new Set(copies.map(c=>c.id)).size).toBe(2);
+    expect(copies.some(c=>c.id==='a')).toBe(false);
+    expect(source[0].x).toBe(10);
+  });
+
+  it('does nothing for a count below two',()=>expect(repeatItems([item('a',0,0)],1,5,0,ids)).toEqual([]));
+});
+
+describe('groups',()=>{
+  const grouped=(id:string,group?:string)=>({...item(id,0,0),...(group?{groupId:group}:{})});
+
+  it('pulls in every sibling when one member is selected',()=>{
+    const items=[grouped('a','g1'),grouped('b','g1'),grouped('c')];
+    expect([...expandGroups(['a'],items)].sort()).toEqual(['a','b']);
+  });
+
+  it('leaves ungrouped items alone',()=>{
+    const items=[grouped('a','g1'),grouped('b','g1'),grouped('c')];
+    expect([...expandGroups(['c'],items)]).toEqual(['c']);
+  });
+
+  it('expands across several groups at once',()=>{
+    const items=[grouped('a','g1'),grouped('b','g1'),grouped('c','g2'),grouped('d','g2')];
+    expect([...expandGroups(['a','c'],items)].sort()).toEqual(['a','b','c','d']);
   });
 });

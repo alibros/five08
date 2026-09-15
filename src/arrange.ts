@@ -80,3 +80,25 @@ export function applyPlacements(items:Item[],placements:Placement[]){
     if(p.height!==undefined)i.height=p.height;
   });
 }
+
+/**
+ * Arrays a selection: the original stays put and `count - 1` copies follow at a
+ * fixed offset. A four-channel mixer is one channel strip repeated three times.
+ */
+export function repeatItems(items:Item[],count:number,dx:number,dy:number,nextId:()=>string):Item[]{
+  if(items.length===0||count<2)return[];
+  const copies:Item[]=[];
+  for(let n=1;n<count;n++)
+    for(const item of items)
+      copies.push({...structuredClone(item),id:nextId(),x:round(item.x+dx*n),y:round(item.y+dy*n)});
+  return copies;
+}
+const round=(v:number)=>Math.round(v*100)/100;
+
+/** Every id that has to move when one member of a group is dragged. */
+export function expandGroups(ids:Iterable<string>,items:Item[]):Set<string>{
+  const wanted=new Set(ids);
+  const groups=new Set(items.filter(i=>wanted.has(i.id)&&i.groupId).map(i=>i.groupId!));
+  if(groups.size)for(const i of items)if(i.groupId&&groups.has(i.groupId))wanted.add(i.id);
+  return wanted;
+}

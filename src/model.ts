@@ -30,6 +30,8 @@ export type Item = {
   font?:TextFont; weight?:number; align?:TextAlign; tracking?:number;
   /** Repeat count for parts made of a series: scale ticks, ring segments. */
   count?:number;
+  /** Members of a group share this id and are selected together. */
+  groupId?:string;
 };
 
 export type TextFont='sans'|'condensed'|'mono';
@@ -92,6 +94,8 @@ function textStyle(x:Record<string,unknown>){
   if(Number.isFinite(Number(x.weight)))out.weight=clamp(Math.round(Number(x.weight)/100)*100,100,900);
   if(Number.isFinite(Number(x.tracking)))out.tracking=clamp(Number(x.tracking),-.2,1);
   if(Number.isFinite(Number(x.count)))out.count=clamp(Math.round(Number(x.count)),2,64);
+  const groupId=safeText(x.groupId,80,'');
+  if(groupId)out.groupId=groupId;
   return out;
 }
 export const clamp=(v:number,min:number,max:number)=>Math.max(min,Math.min(max,v));

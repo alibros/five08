@@ -3,7 +3,7 @@ import {catalog,catalogMap,categories} from './catalog';
 import {applyFinish,panelFinishes} from './finishes';
 import {clone,dimensionLocked,emptyProject,PANEL_H,panelWidth,parseProject,uid,type ComponentDefinition,type Item,type Project} from './model';
 import {componentSvg,cutoutSvg,esc,mountingSvg,panelFinishDefs,panelFinishSurface,templateSvg} from './svg';
-import {applyPlacements,extent,flipVertical,gridPlacements,matchSize,mirrorPlacements,rotateGroup,rotatePlacements,spreadBetween} from './arrange';
+import {applyPlacements,expandGroups,extent,flipVertical,gridPlacements,matchSize,mirrorPlacements,repeatItems,rotateGroup,rotatePlacements,spreadBetween} from './arrange';
 import {panelDxf} from './dxf';
 import {openPalette,type Command} from './palette';
 import {issueCounts,preflight,type Issue} from './preflight';
@@ -89,6 +89,8 @@ function notify(s:string){const e=document.querySelector('#toast')!;window.clear
 function sv(v:number){return snap?Math.round(v/grids[gridIndex])*grids[gridIndex]:Math.round(v*10)/10;}
 function magneticGrid(v:number){const free=Math.round(v*100)/100;if(!snap)return free;const step=grids[gridIndex],nearest=Math.round(v/step)*step,tolerance=Math.max(.05,Math.min(.18,.9/(PX*zoom)));return Math.abs(nearest-v)<=tolerance?nearest:free;}
 function selectedItems(){return project.items.filter(i=>selection.has(i.id));}
+/** Clicking one member of a group selects the whole group. */
+const selectIds=(ids:Iterable<string>)=>{selection=expandGroups(ids,project.items);};
 
 function render(){
   issues=preflight(project,catalogMap);
@@ -171,7 +173,9 @@ function renderSelectionBar(){
   const allLocked=items.every(i=>i.locked);
   el.innerHTML=`<span class="selection-count">${items.length===1?esc(catalogMap.get(items[0].componentId)!.name):`${items.length} selected`}</span><span class="bar-divider"></span>`
     +(items.length>1?`<button data-selection-action="align-x" data-tooltip="Align horizontal centres">Align X</button><button data-selection-action="align-y" data-tooltip="Align vertical centres">Align Y</button><button data-selection-action="grid" data-tooltip="Arrange in a grid">Grid…</button><span class="bar-divider"></span>`:'')
-    +`<button data-selection-action="rotate" data-tooltip="Rotate 90° · R">Rotate</button><button data-selection-action="mirror" data-tooltip="Mirror across the centreline · M">Mirror</button><span class="bar-divider"></span><button data-selection-action="duplicate">Duplicate</button><button data-selection-action="lock">${allLocked?'Unlock':'Lock'}</button><button data-selection-action="hide">Hide</button><button class="danger-text" data-selection-action="delete">Delete</button>`;
+    +(items.length>1?`<button data-selection-action="group" data-tooltip="Group · ⌘G">${items.every(i=>i.groupId)?'Regroup':'Group'}</button>`:'')
+    +(items.some(i=>i.groupId)?`<button data-selection-action="ungroup" data-tooltip="Ungroup · ⇧⌘G">Ungroup</button>`:'')
+    +`<button data-selection-action="repeat" data-tooltip="Repeat… · ⇧R">Repeat…</button><button data-selection-action="rotate" data-tooltip="Rotate 90° · R">Rotate</button><button data-selection-action="mirror" data-tooltip="Mirror across the centreline · M">Mirror</button><span class="bar-divider"></span><button data-selection-action="duplicate">Duplicate</button><button data-selection-action="lock">${allLocked?'Unlock':'Lock'}</button><button data-selection-action="hide">Hide</button><button class="danger-text" data-selection-action="delete">Delete</button>`;
   el.querySelectorAll<HTMLElement>('[data-selection-action]').forEach(b=>b.onclick=()=>{
     const action=b.dataset.selectionAction;
     if(action==='duplicate')duplicate();
@@ -181,6 +185,9 @@ function renderSelectionBar(){
     else if(action==='rotate')rotateSelection(90);
     else if(action==='mirror')mirrorSelection();
     else if(action==='grid')arrangeDialog();
+    else if(action==='group')groupSelection();
+    else if(action==='ungroup')ungroupSelection();
+    else if(action==='repeat')repeatDialog();
     else if(action==='align-x')align('x');
     else if(action==='align-y')align('y');
   });
@@ -200,8 +207,12 @@ function bindCanvas(){
     if(e.button===1||spaceHeld)return;
     e.stopPropagation();
     const id=g.dataset.id!,item=project.items.find(i=>i.id===id)!;
-    if(e.shiftKey)selection.has(id)?selection.delete(id):selection.add(id);
-    else if(!selection.has(id))selection=new Set([id]);
+    if(e.shiftKey){
+      const group=expandGroups([id],project.items);
+      const remove=selection.has(id);
+      group.forEach(member=>remove?selection.delete(member):selection.add(member));
+    }
+    else if(!selection.has(id))selectIds([id]);
     if(!item.locked){
       drag={mode:'move',startClientX:e.clientX,startClientY:e.clientY,orig:new Map(selectedItems().filter(i=>!i.locked).map(i=>[i.id,{x:i.x,y:i.y}])),moved:false};
       capture(g,e.pointerId);
@@ -360,7 +371,7 @@ function bindPreflight(){
 function renderInspector(){const el=document.querySelector<HTMLDivElement>('#inspector')!;let items=selectedItems();if(inspectorTab==='layers'){document.querySelector('#inspector-title')!.textContent='Object layers';el.innerHTML=`<div class="pane-intro"><strong>${project.items.length} objects</strong><span>Reorder, hide or lock what is on the panel.</span></div><div id="layers"></div>`;renderLayers();return;}if(inspectorTab==='panel')items=[];document.querySelector('#inspector-title')!.textContent=inspectorTab==='panel'?'Panel settings':items.length>1?`${items.length} selected`:items.length===1?'Component':'Panel overview';if(items.length===0){el.innerHTML=`<div class="section-card"><div class="section-label">Panel geometry</div>${field('Width','hp',project.panel.hp,'number',1,'HP')}<div class="form-row"><label>Width profile</label><select id="width-mode"><option value="doepfer">Doepfer compatible</option><option value="nominal">Nominal HP × 5.08</option><option value="custom">Custom width</option></select></div>${project.panel.widthMode==='custom'?field('Custom width','customWidth',project.panel.customWidth,'number',.01,'mm'):''}<div class="two-col">${field('Thickness','thickness',project.panel.thickness,'number',.1,'mm')}<div class="form-row"><label>Mounting</label><select id="mounting"><option value="none">None</option><option value="two">2 slots · centred</option><option value="diagonal">2 slots · diagonal</option><option value="four">4 slots</option></select></div></div></div><div class="section-card finish-section"><div class="section-label">Surface finish</div><p class="section-hint">Pick a material, then adjust the three colours below it.</p><div class="finish-grid">${finishCards()}</div></div><div class="section-card"><div class="section-label">Custom palette</div><div class="named-colors"><label><span>Panel</span><input id="panel-color" aria-label="Panel colour" type="color" value="${project.panelColor}"></label><label><span>Ink</span><input id="ink-color" aria-label="Ink colour" type="color" value="${project.inkColor}"></label><label><span>Accent</span><input id="accent-color" aria-label="Accent colour" type="color" value="${project.accentColor}"></label></div></div>${preflightPanel()}`;bindPanelInspector();bindPreflight();return;}
  if(items.length>1){
    const box=extent(items);
-   el.innerHTML=`<div class="selection-summary"><span class="selection-kicker">Multi-selection</span><strong>${items.length} components</strong><span>${(box.r-box.l).toFixed(1)} × ${(box.b-box.t).toFixed(1)} mm, centred at ${((box.l+box.r)/2).toFixed(1)} · ${((box.t+box.b)/2).toFixed(1)}</span></div>
+   el.innerHTML=`<div class="selection-summary"><span class="selection-kicker">Multi-selection</span><strong>${items.length} components</strong><span>${(box.r-box.l).toFixed(1)} × ${(box.b-box.t).toFixed(1)} mm${items.every(i=>i.groupId)&&new Set(items.map(i=>i.groupId)).size===1?' · grouped':''}</span></div>
     <div class="section-card"><div class="section-label">Align &amp; distribute</div><div class="action-grid">
       <button id="i-align-x">Align X</button><button id="i-align-y">Align Y</button>
       <button id="i-distribute-h" ${items.length<3?'disabled':''}>Equal space H</button><button id="i-distribute-v" ${items.length<3?'disabled':''}>Equal space V</button>
@@ -371,6 +382,7 @@ function renderInspector(){const el=document.querySelector<HTMLDivElement>('#ins
       <button id="i-rotate">Rotate 90°</button><button id="i-rotate-back">Rotate −90°</button>
       <button id="i-mirror">Mirror</button><button id="i-flip">Flip</button>
       <button id="i-match">Match sizes</button><button id="i-same">Select same part</button>
+      <button id="i-repeat">Repeat…</button><button id="i-group">${items.every(i=>i.groupId)?'Regroup':'Group'}</button>
     </div></div>
     <button class="tool-button wide" id="duplicate">Duplicate selection</button>`;
    bindGroupButtons('i-');
@@ -378,6 +390,7 @@ function renderInspector(){const el=document.querySelector<HTMLDivElement>('#ins
    on('center-v',()=>center('y'));on('spread-h',()=>spreadAcrossPanel('x'));on('spread-v',()=>spreadAcrossPanel('y'));
    on('grid',arrangeDialog);on('rotate',()=>rotateSelection(90));on('rotate-back',()=>rotateSelection(-90));
    on('mirror',mirrorSelection);on('flip',flipSelection);on('match',matchSizes);on('same',selectSameKind);
+   on('repeat',repeatDialog);on('group',groupSelection);
    document.querySelector('#duplicate')!.addEventListener('click',duplicate);
    return;
  }
@@ -536,6 +549,54 @@ function selectSameKind(){
   notify(`${selection.size} matching components selected`);
 }
 
+function groupSelection(){
+  const items=selectedItems();
+  if(items.length<2){notify('Select two or more components to group');return;}
+  const groupId=uid();
+  mutate(()=>items.forEach(i=>i.groupId=groupId));
+  notify(`Grouped ${items.length} components`);
+}
+
+function ungroupSelection(){
+  const items=selectedItems().filter(i=>i.groupId);
+  if(!items.length){notify('Nothing in the selection is grouped');return;}
+  mutate(()=>items.forEach(i=>delete i.groupId));
+  notify('Ungrouped');
+}
+
+let repeatCount=4,repeatDx=19,repeatDy=0;
+function repeatDialog(){
+  const items=selectedItems();
+  if(!items.length){notify('Select something to repeat');return;}
+  const box=extent(items);
+  document.body.insertAdjacentHTML('beforeend',`<div class="modal-backdrop" id="modal"><div class="modal narrow" role="dialog" aria-modal="true" aria-label="Repeat selection">
+    <div class="modal-head"><h2>Repeat ${items.length} component${items.length===1?'':'s'}</h2><p>The original stays where it is. Copies follow at a fixed offset — a channel strip, a row of jacks, a bank of steps.</p></div>
+    <div class="section-card">
+      ${field('Copies in total','repeat-count',repeatCount,'number',1,'')}
+      <div class="two-col">${field('Offset across','repeat-dx',repeatDx,'number',.1,'mm')}${field('Offset down','repeat-dy',repeatDy,'number',.1,'mm')}</div>
+      <p class="section-hint">The selection is ${(box.r-box.l).toFixed(1)} mm wide and ${(box.b-box.t).toFixed(1)} mm tall.</p>
+      <label class="checkbox"><input type="checkbox" id="repeat-group" checked> Group each copy</label>
+    </div>
+    <div class="modal-actions"><button class="tool-button" id="cancel-modal">Cancel</button><button class="tool-button primary" id="apply-repeat">Repeat</button></div>
+  </div></div>`);
+  document.querySelector('#cancel-modal')!.addEventListener('click',closeModal);
+  document.querySelector('#apply-repeat')!.addEventListener('click',()=>{
+    const read=(id:string)=>Number(document.querySelector<HTMLInputElement>(`#field-${id}`)!.value);
+    repeatCount=Math.max(2,Math.min(64,Math.round(read('repeat-count'))));
+    repeatDx=read('repeat-dx');repeatDy=read('repeat-dy');
+    const asGroups=document.querySelector<HTMLInputElement>('#repeat-group')!.checked;
+    const copies=repeatItems(items,repeatCount,repeatDx,repeatDy,uid);
+    if(asGroups)for(let pass=0;pass<repeatCount-1;pass++){
+      const groupId=uid();
+      copies.slice(pass*items.length,(pass+1)*items.length).forEach(c=>c.groupId=groupId);
+    }else copies.forEach(c=>delete c.groupId);
+    selection=new Set(copies.map(c=>c.id));
+    mutate(()=>project.items.push(...copies));
+    closeModal();
+    notify(`${copies.length} cop${copies.length===1?'y':'ies'} placed`);
+  });
+}
+
 /* ---------- project library ---------- */
 
 function miniPanel(p:Project,px=86){
@@ -659,6 +720,9 @@ function commands():Command[]{
     {id:'select-all',group:'Edit',title:'Select everything',keys:`${mod}A`,run:()=>{selection=new Set(project.items.filter(i=>!i.hidden).map(i=>i.id));render();}},
     {id:'select-same',group:'Edit',title:'Select all of the same part',enabled:hasSelection,keywords:'similar matching kind',run:selectSameKind},
     {id:'lock',group:'Edit',title:'Lock or unlock selection',keys:'L',enabled:hasSelection,run:toggleLock},
+    {id:'group',group:'Edit',title:'Group selection',keys:`${mod}G`,enabled:()=>selection.size>1,keywords:'strip channel bind together',run:groupSelection},
+    {id:'ungroup',group:'Edit',title:'Ungroup selection',keys:`${shiftMod}G`,enabled:hasSelection,run:ungroupSelection},
+    {id:'repeat',group:'Arrange',title:'Repeat selection…',keys:'⇧R',enabled:hasSelection,keywords:'array duplicate channel strip row bank',run:repeatDialog},
 
     {id:'align-x',group:'Arrange',title:'Align horizontal centres',enabled:()=>selection.size>1,run:()=>align('x')},
     {id:'align-y',group:'Arrange',title:'Align vertical centres',enabled:()=>selection.size>1,run:()=>align('y')},
@@ -670,7 +734,7 @@ function commands():Command[]{
     {id:'centre',group:'Arrange',title:'Centre across the panel width',enabled:hasSelection,run:()=>center('x')},
     {id:'centre-v',group:'Arrange',title:'Centre down the panel height',enabled:hasSelection,run:()=>center('y')},
     {id:'rotate-cw',group:'Arrange',title:'Rotate 90° clockwise',keys:'R',enabled:hasSelection,run:()=>rotateSelection(90)},
-    {id:'rotate-ccw',group:'Arrange',title:'Rotate 90° anticlockwise',keys:'⇧R',enabled:hasSelection,run:()=>rotateSelection(-90)},
+    {id:'rotate-ccw',group:'Arrange',title:'Rotate 90° anticlockwise',keys:'⌥R',enabled:hasSelection,run:()=>rotateSelection(-90)},
     {id:'mirror',group:'Arrange',title:'Mirror across the panel centreline',keys:'M',enabled:hasSelection,keywords:'flip symmetry',run:mirrorSelection},
     {id:'flip',group:'Arrange',title:'Flip top to bottom',enabled:hasSelection,run:flipSelection},
     {id:'match-size',group:'Arrange',title:'Match sizes to the largest',enabled:()=>selection.size>1,run:matchSizes},
@@ -975,7 +1039,7 @@ window.addEventListener('pointerup',()=>{
   if(finished.mode==='pan'){canvasEl().classList.remove('panning');return;}
   if(finished.mode==='marquee'){
     const hits=finished.moved?marqueeHits(finished).map(i=>i.id):[];
-    selection=new Set([...finished.base,...hits]);
+    selection=expandGroups([...finished.base,...hits],project.items);
     render();
     return;
   }
@@ -1022,7 +1086,8 @@ window.addEventListener('keydown',e=>{
   else if(key==='/'){e.preventDefault();leftOpen=true;renderChrome();document.querySelector<HTMLInputElement>('#library-search')!.focus();}
   else if(['delete','backspace'].includes(key)){e.preventDefault();remove();}
   else if(e.key==='?'){helpDialog();}
-  else if(key==='r'&&selection.size){e.preventDefault();rotateSelection(e.shiftKey?-90:90);}
+  else if(meta&&key==='g'){e.preventDefault();e.shiftKey?ungroupSelection():groupSelection();}
+  else if(key==='r'&&selection.size){e.preventDefault();e.shiftKey?repeatDialog():rotateSelection(e.altKey?-90:90);}
   else if(key==='m'&&selection.size){e.preventDefault();mirrorSelection();}
   else if(key==='l'&&selection.size){e.preventDefault();toggleLock();}
   else if(key==='g'){e.preventDefault();showGrid=!showGrid;savePrefs();render();}
