@@ -5,6 +5,7 @@ import {clone,dimensionLocked,emptyProject,PANEL_H,panelWidth,parseProject,uid,t
 import {componentSvg,cutoutSvg,esc,mountingSvg,panelFinishDefs,panelFinishSurface,templateSvg} from './svg';
 import {applyPlacements,expandGroups,extent,flipVertical,gridPlacements,matchSize,mirrorPlacements,repeatItems,rotateGroup,rotatePlacements,spreadBetween} from './arrange';
 import {panelDxf} from './dxf';
+import {History} from './history';
 import {openPalette,type Command} from './palette';
 import {issueCounts,preflight,type Issue} from './preflight';
 import {printSheet,svgToPng} from './raster';
@@ -16,7 +17,8 @@ const PX=4, grids=[.5,1,2.54,5.08];
 const MIN_ZOOM=.3, MAX_ZOOM=6;
 const prefs:Prefs=readPrefs();
 let projectId=bootId();
-let project=load(projectId), selection=new Set<string>(), history:Project[]=[clone(project)], historyIndex=0;
+let project=load(projectId), selection=new Set<string>();
+const history=new History(project);
 let gridIndex=grids.indexOf(prefs.grid)<0?1:grids.indexOf(prefs.grid);
 let snap=prefs.snap,smartGuides=prefs.smartGuides,showSafe=prefs.showSafe,showGrid=prefs.showGrid,theme:Theme=prefs.theme;
 let zoom=fitZoom(),view:'design'|'cutout'|'rear'='design',libraryQuery='',activeCategory='All',inspectorTab:'context'|'panel'|'layers'='context',leftOpen=true,rightOpen=true;
@@ -88,7 +90,7 @@ function fitZoom(){
   return Math.max(MIN_ZOOM,Math.min(2.4,Math.min(height/(PANEL_H*PX),width/(w*PX))));
 }
 function leftOpenAtBoot(){return window.innerWidth>1180;}
-function mutate(fn:()=>void){fn();history=history.slice(0,historyIndex+1);history.push(clone(project));if(history.length>100)history.shift();historyIndex=history.length-1;persist();render();}
+function mutate(fn:()=>void){fn();history.push(project);persist();render();}
 function notify(s:string){const e=document.querySelector('#toast')!;window.clearTimeout(toastTimer);e.textContent=s;e.classList.add('show');toastTimer=window.setTimeout(()=>e.classList.remove('show'),2200);}
 function sv(v:number){return snap?Math.round(v/grids[gridIndex])*grids[gridIndex]:Math.round(v*10)/10;}
 function magneticGrid(v:number){const free=Math.round(v*100)/100;if(!snap)return free;const step=grids[gridIndex],nearest=Math.round(v/step)*step,tolerance=Math.max(.05,Math.min(.18,.9/(PX*zoom)));return Math.abs(nearest-v)<=tolerance?nearest:free;}
@@ -100,7 +102,7 @@ function render(){
   issues=preflight(project,catalogMap);
   renderLibrary();renderCanvas();renderInspector();renderChrome();
 }
-function renderChrome(){(document.querySelector('#project-name') as HTMLInputElement).value=project.name;const w=panelWidth(project.panel),items=selectedItems();document.querySelector('#dimensions')!.textContent=`${project.panel.hp} HP · ${w.toFixed(2)} × ${PANEL_H} mm`;document.querySelector('#selection-status')!.textContent=items.length===1?`${catalogMap.get(items[0].componentId)!.name} · X ${items[0].x.toFixed(1)} Y ${items[0].y.toFixed(1)}`:items.length>1?`${items.length} selected`:`${project.items.length} components`;document.querySelector('#zoom-status')!.textContent=`${Math.round(zoom*100)}%`;document.querySelector('#snap-status')!.textContent=`${smartGuides?'Guides':'No guides'} · ${snap?`${grids[gridIndex]} mm grid`:'free'}`;const counts=issueCounts(issues),wc=document.querySelector('#warning-count')!;wc.textContent=counts.errors?`✕ ${counts.errors} error${counts.errors===1?'':'s'}${counts.warnings?` · ${counts.warnings} warning${counts.warnings===1?'':'s'}`:''}`:counts.warnings?`▲ ${counts.warnings} warning${counts.warnings===1?'':'s'}`:'✓ Layout checks pass';wc.classList.toggle('warn',counts.warnings>0&&counts.errors===0);wc.classList.toggle('bad',counts.errors>0);(document.querySelector('#undo') as HTMLButtonElement).disabled=historyIndex===0;(document.querySelector('#redo') as HTMLButtonElement).disabled=historyIndex===history.length-1;(document.querySelector('#delete') as HTMLButtonElement).disabled=selection.size===0;(document.querySelector('#align-x') as HTMLButtonElement).disabled=selection.size<2;(document.querySelector('#align-y') as HTMLButtonElement).disabled=selection.size<2;(document.querySelector('#distribute-h') as HTMLButtonElement).disabled=selection.size<3;(document.querySelector('#distribute-v') as HTMLButtonElement).disabled=selection.size<3;(document.querySelector('#center-panel') as HTMLButtonElement).disabled=selection.size===0;document.querySelector('#grid-cycle')!.textContent=`${grids[gridIndex]} mm`;document.querySelector('#snap-toggle')!.classList.toggle('on',snap);(document.querySelector('#zoom-selection') as HTMLButtonElement).disabled=selection.size===0;document.querySelector('#theme-toggle')!.setAttribute('data-tooltip',`Theme: ${theme}`);document.querySelector('#smart-guides')!.classList.toggle('on',smartGuides);document.querySelector('#grid-toggle')!.classList.toggle('on',showGrid);document.querySelector('#toggle-safe')!.classList.toggle('on',showSafe);document.querySelectorAll('[data-view]').forEach(e=>{const on=(e as HTMLElement).dataset.view===view;e.classList.toggle('on',on);e.setAttribute('aria-pressed',String(on));});document.querySelectorAll('[data-inspector-tab]').forEach(e=>{const on=(e as HTMLElement).dataset.inspectorTab===inspectorTab;e.classList.toggle('on',on);e.setAttribute('aria-selected',String(on));});document.querySelector('.layout')!.classList.toggle('left-closed',!leftOpen);document.querySelector('.layout')!.classList.toggle('right-closed',!rightOpen);document.querySelector('#layers-count')!.textContent=String(project.items.length);const context={design:['Hardware view','Front-panel controls and artwork'],cutout:['Machining view','Cutouts and drilling geometry'],rear:['Rear clearance','Bodies, depth and keepout zones']}[view];document.querySelector('#mode-context')!.innerHTML=`<span>${context[0]}</span><small>${context[1]}</small>`;renderSelectionBar();}
+function renderChrome(){(document.querySelector('#project-name') as HTMLInputElement).value=project.name;const w=panelWidth(project.panel),items=selectedItems();document.querySelector('#dimensions')!.textContent=`${project.panel.hp} HP · ${w.toFixed(2)} × ${PANEL_H} mm`;document.querySelector('#selection-status')!.textContent=items.length===1?`${catalogMap.get(items[0].componentId)!.name} · X ${items[0].x.toFixed(1)} Y ${items[0].y.toFixed(1)}`:items.length>1?`${items.length} selected`:`${project.items.length} components`;document.querySelector('#zoom-status')!.textContent=`${Math.round(zoom*100)}%`;document.querySelector('#snap-status')!.textContent=`${smartGuides?'Guides':'No guides'} · ${snap?`${grids[gridIndex]} mm grid`:'free'}`;const counts=issueCounts(issues),wc=document.querySelector('#warning-count')!;wc.textContent=counts.errors?`✕ ${counts.errors} error${counts.errors===1?'':'s'}${counts.warnings?` · ${counts.warnings} warning${counts.warnings===1?'':'s'}`:''}`:counts.warnings?`▲ ${counts.warnings} warning${counts.warnings===1?'':'s'}`:'✓ Layout checks pass';wc.classList.toggle('warn',counts.warnings>0&&counts.errors===0);wc.classList.toggle('bad',counts.errors>0);(document.querySelector('#undo') as HTMLButtonElement).disabled=!history.canUndo;(document.querySelector('#redo') as HTMLButtonElement).disabled=!history.canRedo;(document.querySelector('#delete') as HTMLButtonElement).disabled=selection.size===0;(document.querySelector('#align-x') as HTMLButtonElement).disabled=selection.size<2;(document.querySelector('#align-y') as HTMLButtonElement).disabled=selection.size<2;(document.querySelector('#distribute-h') as HTMLButtonElement).disabled=selection.size<3;(document.querySelector('#distribute-v') as HTMLButtonElement).disabled=selection.size<3;(document.querySelector('#center-panel') as HTMLButtonElement).disabled=selection.size===0;document.querySelector('#grid-cycle')!.textContent=`${grids[gridIndex]} mm`;document.querySelector('#snap-toggle')!.classList.toggle('on',snap);(document.querySelector('#zoom-selection') as HTMLButtonElement).disabled=selection.size===0;document.querySelector('#theme-toggle')!.setAttribute('data-tooltip',`Theme: ${theme}`);document.querySelector('#smart-guides')!.classList.toggle('on',smartGuides);document.querySelector('#grid-toggle')!.classList.toggle('on',showGrid);document.querySelector('#toggle-safe')!.classList.toggle('on',showSafe);document.querySelectorAll('[data-view]').forEach(e=>{const on=(e as HTMLElement).dataset.view===view;e.classList.toggle('on',on);e.setAttribute('aria-pressed',String(on));});document.querySelectorAll('[data-inspector-tab]').forEach(e=>{const on=(e as HTMLElement).dataset.inspectorTab===inspectorTab;e.classList.toggle('on',on);e.setAttribute('aria-selected',String(on));});document.querySelector('.layout')!.classList.toggle('left-closed',!leftOpen);document.querySelector('.layout')!.classList.toggle('right-closed',!rightOpen);document.querySelector('#layers-count')!.textContent=String(project.items.length);const context={design:['Hardware view','Front-panel controls and artwork'],cutout:['Machining view','Cutouts and drilling geometry'],rear:['Rear clearance','Bodies, depth and keepout zones']}[view];document.querySelector('#mode-context')!.innerHTML=`<span>${context[0]}</span><small>${context[1]}</small>`;renderSelectionBar();}
 
 function renderLibrary(){const tabs=document.querySelector('#category-tabs')!;tabs.innerHTML=['All',...categories].map(c=>`<button class="category-pill ${c===activeCategory?'on':''}" data-category="${c}">${c==='All'?'All parts':c}</button>`).join('');tabs.querySelectorAll<HTMLElement>('[data-category]').forEach(b=>b.onclick=()=>{activeCategory=b.dataset.category!;renderLibrary();});const q=libraryQuery.trim().toLowerCase();const defs=catalog.filter(d=>!d.libraryHidden&&(activeCategory==='All'||d.category===activeCategory)&&(!q||[d.name,d.description,...d.tags,d.manufacturer||''].some(x=>x.toLowerCase().includes(q))));document.querySelector('#library-count')!.textContent=`${defs.length} part${defs.length===1?'':'s'}`;const groups=activeCategory==='All'?[...categories]:[activeCategory];document.querySelector('#library')!.innerHTML=groups.map(cat=>{const ds=defs.filter(d=>d.category===cat);return ds.length?`<section class="library-section"><div class="section-label">${cat}<span>${ds.length}</span></div><div class="component-list">${ds.map(d=>`<button class="component-row" data-component="${d.id}" draggable="true" aria-label="Add ${d.name}"><span class="part-thumbnail">${partThumbnail(d.renderer,d.color,d.orientation,d.id)}</span><span class="part-copy"><strong>${d.name}</strong><small><b>${d.width} × ${d.height}</b>${d.cutout?` · ${cutoutText(d)}`:''}${d.status==='verified'?' · Verified':''}</small></span><span class="add-part" aria-hidden="true">Add</span></button>`).join('')}</div></section>`:''}).join('')||`<div class="empty-library"><strong>No matching parts</strong><span>Try another name, family or manufacturer.</span></div>`;document.querySelectorAll<HTMLElement>('[data-component]').forEach(b=>{b.onclick=()=>add(b.dataset.component!);b.ondragstart=e=>e.dataTransfer?.setData('component',b.dataset.component!);});}
 function partIcon(r:string){return({knob:'◉',jack:'○',slider:'↕',button:'●',toggle:'╱',led:'✦',display:'▣',connector:'⌑',hole:'⊗',text:'T',shape:'◇',touch:'◫',image:'▧',scale:'◠',arrow:'→'} as Record<string,string>)[r]||'·';}
@@ -737,7 +739,7 @@ function openProject(id:string){
   projectId=id;
   project=load(id);
   setActiveId(id);
-  history=[clone(project)];historyIndex=0;
+  history.reset(project);
   selection.clear();
   zoom=fitZoom();
   render();
@@ -766,8 +768,8 @@ function commands():Command[]{
     {id:'export-bom',group:'Export',title:'Export bill of materials',keywords:'csv parts order',run:()=>void doExport('bom')},
     {id:'print',group:'Export',title:'Print a 1:1 drilling template',keys:`${mod}P`,keywords:'paper actual size template',run:()=>void doExport('print')},
 
-    {id:'undo',group:'Edit',title:'Undo',keys:`${mod}Z`,enabled:()=>historyIndex>0,run:undo},
-    {id:'redo',group:'Edit',title:'Redo',keys:`${shiftMod}Z`,enabled:()=>historyIndex<history.length-1,run:redo},
+    {id:'undo',group:'Edit',title:'Undo',keys:`${mod}Z`,enabled:()=>history.canUndo,run:undo},
+    {id:'redo',group:'Edit',title:'Redo',keys:`${shiftMod}Z`,enabled:()=>history.canRedo,run:redo},
     {id:'copy',group:'Edit',title:'Copy selection',keys:`${mod}C`,enabled:hasSelection,run:copySelection},
     {id:'cut',group:'Edit',title:'Cut selection',keys:`${mod}X`,enabled:hasSelection,run:cutSelection},
     {id:'paste',group:'Edit',title:'Paste',keys:`${mod}V`,run:()=>void pasteClipboard()},
@@ -829,8 +831,8 @@ function setTheme(next:Theme){
   notify(`Theme: ${theme}`);
 }
 
-function undo(){if(historyIndex===0)return;project=clone(history[--historyIndex]);keepSelection();persist();render();}
-function redo(){if(historyIndex===history.length-1)return;project=clone(history[++historyIndex]);keepSelection();persist();render();}
+function undo(){const previous=history.undo();if(!previous)return;project=previous;keepSelection();persist();render();}
+function redo(){const next=history.redo();if(!next)return;project=next;keepSelection();persist();render();}
 /** After a history jump, keep the parts that still exist selected. */
 function keepSelection(){const live=new Set(project.items.map(i=>i.id));selection=new Set([...selection].filter(id=>live.has(id)));}
 

@@ -91,9 +91,16 @@ Preflight catches layout mistakes. It cannot catch a wrong dimension.
 ## Development
 
 ```bash
+npm run verify        # typecheck, unit tests, build, browser tests
+```
+
+Or individually:
+
+```bash
 npm run typecheck
-npm test
+npm test              # unit tests for the pure modules
 npm run build
+npm run test:e2e      # the built app in a real browser (needs: npx playwright install chromium)
 ```
 
 The production build is written to `dist/`. The repository uses a Vite multi-page build:
@@ -115,6 +122,7 @@ The production build is written to `dist/`. The repository uses a Vite multi-pag
 | `src/arrange.ts` | Align, distribute, mirror, rotate and grid placement |
 | `src/store.ts` | Browser-local project library, recovery snapshots, preferences |
 | `src/palette.ts` | Command palette |
+| `src/history.ts` | Undo history, budgeted by bytes rather than step count |
 | `src/main.ts` | The editor |
 | `src/landing.ts`, `src/demo.ts` | The public page and the panel it shows |
 

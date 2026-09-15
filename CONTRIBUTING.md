@@ -19,10 +19,12 @@ Thanks for helping improve Five08.
 6. Run the complete verification set:
 
 ```bash
-npm run typecheck
-npm test
-npm run build
+npm run verify
 ```
+
+That runs the typecheck, the unit tests, the build and the browser tests. The browser tests need a one-off `npx playwright install chromium`.
+
+The unit tests cover the pure modules. The editor itself is one module with top-level side effects and cannot be imported, so it is covered by `e2e/` running the built app in a real browser — that is where a control wired to the wrong id, a broken keyboard path or an export that produces no file gets caught. Every end-to-end test fails on a console error, so a swallowed exception cannot pass.
 
 ## Adding or correcting a part
 

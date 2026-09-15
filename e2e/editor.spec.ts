@@ -1,0 +1,151 @@
+import {expect,test,type Page} from '@playwright/test';
+
+/** Fails the test on any console error, so a silent exception cannot pass. */
+const watchConsole=(page:Page)=>{
+  const errors:string[]=[];
+  page.on('pageerror',e=>errors.push(`pageerror: ${e.message}`));
+  page.on('console',m=>{if(m.type()==='error')errors.push(m.text());});
+  return errors;
+};
+
+const openTemplate=async(page:Page,template:string)=>{
+  await page.goto('/app/');
+  await page.click('#new-project');
+  await page.click(`[data-template="${template}"]`);
+  await expect(page.locator('.panel-item').first()).toBeVisible();
+};
+
+test.describe('editor',()=>{
+  test('loads, saves and reopens a panel',async({page})=>{
+    const errors=watchConsole(page);
+    await openTemplate(page,'voice');
+    await expect(page.locator('#project-name')).toHaveValue('Synth voice');
+    await page.reload();
+    await expect(page.locator('#project-name')).toHaveValue('Synth voice');
+    await expect(page.locator('.panel-item')).toHaveCount(7);
+    expect(errors).toEqual([]);
+  });
+
+  test('every toolbar control is actually wired up',async({page})=>{
+    // The class of bug this exists for: markup using one id and the binder
+    // querying another, leaving a button that looks fine and does nothing.
+    const errors=watchConsole(page);
+    await openTemplate(page,'voice');
+    await page.keyboard.press('Control+a');
+
+    const before=await page.locator('.panel-item').first().getAttribute('transform');
+    await page.click('#center-panel');
+    expect(await page.locator('.panel-item').first().getAttribute('transform')).not.toBe(before);
+
+    for(const id of ['#align-x','#align-y','#distribute-h','#distribute-v','#tool-grid','#tool-mirror','#tool-rotate']){
+      const control=page.locator(id);
+      await expect(control,`${id} is missing from the toolbar`).toHaveCount(1);
+      await expect(control,`${id} should be enabled with a selection`).toBeEnabled();
+    }
+    await page.click('#tool-mirror');
+    await page.click('#tool-rotate');
+    await page.click('#zoom-fit');
+    await page.click('#zoom-100');
+    await page.click('#grid-toggle');
+    await page.click('#snap-toggle');
+    expect(errors).toEqual([]);
+  });
+
+  test('undo and redo walk the whole edit',async({page})=>{
+    const errors=watchConsole(page);
+    await openTemplate(page,'voice');
+    await page.keyboard.press('Control+a');
+    await page.keyboard.press('Delete');
+    await expect(page.locator('.panel-item')).toHaveCount(0);
+    await page.keyboard.press('Control+z');
+    await expect(page.locator('.panel-item')).toHaveCount(7);
+    await page.keyboard.press('Control+Shift+z');
+    await expect(page.locator('.panel-item')).toHaveCount(0);
+    expect(errors).toEqual([]);
+  });
+
+  test('groups move and repeat as one',async({page})=>{
+    const errors=watchConsole(page);
+    await openTemplate(page,'voice');
+    await page.keyboard.press('Control+a');
+    await page.keyboard.press('Control+g');
+    await page.keyboard.press('Escape');
+    await page.locator('.panel-item').first().click({force:true});
+    await expect(page.locator('#selection-status')).toContainText('7 selected');
+    expect(errors).toEqual([]);
+  });
+
+  test('the canvas can be reached and driven from the keyboard',async({page})=>{
+    const errors=watchConsole(page);
+    await openTemplate(page,'voice');
+    await page.keyboard.press('Escape');
+
+    await page.locator('#skip-canvas').focus();
+    await page.keyboard.press('Enter');
+    const focused=()=>page.evaluate(()=>document.activeElement?.getAttribute('aria-label')??'');
+    expect(await focused()).toMatch(/millimetres/);
+
+    await page.keyboard.press('Tab');
+    const second=await focused();
+    await page.keyboard.press('Shift+Tab');
+    expect(await focused()).not.toBe(second);
+
+    // Escape must hand focus back, or Tab can never leave the canvas
+    await page.keyboard.press('Escape');
+    expect(await page.evaluate(()=>document.activeElement?.id)).toBe('canvas');
+
+    await expect(page.locator('#panel-svg')).toHaveAttribute('role','listbox');
+    expect(errors).toEqual([]);
+  });
+
+  test('every export produces a file',async({page})=>{
+    const errors=watchConsole(page);
+    await openTemplate(page,'mixer');
+    for(const kind of ['art','cut','dxf','vcv','bom','json','png']){
+      const download=page.waitForEvent('download');
+      await page.click('#export');
+      await page.click(`[data-export="${kind}"]`);
+      expect((await download).suggestedFilename(),`${kind} produced no file`).toBeTruthy();
+    }
+    expect(errors).toEqual([]);
+  });
+
+  test('preflight finds a broken layout and selects the culprit',async({page})=>{
+    const errors=watchConsole(page);
+    await openTemplate(page,'sequencer');
+    await page.click('[data-inspector-tab="panel"]');
+    await page.fill('#field-hp','4');
+    await page.dispatchEvent('#field-hp','change');
+    await expect(page.locator('#warning-count')).toContainText('error');
+    await page.locator('.preflight .issue').first().click();
+    await expect(page.locator('#selection-status')).not.toContainText('components');
+    expect(errors).toEqual([]);
+  });
+
+  test('the command palette runs its commands',async({page})=>{
+    const errors=watchConsole(page);
+    await openTemplate(page,'voice');
+    await page.keyboard.press('Control+a');
+    await page.keyboard.press('Control+k');
+    await page.locator('#palette-input').fill('mirror');
+    await page.keyboard.press('Enter');
+    await expect(page.locator('#palette')).toHaveCount(0);
+    await expect(page.locator('#toast')).toContainText('Mirrored');
+    expect(errors).toEqual([]);
+  });
+});
+
+test.describe('public page',()=>{
+  test('renders the demo panel and hands it to the editor',async({page})=>{
+    const errors=watchConsole(page);
+    await page.goto('/');
+    await expect(page.locator('.panel-render')).toBeVisible();
+    await expect(page.locator('figcaption')).toContainText('Preflight: clear');
+    await page.click('[data-view="cutout"]');
+    await expect(page.locator('#demo-panel .cut, #demo-panel circle')).not.toHaveCount(0);
+    await page.click('#open-demo');
+    await expect(page).toHaveURL(/\/app\//);
+    await expect(page.locator('#project-name')).toHaveValue(/Wavefolder/);
+    expect(errors).toEqual([]);
+  });
+});
