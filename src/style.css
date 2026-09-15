@@ -471,7 +471,7 @@ button:focus-visible,input:focus-visible,select:focus-visible { outline-color:va
 .canvas, .precision-bar, .canvas-toolbar, .selection-bar, .ruler, .ruler-corner { user-select:none; -webkit-user-select:none; }
 
 /* Keep the toast clear of the precision bar it used to sit on top of. */
-.toast { top:auto; bottom:74px; transform:translate(-50%,8px); }
+.toast { top:auto; bottom:98px; transform:translate(-50%,8px); }
 .toast.show { transform:translate(-50%,0); }
 .palette-backdrop { background:#0b0c0a66; }
 :root[data-theme="dark"] .modal-backdrop { background:#05060599; }
