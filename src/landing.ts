@@ -3,7 +3,7 @@ import {catalog,catalogMap} from './catalog';
 import {panelFinishes} from './finishes';
 import {demoPanel} from './demo';
 import {HP_MM,PANEL_H,panelWidth} from './model';
-import {preflight} from './preflight';
+import {issueCounts,preflight} from './preflight';
 import {componentSvg,mountingSvg,panelFinishDefs,panelFinishSurface,shapePath} from './svg';
 import {mountingShapes} from './geometry';
 import {newProjectId,saveProject,setActiveId} from './store';
@@ -19,11 +19,22 @@ const mounting=()=>view==='rear'?''
   :view==='cutout'?`<g class="cut">${mountingShapes(project.panel).map(shapePath).join('')}</g>`
   :mountingSvg(project);
 
+/* The two LEDs read the FOLD knob, so turning it lights the panel up. A module
+   behaves; a picture of a module does not. */
+const FOLD='FOLD', LIT='#ff5d3b', DARK='#5c4038';
+function syncIndicators(){
+  const fold=project.items.find(i=>i.label===FOLD&&catalogMap.get(i.componentId)?.renderer==='knob');
+  if(!fold)return;
+  const leds=project.items.filter(i=>catalogMap.get(i.componentId)?.renderer==='led');
+  leds.forEach((led,n)=>{led.color=fold.value>(n+1)/(leds.length+1)?LIT:DARK;});
+}
+
 function panelSvg(){
   const w=panelWidth(project.panel);
+  syncIndicators();
   const parts=project.items.map(i=>componentSvg(i,catalogMap.get(i.componentId)!,project,false,view)).join('');
   return`<svg class="panel-render" viewBox="0 0 ${w} ${PANEL_H}" role="img" aria-label="A 12 HP Eurorack panel drawn in Five08, shown in ${view==='design'?'hardware':view==='cutout'?'cutout':'rear clearance'} view">
-    <defs>${panelFinishDefs(project)}<filter id="glow"><feGaussianBlur stdDeviation="1" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+    <defs>${panelFinishDefs(project)}<filter id="glow" x="-75%" y="-75%" width="250%" height="250%"><feGaussianBlur stdDeviation="1" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
     <style>.cut{fill:none;stroke:#ef523c;stroke-width:.45}</style></defs>
     ${panelFinishSurface(project,w)}${mounting()}${parts}
   </svg>`;
@@ -86,7 +97,6 @@ const CHECKS=[
   ['Off-HP width','A custom width that is not a whole number of HP.'],
 ];
 
-const issues=preflight(project,catalogMap);
 
 /* ---------- page ---------- */
 
@@ -123,6 +133,16 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML=`
         <a class="button" href="/app/">Open the designer</a>
         <a class="quiet-link" href="#about">What it does and does not do</a>
       </div>
+      <div class="width-control">
+        <span class="legend">Panel width</span>
+        <div class="stepper">
+          <button id="hp-down" aria-label="Narrower">−</button>
+          <output id="hp-value" class="mono">12 HP</output>
+          <button id="hp-up" aria-label="Wider">+</button>
+        </div>
+        <span class="width-mm mono" id="hp-mm">60.56 mm</span>
+        <p class="width-note">Squeeze it and watch preflight start objecting.</p>
+      </div>
       <dl class="glance">
         <div><dt>Panel height</dt><dd>128.5 mm</dd></div>
         <div><dt>Widths</dt><dd>2–84 HP</dd></div>
@@ -136,6 +156,7 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML=`
         <div class="demo-scale" aria-hidden="true">${Array.from({length:13},(_,n)=>`<span class="${n%5===0?'major':''}" style="top:${(n*10/PANEL_H*100).toFixed(2)}%"><i></i>${n%5===0?`${n*10}`:''}</span>`).join('')}<span class="major end" style="top:100%"><i></i>${PANEL_H}</span></div>
         <div class="demo-panel" id="demo-panel">${panelSvg()}</div>
       </div>
+      <div class="demo-readout"><span id="demo-readout" class="mono"></span><span class="demo-hint">Turn a knob · flip the switch</span></div>
       <div class="demo-controls">
         <div class="switcher" id="views" role="group" aria-label="View">
           <button data-view="design" class="on">Hardware</button>
@@ -147,8 +168,7 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML=`
         </div>
       </div>
       <figcaption>
-        A 12 HP panel, ${panelWidth(project.panel).toFixed(2)} × ${PANEL_H} mm, drawn in Five08 and rendered here by the same code the editor uses.
-        Preflight: ${issues.length?`${issues.length} open issue${issues.length===1?'':'s'}`:'clear'}.
+        <span id="demo-caption">A 12 HP panel, ${panelWidth(project.panel).toFixed(2)} × ${PANEL_H} mm, drawn in Five08 and rendered here by the same code the editor uses. Preflight: clear.</span>
         <button class="quiet-link" id="open-demo">Open this panel in the designer</button>
       </figcaption>
     </figure>
@@ -227,6 +247,105 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML=`
 
 const panelHost=document.querySelector<HTMLDivElement>('#demo-panel')!;
 const redraw=()=>{panelHost.innerHTML=panelSvg();};
+
+/* ---------- panel width ----------
+   "Set the width in HP" is the first thing the page claims the tool does, so
+   let people do it. Parts move with the panel, and the caption reports what
+   preflight makes of the result — squeeze it far enough and the jacks end up
+   too close together to get a spanner on the nuts, live. */
+
+const MIN_HP=6, MAX_HP=20;
+const caption=document.querySelector<HTMLElement>('#demo-caption')!;
+const hpValue=document.querySelector<HTMLOutputElement>('#hp-value')!;
+const hpMm=document.querySelector<HTMLElement>('#hp-mm')!;
+const home=demoPanel();
+const homeWidth=panelWidth(home.panel);
+
+function setHp(hp:number){
+  const next=Math.max(MIN_HP,Math.min(MAX_HP,hp));
+  project.panel.hp=next;
+  project.panel.customWidth=next*HP_MM-.4;
+  const width=panelWidth(project.panel);
+  // Scale from the layout's own proportions every time, never from wherever it
+  // happens to be now — otherwise the mapping compounds and returning to 12 HP
+  // does not return to the layout you started with.
+  project.items.forEach((item,n)=>{item.x=Math.round(home.items[n].x/homeWidth*width*10)/10;});
+  redraw();
+  describe();
+}
+
+function describe(){
+  const w=panelWidth(project.panel);
+  const found=preflight(project,catalogMap);
+  const counts=issueCounts(found);
+  hpValue.value=`${project.panel.hp} HP`;
+  hpMm.textContent=`${w.toFixed(2)} mm`;
+  const verdict=counts.errors?`${counts.errors} error${counts.errors===1?'':'s'}`
+    :counts.warnings?`${counts.warnings} warning${counts.warnings===1?'':'s'} — ${found.find(i=>i.severity==='warning')!.message.toLowerCase()}`
+    :'clear';
+  caption.innerHTML=`A ${project.panel.hp} HP panel, ${w.toFixed(2)} × ${PANEL_H} mm, drawn in Five08 and rendered here by the same code the editor uses. Preflight: <b class="${counts.errors?'bad':counts.warnings?'warn':'good'}">${verdict}</b>.`;
+}
+
+describe();
+document.querySelector('#hp-down')!.addEventListener('click',()=>setHp(project.panel.hp-1));
+document.querySelector('#hp-up')!.addEventListener('click',()=>setHp(project.panel.hp+1));
+
+/* ---------- the panel is usable, not a picture of one ---------- */
+
+const turnable=(i:{componentId:string})=>catalogMap.get(i.componentId)?.renderer==='knob';
+const readout=document.querySelector<HTMLElement>('#demo-readout')!;
+let dragging:{id:string;startY:number;startValue:number}|null=null;
+
+const panelPoint=(e:PointerEvent)=>{
+  const svg=panelHost.querySelector<SVGSVGElement>('svg');
+  if(!svg)return null;
+  const point=svg.createSVGPoint();
+  point.x=e.clientX;point.y=e.clientY;
+  const ctm=svg.getScreenCTM();
+  return ctm?point.matrixTransform(ctm.inverse()):null;
+};
+
+panelHost.addEventListener('pointerdown',e=>{
+  const group=(e.target as Element).closest<SVGGElement>('.panel-item');
+  const item=project.items.find(i=>i.id===group?.dataset.id);
+  if(!item||view!=='design')return;
+  e.preventDefault();
+  if(turnable(item)){
+    dragging={id:item.id,startY:e.clientY,startValue:item.value};
+    panelHost.classList.add('turning');
+    return;
+  }
+  // Anything else on the panel is a switch: give it somewhere to go.
+  if(catalogMap.get(item.componentId)?.renderer==='toggle'){
+    item.rotation=item.rotation?0:180;
+    redraw();
+  }
+});
+
+window.addEventListener('pointermove',e=>{
+  if(dragging){
+    const item=project.items.find(i=>i.id===dragging!.id);
+    if(!item)return;
+    // 120 px of travel covers the pot's full sweep, which feels about right
+    // under a finger without being twitchy.
+    item.value=Math.max(0,Math.min(1,dragging.startValue+(dragging.startY-e.clientY)/120));
+    redraw();
+    readout.textContent=`${item.label||'VALUE'} ${Math.round(item.value*100)}%`;
+    return;
+  }
+  const at=panelPoint(e);
+  if(!at)return;
+  const w=panelWidth(project.panel);
+  const inside=at.x>=0&&at.x<=w&&at.y>=0&&at.y<=PANEL_H;
+  readout.textContent=inside?`X ${at.x.toFixed(1)}  Y ${at.y.toFixed(1)} mm`:'';
+  readout.classList.toggle('live',inside);
+});
+
+window.addEventListener('pointerup',()=>{
+  if(!dragging)return;
+  dragging=null;
+  panelHost.classList.remove('turning');
+});
 
 document.querySelectorAll<HTMLButtonElement>('[data-view]').forEach(b=>b.onclick=()=>{
   view=b.dataset.view as typeof view;

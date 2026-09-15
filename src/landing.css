@@ -127,10 +127,39 @@ h1 { font-size: clamp(34px,4.4vw,56px); max-width: 14ch; line-height: 1.0; lette
 .demo-scale i { position: absolute; right: 0; top: 50%; width: 4px; height: 1px; background: var(--rule-strong); }
 .demo-scale span.major i { width: 7px; background: var(--ink-2); }
 .demo-panel {
-  flex: 1; display: flex; justify-content: center; padding: 14px 11px;
-  background: linear-gradient(var(--paper-2), var(--paper-3));
+  flex: 1; position: relative; display: flex; justify-content: center; padding: 18px 11px;
+  /* Light falling across the panel from above left, the way it would in a rack. */
+  background:
+    radial-gradient(120% 90% at 30% 0%, color-mix(in srgb, var(--paper) 92%, white) 0%, transparent 60%),
+    linear-gradient(var(--paper-2), var(--paper-3));
+  cursor: crosshair;
 }
-.panel-render { width: auto; height: var(--panel-h); overflow: visible; filter: drop-shadow(0 10px 22px rgb(0 0 0 / .17)); }
+.demo-panel.turning { cursor: grabbing; }
+.demo-panel .panel-item { cursor: grab; }
+.demo-panel.turning .panel-item { cursor: grabbing; }
+.panel-render .panel-item { transition: opacity .12s ease; }
+.demo-panel:hover .panel-item:hover { opacity: .88; }
+
+.demo-readout {
+  display: flex; align-items: baseline; gap: 14px; justify-content: space-between;
+  margin-top: 10px; padding-left: 36px; min-height: 17px;
+}
+#demo-readout {
+  font-size: 11px; letter-spacing: .04em; color: var(--faint);
+  font-variant-numeric: tabular-nums;
+  transition: color .15s ease;
+}
+#demo-readout.live { color: var(--signal); }
+.demo-hint {
+  font-family: var(--mono); font-size: 10px; letter-spacing: .06em;
+  text-transform: uppercase; color: var(--faint);
+  opacity: .8;
+}
+.panel-render {
+  width: auto; height: var(--panel-h); overflow: visible;
+  filter: drop-shadow(0 1px 0 rgb(255 255 255 / .5)) drop-shadow(0 14px 28px rgb(0 0 0 / .22));
+  touch-action: none;
+}
 .demo-controls { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 11px; padding-left: 36px; }
 .switcher { display: inline-flex; border: 1px solid var(--rule); }
 .switcher button {
@@ -145,7 +174,7 @@ h1 { font-size: clamp(34px,4.4vw,56px); max-width: 14ch; line-height: 1.0; lette
 .swatches button { width: 27px; height: 27px; padding: 2px; cursor: pointer; background: var(--paper-2); border: 1px solid var(--rule); }
 .swatches button.on { border-color: var(--signal); box-shadow: inset 0 0 0 1px var(--signal); }
 .swatches span { display: block; width: 100%; height: 100%; }
-.demo figcaption { margin-top: 12px; padding-left: 36px; max-width: 50ch; font-size: 12.5px; line-height: 1.65; color: var(--muted); }
+.demo figcaption { margin-top: 10px; padding-left: 36px; max-width: 50ch; font-size: 12.5px; line-height: 1.65; color: var(--muted); }
 
 /* ---- split lists ---- */
 .split { display: grid; grid-template-columns: repeat(auto-fit,minmax(310px,1fr)); gap: 40px; }
@@ -225,3 +254,54 @@ h1 { font-size: clamp(34px,4.4vw,56px); max-width: 14ch; line-height: 1.0; lette
   .spec tbody tr { display: block; padding: 12px 0; border-bottom: 1px solid var(--rule); }
   .spec .figure { white-space: normal; }
 }
+
+
+/* ---- tactility ----
+   Nothing here should be noticed. Together it is the difference between a page
+   that reacts and one that snaps. */
+.button, .ghost, .quiet-link, .switcher button, .swatches button,
+.masthead nav a, .colophon nav a, .spec tbody tr th, .spec tbody tr .figure {
+  transition: color .14s ease, background-color .14s ease, border-color .14s ease, transform .1s ease;
+}
+.button:active, .ghost:active, .switcher button:active { transform: translateY(1px); }
+.swatches button { transition: box-shadow .14s ease, border-color .14s ease, transform .1s ease; }
+.swatches button:hover { transform: translateY(-1px); }
+.swatches button:active { transform: translateY(0); }
+.spec tbody tr { transition: background-color .14s ease; }
+.spec tbody tr:hover { background: color-mix(in srgb, var(--paper-2) 60%, transparent); }
+.checks li { transition: background-color .14s ease; }
+.checks li:hover { background: var(--paper-2); }
+.split li { transition: color .14s ease; }
+.split li:hover { color: var(--ink); }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition-duration: .01ms !important; animation-duration: .01ms !important; }
+}
+
+/* ---- panel width control ---- */
+.width-control {
+  display: grid; grid-template-columns: auto auto 1fr; align-items: center; gap: 10px 14px;
+  margin-top: 26px; padding-top: 16px; max-width: var(--measure);
+  border-top: 1px solid var(--rule);
+}
+.width-control .legend { grid-column: 1 / -1; margin-bottom: -2px; }
+.stepper { display: inline-flex; align-items: stretch; border: 1px solid var(--rule-strong); }
+.stepper button {
+  width: 30px; font: inherit; font-size: 15px; line-height: 1; cursor: pointer;
+  color: var(--muted); background: transparent; border: 0;
+}
+.stepper button:first-child { border-right: 1px solid var(--rule); }
+.stepper button:last-child { border-left: 1px solid var(--rule); }
+.stepper button:hover { color: var(--on-ink); background: var(--ink); }
+.stepper button:active { transform: none; }
+.stepper output {
+  min-width: 74px; padding: 7px 0; text-align: center;
+  font-size: 13px; font-variant-numeric: tabular-nums; color: var(--ink);
+}
+.width-mm { font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.width-note { grid-column: 1 / -1; font-size: 12px; line-height: 1.5; color: var(--faint); }
+
+#demo-caption b { font-weight: 550; }
+#demo-caption .good { color: var(--pass); }
+#demo-caption .warn { color: var(--signal); }
+#demo-caption .bad { color: var(--signal); }

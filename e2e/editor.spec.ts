@@ -148,4 +148,54 @@ test.describe('public page',()=>{
     await expect(page.locator('#project-name')).toHaveValue(/Wavefolder/);
     expect(errors).toEqual([]);
   });
+
+  test('the hero panel can be used, not just looked at',async({page})=>{
+    const errors=watchConsole(page);
+    await page.goto('/');
+    const panel=page.locator('.panel-render');
+    await expect(panel).toBeVisible();
+    const box=(await panel.boundingBox())!;
+
+    // Hovering reads out millimetres, in the same language as the editor
+    await page.mouse.move(box.x+box.width/2,box.y+box.height/2);
+    await expect(page.locator('#demo-readout')).toHaveText(/X [\d.]+\s+Y [\d.]+ mm/);
+
+    // Dragging the FOLD knob turns it and lights the indicators
+    await page.mouse.move(box.x+box.width/2,box.y+box.height*0.22);
+    await page.mouse.down();
+    await page.mouse.move(box.x+box.width/2,box.y+box.height*0.22-80,{steps:8});
+    await expect(page.locator('#demo-readout')).toHaveText(/FOLD 100%/);
+    await page.mouse.up();
+    const lit=await page.evaluate(()=>[...document.querySelectorAll('#demo-panel circle')].filter(c=>c.getAttribute('fill')==='#ff5d3b').length);
+    expect(lit,'both indicators should follow the knob to full').toBe(2);
+
+    // The switch has somewhere to go
+    await page.mouse.click(box.x+box.width/2,box.y+box.height*(64/128.5));
+    expect(await page.evaluate(()=>document.querySelector('#demo-panel')!.innerHTML.includes('rotate(180)'))).toBe(true);
+    expect(errors).toEqual([]);
+  });
+
+  test('narrowing the panel makes preflight object, live',async({page})=>{
+    const errors=watchConsole(page);
+    await page.goto('/');
+    await expect(page.locator('#hp-value')).toHaveText('12 HP');
+    await expect(page.locator('#demo-caption')).toContainText('Preflight: clear');
+
+    for(let n=0;n<5;n++)await page.click('#hp-down');
+    await expect(page.locator('#hp-value')).toHaveText('7 HP');
+    await expect(page.locator('#hp-mm')).toHaveText('35.16 mm');
+    await expect(page.locator('#demo-caption')).toContainText('error');
+
+    for(let n=0;n<5;n++)await page.click('#hp-up');
+    await expect(page.locator('#demo-caption')).toContainText('Preflight: clear');
+    expect(errors).toEqual([]);
+  });
+
+  test('the width control has ends',async({page})=>{
+    await page.goto('/');
+    for(let n=0;n<12;n++)await page.click('#hp-down');
+    await expect(page.locator('#hp-value')).toHaveText('6 HP');
+    for(let n=0;n<20;n++)await page.click('#hp-up');
+    await expect(page.locator('#hp-value')).toHaveText('20 HP');
+  });
 });
