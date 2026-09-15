@@ -103,12 +103,40 @@ const CHECKS=[
 
 const mark=`<svg viewBox="0 0 64 64" aria-hidden="true"><path d="M18 11h28M18 53h28"/><rect x="21" y="8" width="22" height="48" rx="4"/><circle class="signal" cx="32" cy="32" r="7"/><circle cx="32" cy="32" r="2.5"/></svg>`;
 
+/* The zone marks a drawing sheet carries in its border: letters down the
+   sides, numbers along the top and bottom, a centring tick on each edge. */
+const ZONES_ACROSS=8,ZONES_DOWN=6;
+const sheetFrame=`<div class="sheet-frame" aria-hidden="true">
+  <span class="zones across top">${Array.from({length:ZONES_ACROSS},(_,n)=>`<i>${n+1}</i>`).join('')}</span>
+  <span class="zones across bottom">${Array.from({length:ZONES_ACROSS},(_,n)=>`<i>${n+1}</i>`).join('')}</span>
+  <span class="zones down left">${Array.from({length:ZONES_DOWN},(_,n)=>`<i>${String.fromCharCode(65+n)}</i>`).join('')}</span>
+  <span class="zones down right">${Array.from({length:ZONES_DOWN},(_,n)=>`<i>${String.fromCharCode(65+n)}</i>`).join('')}</span>
+</div>`;
+
 const row=([term,value,note]:[string,string,string])=>`<tr><th scope="row">${units(term)}</th><td class="figure">${units(value)}</td><td>${units(note)}</td></tr>`;
 const head=(no:string,title:string,note?:string)=>
   `<div class="band-head"><span class="section-no">${no}</span><h2>${title}</h2>${note?`<p>${note}</p>`:''}</div>`;
+/* A numbered section. The rule at the top draws itself in as the section
+   scrolls into view; the ghosted number behind it is the sheet's zone mark. */
+const band=(no:string,id:string,title:string,note:string|undefined,body:string,extra='')=>
+  `<section class="band ${extra}" id="${id}" data-no="${no}"><hr class="rule" aria-hidden="true"><span class="zone-mark" aria-hidden="true">${no}</span>${head(no,title,note)}${body}</section>`;
+
+const NOTES=[
+  'All dimensions in millimetres unless stated. 1 HP = 5.08 mm.',
+  'Generic part dimensions are estimates for planning. Verify every cutout against the manufacturer drawing before fabrication.',
+  'Nothing drawn here leaves the browser. Projects are stored locally; the .panel.json export is the only copy.',
+  'Preflight defaults (edge margin, wall thickness, jack pitch, depth) are opinions, not standards. Argue with them in the source.',
+];
+
+const REVISIONS:Array<[string,string,string]>=[
+  ['A','2026-07-13','First release: HP widths, parts library, SVG export.'],
+  ['B','2026-09-15','Datasheet identity. Traced part dimensions, DXF and 1:1 print, preflight, offline.'],
+  ['C',__FIVE08_DATE__,'Set on paper. Sheet frame, material hero, editor bench.'],
+];
 
 document.querySelector<HTMLDivElement>('#app')!.innerHTML=`
 <a class="skip" href="#main">Skip to content</a>
+${sheetFrame}
 <header class="masthead">
   <a class="wordmark" href="/">${mark}<b>five08</b></a>
   <span class="rev">Eurorack panel layout · MIT</span>
@@ -175,22 +203,19 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML=`
     </figure>
   </section>
 
-  <section class="band" id="about">
-    ${head('1.0','Scope','What the tool covers, and where it stops. The second list is the more useful one.')}
+  ${band('1.0','about','Scope','What the tool covers, and where it stops. The second list is the more useful one.',`
     <div class="band-body split">
       <div>
         <h3>What it does</h3>
-        <ul class="ticks">${DOES.map(t=>`<li>${t}</li>`).join('')}</ul>
+        <ul class="ticks">${DOES.map(t=>`<li>${units(t)}</li>`).join('')}</ul>
       </div>
       <div>
         <h3>What it does not do</h3>
         <ul class="crosses">${DOES_NOT.map(t=>`<li>${t}</li>`).join('')}</ul>
       </div>
-    </div>
-  </section>
+    </div>`)}
 
-  <section class="band" id="reference">
-    ${head('2.0','Panel reference',"The numbers Five08 works from. The first four are the Eurorack standard; the rest are this tool's defaults, and you can argue with any of them.")}
+  ${band('2.0','reference','Panel reference',"The numbers Five08 works from. The first four are the Eurorack standard; the rest are this tool's defaults, and you can argue with any of them.",`
     <div class="band-body">
     <table class="spec">
       <caption class="sr-only">Eurorack panel dimensions and Five08 defaults</caption>
@@ -198,50 +223,63 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML=`
       <tbody>${REFERENCE.map(row).join('')}</tbody>
     </table>
     <p class="hp-note"><b>${units(`1 HP = ${HP_MM} mm`)}.</b> Everything on the panel — width, positions, rulers, exports — is a multiple or a measurement of that.</p>
-    </div>
-  </section>
+    </div>`)}
 
-  <section class="band" id="exports">
-    ${head('3.0','Exports','Everything comes out at physical size. The DXF and the cutout SVG are generated from the same geometry, so they cannot disagree.')}
+  ${band('3.0','exports','Exports','Everything comes out at physical size. The DXF and the cutout SVG are generated from the same geometry, so they cannot disagree.',`
     <div class="band-body">
     <table class="spec">
       <caption class="sr-only">Export formats</caption>
       <thead><tr><th scope="col">Format</th><th scope="col">File</th><th scope="col">What is in it</th></tr></thead>
       <tbody>${EXPORTS.map(row).join('')}</tbody>
     </table>
-    </div>
-  </section>
+    </div>`)}
 
-  <section class="band" id="checks">
-    ${head('4.0','What preflight looks for','Run before an export, or any time from the panel inspector. Clicking an issue selects the part that caused it.')}
+  ${band('4.0','checks','What preflight looks for','Run before an export, or any time from the panel inspector. Clicking an issue selects the part that caused it.',`
     <div class="band-body">
-    <ol class="checks">${CHECKS.map(([name,detail],n)=>`<li><span class="check-no">${String(n+1).padStart(2,'0')}</span><strong>${name}</strong><span>${detail}</span></li>`).join('')}</ol>
+    <ol class="checks">${CHECKS.map(([name,detail],n)=>`<li><span class="check-no">${String(n+1).padStart(2,'0')}</span><strong>${name}</strong><span>${units(detail)}</span></li>`).join('')}</ol>
     <p class="caveat"><b>None of this replaces a datasheet.</b> Generic dimensions are useful for planning and wrong often enough to cost you a panel. Verify every cutout, tolerance, mounting point and material thickness against the real part before you pay anyone to cut metal.</p>
-    </div>
-  </section>
+    </div>`)}
 
-  <section class="band closing">
-    ${head('5.0','Open it and draw something.')}
+  ${band('5.0','open','Open it and draw something.',undefined,`
     <div class="band-body">
     <p>Nothing to install, nothing to sign up for. If it is missing a part you need, the library is a single file — send a pull request.</p>
     <div class="lead-actions">
       <a class="button" href="/app/">Open the designer</a>
       <a class="quiet-link" href="https://github.com/alibros/five08" rel="noreferrer">Read the source</a>
     </div>
-    </div>
-  </section>
+    </div>`,'closing')}
 </main>
 
 <footer class="colophon">
-  <div>
-    <a class="wordmark" href="/">${mark}<b>five08</b></a>
-    <p>Built by <a href="https://forestofrods.com" rel="noreferrer">Ali Bross</a>. MIT licensed.</p>
+  <div class="sheet-notes">
+    <section class="notes" aria-labelledby="notes-title">
+      <h2 id="notes-title" class="legend">Notes</h2>
+      <ol>${NOTES.map(n=>`<li>${units(n)}</li>`).join('')}</ol>
+    </section>
+    <section class="revisions" aria-labelledby="revisions-title">
+      <h2 id="revisions-title" class="legend">Revisions</h2>
+      <table>
+        <thead><tr><th scope="col">Rev</th><th scope="col">Date</th><th scope="col">Description</th></tr></thead>
+        <tbody>${REVISIONS.map(([rev,date,text])=>`<tr><td class="mono">${rev}</td><td class="mono">${date}</td><td>${text}</td></tr>`).join('')}</tbody>
+      </table>
+    </section>
   </div>
-  <nav aria-label="Elsewhere">
-    <a href="https://github.com/alibros/five08" rel="noreferrer">GitHub</a>
-    <a href="https://github.com/alibros/five08/issues" rel="noreferrer">Report a bug</a>
-    <a href="mailto:ali@forestofrods.com">Contact</a>
-  </nav>
+  <div class="title-block" role="group" aria-label="Sheet information">
+    <div class="tb-name"><a class="wordmark" href="/">${mark}<b>five08</b></a><span>Eurorack panel layout</span></div>
+    <div class="tb-title"><span class="legend">Title</span><b>A layout tool for Eurorack front panels</b></div>
+    <div><span class="legend">Drawn</span><b><a href="https://forestofrods.com" rel="noreferrer">Ali Bross</a></b></div>
+    <div><span class="legend">Licence</span><b>MIT</b></div>
+    <div><span class="legend">Rev</span><b class="mono">${__FIVE08_REV__}</b></div>
+    <div><span class="legend">Date</span><b class="mono">${__FIVE08_DATE__}</b></div>
+    <div><span class="legend">Scale</span><b class="mono">1:1</b></div>
+    <div><span class="legend">Units</span><b class="mono">mm</b></div>
+    <div><span class="legend">Sheet</span><b class="mono">1 of 1</b></div>
+    <nav class="tb-links" aria-label="Elsewhere">
+      <a href="https://github.com/alibros/five08" rel="noreferrer">GitHub</a>
+      <a href="https://github.com/alibros/five08/issues" rel="noreferrer">Report a bug</a>
+      <a href="mailto:ali@forestofrods.com">Contact</a>
+    </nav>
+  </div>
 </footer>`;
 
 /* ---------- behaviour ---------- */

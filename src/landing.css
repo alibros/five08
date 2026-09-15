@@ -15,8 +15,10 @@
 }
 
 * { box-sizing: border-box; }
-html { scroll-behavior: smooth; }
-body { margin: 0; background: var(--paper); -webkit-font-smoothing: antialiased; }
+html { scroll-behavior: smooth; background: var(--paper); }
+/* The sheet frame sits between the paper and the content, so the body itself
+   paints nothing. */
+body { margin: 0; background: transparent; -webkit-font-smoothing: antialiased; }
 a { color: inherit; text-decoration: none; }
 p { margin: 0; text-wrap: pretty; }
 h1, h2, h3 { margin: 0; font-stretch: var(--width-tight); font-weight: 620; letter-spacing: -.015em; line-height: 1.05; text-wrap: balance; }
@@ -89,12 +91,60 @@ h1, h2, h3, .standfirst, .terms, .band-head > p, .glance, .split, .spec, .hp-not
 
 main { max-width: var(--frame); margin: 0 auto; padding: 0 var(--gutter); }
 
+/* ---- the sheet ----
+   A drawing sheet is a bordered frame with zone marks: letters down the
+   sides, numbers along the top and bottom, so a note can say "see C4". The
+   frame is fixed to the viewport and the page scrolls inside it. */
+.sheet-frame {
+  position: fixed; inset: 18px; z-index: -1; pointer-events: none;
+  border: 1px solid var(--rule-strong);
+}
+/* Centring ticks on each edge. */
+.sheet-frame::before, .sheet-frame::after {
+  content: ''; position: absolute; background: var(--rule-strong);
+}
+.sheet-frame::before { left: 50%; top: -6px; width: 1px; height: 6px; box-shadow: 0 calc(100% + 100vh - 36px - 6px) 0 var(--rule-strong); }
+.sheet-frame::after { top: 50%; left: -6px; height: 1px; width: 6px; box-shadow: calc(100vw - 36px + 6px) 0 0 var(--rule-strong); }
+.zones {
+  position: absolute; display: flex; justify-content: space-around;
+  font-family: var(--mono); font-size: 8px; letter-spacing: .06em; color: var(--faint);
+  font-variant-numeric: tabular-nums;
+}
+.zones i { font-style: normal; }
+.zones.across { left: 0; right: 0; height: 18px; align-items: center; }
+.zones.across.top { top: -18px; }
+.zones.across.bottom { bottom: -18px; }
+.zones.down { top: 0; bottom: 0; width: 18px; flex-direction: column; align-items: center; }
+.zones.down.left { left: -18px; }
+.zones.down.right { right: -18px; }
+
 /* ---- section framing: numbered like a datasheet ---- */
-.band { position: relative; padding: 46px 0 52px; border-top: 1px solid var(--rule); }
+.band { position: relative; isolation: isolate; padding: 46px 0 52px; }
 .band::before {
   content: ''; position: absolute; left: 72px; top: 0; bottom: 0;
   border-left: 1px solid var(--rule);
 }
+/* The top rule draws itself in from the left as the section arrives. */
+.band .rule {
+  position: absolute; left: 0; right: 0; top: 0; margin: 0; height: 0;
+  border: 0; border-top: 1px solid var(--rule); transform-origin: left center;
+}
+/* The section number, oversized and set wide, ghosted behind the content the
+   way a zone letter sits behind a drawing. It drifts a few pixels with the
+   scroll, off the same timeline, so the page has depth without parallax. */
+.zone-mark {
+  position: absolute; z-index: -1; left: 84px; top: 8px; pointer-events: none; user-select: none;
+  font-family: var(--sans); font-stretch: var(--width-wide); font-weight: 720; font-size: clamp(120px,15vw,210px);
+  line-height: 1; letter-spacing: -.04em; color: var(--ink); opacity: .035;
+}
+@supports (animation-timeline: view()) {
+  @media (prefers-reduced-motion: no-preference) {
+    .band .rule { animation: draw-rule linear both; animation-timeline: view(); animation-range: entry 0% entry 35%; }
+    .zone-mark { animation: drift linear both; animation-timeline: view(); animation-range: entry 0% exit 100%; }
+  }
+}
+@keyframes draw-rule { from { scale: 0 1; } to { scale: 1 1; } }
+@keyframes drift { from { translate: 0 14px; } to { translate: 0 -14px; } }
 .band-head { display: grid; grid-template-columns: 72px minmax(0,1fr); gap: 0 18px; margin-bottom: 24px; }
 .band-head .section-no { padding-top: 5px; position: relative; z-index: 1; background: var(--paper); padding-bottom: 4px; }
 .band h2 { font-size: clamp(21px,2.3vw,28px); }
@@ -236,25 +286,66 @@ h1 { font-size: clamp(34px,4.4vw,56px); max-width: 14ch; line-height: 1.0; lette
 .closing h2 { font-size: clamp(23px,2.9vw,34px); }
 .closing p { margin-top: 12px; max-width: var(--measure); font-size: 14.5px; line-height: 1.6; color: var(--muted); }
 
-/* ---- colophon ---- */
+/* ---- colophon: notes, revisions and the title block ----
+   The bottom of a sheet is where the notes live, where the revision history
+   is kept, and where the title block says what this is, who drew it and when. */
 .colophon {
-  max-width: var(--frame); margin: 0 auto; padding: 26px var(--gutter) 48px;
-  display: flex; flex-wrap: wrap; gap: 20px; justify-content: space-between; align-items: flex-end;
+  max-width: var(--frame); margin: 0 auto; padding: 0 var(--gutter) 44px;
+  display: grid; grid-template-columns: minmax(0,1fr) minmax(320px,560px); gap: 28px 56px; align-items: end;
   border-top: 1px solid var(--ink);
 }
-.colophon p { margin-top: 8px; font-family: var(--mono); font-size: 11px; line-height: 1.7; color: var(--muted); }
-.colophon p a {
+.sheet-notes { display: grid; grid-template-columns: 1fr; gap: 26px; padding-top: 26px; }
+.sheet-notes .legend { margin: 0 0 8px; font-weight: 500; }
+.notes ol { margin: 0; padding: 0; list-style: none; counter-reset: note; }
+.notes li {
+  position: relative; padding: 5px 0 5px 40px; counter-increment: note;
+  font-size: 12.5px; line-height: 1.55; color: var(--muted); border-top: 1px solid var(--rule);
+}
+.notes li::before {
+  content: counter(note, decimal-leading-zero); position: absolute; left: 0; top: 6px;
+  font-family: var(--mono); font-size: 10px; letter-spacing: .06em; color: var(--signal);
+}
+.revisions table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+.revisions th, .revisions td { text-align: left; padding: 6px 14px 6px 0; border-top: 1px solid var(--rule); vertical-align: top; }
+.revisions thead th {
+  padding-top: 0; border-top: 0; border-bottom: 1px solid var(--ink);
+  font-family: var(--mono); font-size: 9.5px; font-weight: 500; letter-spacing: .12em; text-transform: uppercase; color: var(--faint);
+}
+.revisions td { color: var(--muted); line-height: 1.5; }
+.revisions td.mono { font-size: 11.5px; color: var(--ink-2); white-space: nowrap; }
+.revisions td:first-child { width: 30px; }
+.revisions tr:last-child td.mono:first-child { color: var(--signal); }
+
+.title-block {
+  display: grid; grid-template-columns: repeat(6, minmax(0,1fr));
+  margin-top: 26px; border: 1px solid var(--ink);
+  background: color-mix(in srgb, var(--paper) 60%, var(--paper-2));
+  font-size: 12px;
+}
+.title-block > * { padding: 8px 10px 9px; border-right: 1px solid var(--rule); border-bottom: 1px solid var(--rule); display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.title-block > :nth-child(6n), .title-block .tb-title, .title-block .tb-links { border-right: 0; }
+.title-block > :nth-last-child(-n + 4) { border-bottom: 0; }
+.title-block .legend { font-size: 8.5px; }
+.title-block b { font-weight: 560; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.title-block b.mono { font-weight: 500; font-size: 11px; }
+.title-block b a {
   padding-bottom: 1px;
   background:
     linear-gradient(var(--signal), var(--signal)) no-repeat 0 100% / 0 1px,
     linear-gradient(var(--rule-strong), var(--rule-strong)) no-repeat 0 100% / 100% 1px;
   transition: background-size var(--fast) var(--ease), color var(--fast) var(--ease);
 }
-.colophon p a:hover { color: var(--signal); background-size: 100% 1px, 100% 1px; }
-.colophon nav { display: flex; gap: 16px; font-family: var(--mono); font-size: 11px; color: var(--muted); }
-.colophon nav a:hover { color: var(--ink); }
+.title-block b a:hover { color: var(--signal); background-size: 100% 1px, 100% 1px; }
+.tb-name { grid-column: span 2; grid-row: span 2; justify-content: center; align-items: flex-start; gap: 6px !important; }
+.tb-name span { font-family: var(--mono); font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: var(--faint); }
+.tb-title { grid-column: span 4; }
+.tb-title b { font-family: var(--sans); font-stretch: var(--width-tight); font-size: 15px; font-weight: 620; letter-spacing: -.01em; }
+.tb-links { grid-column: span 3; flex-direction: row !important; flex-wrap: wrap; align-items: flex-end; justify-content: flex-end; gap: 6px 16px !important; font-family: var(--mono); font-size: 11px; color: var(--muted); }
+.tb-links a { transition: color var(--fast) var(--ease); }
+.tb-links a:hover { color: var(--ink); }
 
 @media (max-width: 960px) {
+  .colophon { grid-template-columns: 1fr; }
   .lead { grid-template-columns: 1fr; gap: 38px; padding: 42px 0; }
   .panel-render { height: min(52vh,420px); }
   .masthead nav, .masthead .rev { display: none; }
@@ -262,6 +353,14 @@ h1 { font-size: clamp(34px,4.4vw,56px); max-width: 14ch; line-height: 1.0; lette
 }
 @media (max-width: 620px) {
   :root { --gutter: 18px; }
+  .sheet-frame { display: none; }
+  .zone-mark { left: 0; font-size: 110px; }
+  .title-block { grid-template-columns: repeat(3, 1fr); }
+  .title-block > div:nth-child(6n) { border-right: 1px solid var(--rule); }
+  .title-block > div:nth-child(3n + 1) { border-right: 1px solid var(--rule); }
+  .tb-name { grid-column: span 3; grid-row: auto; }
+  .tb-title { grid-column: span 3; }
+  .tb-links { justify-content: flex-start; }
   .lead::before, .band::before { display: none; }
   .lead-copy, .band-head { grid-template-columns: 1fr; }
   .lead-copy > .section-no, .band-head .section-no { grid-column: 1; grid-row: auto; padding: 0 0 6px; }
