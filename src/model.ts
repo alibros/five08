@@ -2,11 +2,20 @@ export type Category = 'Controls'|'Jacks & connectors'|'Switches & buttons'|'Ind
 export type Renderer = 'knob'|'jack'|'slider'|'button'|'toggle'|'led'|'display'|'connector'|'hole'|'text'|'shape'|'touch'|'image';
 export type PartStatus = 'generic'|'verified';
 
+/**
+ * Where a dimension came from. A cutout figure is only as good as its source,
+ * so parts carry one and the interface shows it rather than asking you to
+ * trust the number.
+ */
+export type PartSource = { note:string; url?:string };
+
 export type ComponentDefinition = {
   id:string; name:string; category:Category; renderer:Renderer; tags:string[];
-  width:number; height:number; cutout?:number; cutoutShape?:'circle'|'rect'; cutoutWidth?:number; cutoutHeight?:number; keepout?:number; depth?:number;
+  width:number; height:number; cutout?:number; cutoutShape?:'circle'|'rect'|'obround'; cutoutWidth?:number; cutoutHeight?:number;
+  /** Fraction of the item a parametric rect cutout occupies. 1 = the whole footprint. */
+  cutoutInset?:number; keepout?:number; depth?:number;
   color:string; label:string; status:PartStatus; description:string;
-  manufacturer?:string; partNumber?:string; orientation?:'vertical'|'horizontal';
+  manufacturer?:string; partNumber?:string; source?:PartSource; orientation?:'vertical'|'horizontal';
   libraryHidden?:boolean; resizable?:boolean;
   sizePresets?:Array<{label:string;componentId:string}>;
 };
@@ -15,6 +24,8 @@ export type Item = {
   id:string; componentId:string; x:number; y:number; rotation:number; label:string;
   color:string; width:number; height:number; value:number; locked:boolean; hidden:boolean;
   role:'none'|'param'|'input'|'output'|'light'|'custom'; identifier:string; imageData?:string;
+  /** What to actually order: "B10k lin", "SPDT on-off-on". Appears in the BOM. */
+  spec?:string;
 };
 
 export type PanelProfile = {
@@ -49,7 +60,7 @@ export function parseProject(raw:unknown, definitions:Map<string,ComponentDefini
   const mounting=['none','two','diagonal','four'].includes(String(panel.mounting))?String(panel.mounting) as PanelProfile['mounting']:base.panel.mounting;
   const hp=clamp(num(panel.hp,12),2,84),material=safeText(panel.material,40,base.panel.material);
   const roles:Item['role'][]=['none','param','input','output','light','custom'];const seen=new Set<string>();
-  const items=(r.items as unknown[]).slice(0,1000).flatMap(value=>{if(!value||typeof value!=='object')return[];const x=value as Record<string,unknown>,componentId=String(x.componentId||''),d=definitions.get(componentId);if(!d)return[];let id=safeText(x.id,80,uid());if(seen.has(id))id=uid();seen.add(id);const role=roles.includes(String(x.role) as Item['role'])?String(x.role) as Item['role']:'none',imageData=validPng(x.imageData);return[{id,componentId,x:clamp(num(x.x,10),-500,1000),y:clamp(num(x.y,20),-500,1000),rotation:clamp(num(x.rotation,0),-3600,3600),width:clamp(num(x.width,d.width),.5,500),height:clamp(num(x.height,d.height),.5,500),value:clamp(num(x.value,.5),0,1),label:safeText(x.label,200,''),color:validColor(x.color,d.color),locked:!!x.locked,hidden:!!x.hidden,role,identifier:safeText(x.identifier,100,''),...(imageData?{imageData}:{})}];});
+  const items=(r.items as unknown[]).slice(0,1000).flatMap(value=>{if(!value||typeof value!=='object')return[];const x=value as Record<string,unknown>,componentId=String(x.componentId||''),d=definitions.get(componentId);if(!d)return[];let id=safeText(x.id,80,uid());if(seen.has(id))id=uid();seen.add(id);const role=roles.includes(String(x.role) as Item['role'])?String(x.role) as Item['role']:'none',imageData=validPng(x.imageData);return[{id,componentId,x:clamp(num(x.x,10),-500,1000),y:clamp(num(x.y,20),-500,1000),rotation:clamp(num(x.rotation,0),-3600,3600),width:clamp(num(x.width,d.width),.5,500),height:clamp(num(x.height,d.height),.5,500),value:clamp(num(x.value,.5),0,1),label:safeText(x.label,200,''),color:validColor(x.color,d.color),locked:!!x.locked,hidden:!!x.hidden,role,identifier:safeText(x.identifier,100,''),...(imageData?{imageData}:{}),...(safeText(x.spec,80,'')?{spec:safeText(x.spec,80,'')}:{})}];});
   const panelImage=validPng(r.panelImage);
   return{version:2,name:safeText(r.name,120,base.name),panel:{hp,widthMode,customWidth:clamp(num(panel.customWidth,hp*HP_MM),5,430),thickness:clamp(num(panel.thickness,2),.5,10),material,finish:safeText(panel.finish,50,finishForMaterial(material)),mounting},panelColor:validColor(r.panelColor,base.panelColor),inkColor:validColor(r.inkColor,base.inkColor),accentColor:validColor(r.accentColor,base.accentColor),...(panelImage?{panelImage}:{}),items,notes:safeText(r.notes,10000,'')};
 }

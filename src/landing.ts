@@ -37,11 +37,12 @@ const DOES=[
   'Millimetre placement with grid snapping, centre and edge guides, live gap measurements and equal-gap detection.',
   'Hardware, cutout and rear-clearance views of the same layout.',
   'Layout checks before you commit: edge margins, cutout walls, mounting clashes, jack spacing, part depth.',
+  'Provenance on every figure — the inspector and the bill of materials say whether a dimension came from a datasheet or a guess, and link to the source.',
   'Undo, autosave, named projects, portable project files.',
 ];
 
 const DOES_NOT=[
-  'It does not know your parts. Library dimensions are generic starting points unless a part is marked as verified — check every one against the datasheet.',
+  'It does not know your parts. Most dimensions are generic estimates; where a cutout is traced to a named datasheet the part says so and links to it. Everything else is a starting point.',
   'It is not CAD. No constraints, no 3D, no PCB, no tolerance stack-up.',
   'It does not do illustration. Text, simple shapes and imported PNGs only.',
   'It does not store anything on a server. Open it on another machine and your work is not there — export the project file.',

@@ -33,7 +33,11 @@ export function mountingShapes(panel:PanelProfile):Obround[]{
 export function cutoutShape(i:Item,d:ComponentDefinition):Shape|null{
   if(!d.cutout)return null;
   if(d.renderer==='hole'&&d.orientation==='horizontal')return{kind:'obround',cx:i.x,cy:i.y,w:i.width,h:i.height,rotation:i.rotation};
-  if(d.cutoutShape==='rect')return{kind:'rect',cx:i.x,cy:i.y,w:d.cutoutWidth??i.width*.8,h:d.cutoutHeight??i.height*.8,rotation:i.rotation};
+  if(d.cutoutShape==='rect'||d.cutoutShape==='obround'){
+    const inset=d.cutoutInset??.8;
+    const w=d.cutoutWidth??i.width*inset,h=d.cutoutHeight??i.height*inset;
+    return{kind:d.cutoutShape==='obround'?'obround':'rect',cx:i.x,cy:i.y,w,h,rotation:i.rotation};
+  }
   return{kind:'circle',cx:i.x,cy:i.y,r:d.cutout/2};
 }
 

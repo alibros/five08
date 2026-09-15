@@ -24,7 +24,14 @@ npm test
 npm run build
 ```
 
-Keep component dimensions traceable. If a part is described as verified, include the manufacturer, part number, and source drawing in the pull-request description.
+## Adding or correcting a part
+
+Dimensions are the reason people trust this tool, so the library records where each one came from.
+
+- Add a `source: {note, url}` to any part whose **cutout** you can trace to a datasheet. The note should name the manufacturer, the part and the relevant dimension — `'Taiwan Alpha RD901F 9 mm potentiometer — M7×0.75 bushing'` — not just "datasheet".
+- Only set `status: 'verified'` when the **whole part** is traced, and then `manufacturer`, `partNumber` and `source` are all required. `catalog.test.ts` enforces this, along with the rules that a part which passes through the panel has an opening, that a rectangular part does not cut a round hole, and that no cutout is zero.
+- A cutout of `0` is not "no cutout" — it silently exports a panel with no hole in it. Use `undefined`.
+- If a part genuinely cannot be expressed (an LED ring is twelve separate holes), say so in its description rather than approximating it.
 
 ## Where things belong
 
