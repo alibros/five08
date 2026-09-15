@@ -1,1 +1,21 @@
-{"name":"Five08","short_name":"Five08","description":"Free, open-source Eurorack panel layout tool","start_url":"/app/","display":"standalone","background_color":"#f2f0e9","theme_color":"#f2f0e9","icons":[{"src":"/five08-mark.svg","sizes":"any","type":"image/svg+xml"}]}
+{
+  "name": "Five08 — Eurorack panel designer",
+  "short_name": "Five08",
+  "description": "Lay out Eurorack front panels in millimetres and export the artwork, cutouts, DXF and parts list. Runs entirely in the browser.",
+  "start_url": "/app/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#f2f0e9",
+  "theme_color": "#f2f0e9",
+  "categories": ["productivity", "utilities", "design"],
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "/icon-maskable.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" },
+    { "src": "/five08-mark.svg", "sizes": "any", "type": "image/svg+xml" }
+  ],
+  "shortcuts": [
+    { "name": "New panel", "url": "/app/?new=1" }
+  ]
+}

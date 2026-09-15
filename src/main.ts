@@ -10,6 +10,7 @@ import {issueCounts,preflight,type Issue} from './preflight';
 import {printSheet,svgToPng} from './raster';
 import {activeId,deleteProject,duplicateProject,listProjects,listRecovery,migrateLegacy,newProjectId,pushRecovery,readPrefs,readProject,renameProject,saveProject,setActiveId,storageUsed,writePrefs,type Prefs} from './store';
 import {applyTheme,nextTheme,watchSystemTheme,type Theme} from './theme';
+import {registerOffline} from './offline';
 
 const PX=4, grids=[.5,1,2.54,5.08];
 const MIN_ZOOM=.3, MAX_ZOOM=6;
@@ -931,6 +932,7 @@ window.addEventListener('keydown',e=>{
 
 document.querySelector('#palette-key')!.textContent=apple?'⌘K':'Ctrl K';
 bindCanvasSurface();
+registerOffline(()=>notify('A new version of Five08 is ready — reload to use it'));
 applyTheme(theme);
 watchSystemTheme(()=>{if(theme==='system')applyTheme(theme);});
 leftOpen=leftOpenAtBoot();
@@ -938,3 +940,4 @@ rightOpen=window.innerWidth>1020;
 render();
 zoomFit();
 persist();
+if(new URLSearchParams(location.search).has('new')){window.history.replaceState(null,'','/app/');newProjectDialog();}
