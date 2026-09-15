@@ -16,7 +16,6 @@ next person the search.
 
 - [x] **Thonkiconn PJ398SM / PJ301M-12** — 3.5 mm jack. 6 mm panel hole.
 - [x] **Taiwan Alpha RD901F** — 9 mm pot. Alpha's RD901F-40 drawing (SLH-211-208, p.2 of the specification) gives an M7×0.75 bushing and no panel hole, so a 7.1 mm hole from the thread table. Behind the plain knob caps.
-- [x] **Alps Alpine EC11** — encoder. M7×0.75 bushing.
 - [x] **ISO 273 fine** — M3 clearance, behind the mounting hardware.
 - [x] **Song Huei 16K4** — 16 mm pot. The bushing is M7×0.75, not larger; the drawing gives a Ø7.5 panel hole and a Ø3 anti-rotation hole, which is not modelled. `knob-16mm`.
 - [x] **E-Switch 100 series** — miniature toggle, 1/4-40 bushing. The drawing gives a Ø6.35 panel hole; its keyway and locating-hole options are not modelled. `toggle-2`, `toggle-3`.
@@ -32,6 +31,7 @@ needs to settle. The question, with both readings and page references, is in
 `docs/parts-open-questions.md`.
 
 ### Controls
+- [ ] **Alps Alpine EC11E** — encoder. The four EC11 encoders cite an M7×0.75 bushing that no Alps drawing of the vertical EC11E shows, at a URL that now returns AccessDenied. *Open question:* M7×0.75 (7.1 mm) or a plain Ø7 bushing, and where the citation should point.
 - [ ] **Alpha / Bourns 45 mm slide potentiometer** — slot width and length, and the travel versus the slot. Five08 currently derives the slot from the footprint. *Open question:* the Bourns PTA4543 drawing gives travel and lever but no slot, and the current rule cuts the 45 mm slot to the travel alone.
 
 ### Jacks and connectors

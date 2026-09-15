@@ -183,6 +183,33 @@ should the window be the viewing area or the active area?
 - **Cost of guessing:** a builder trusts 6.5 mm and the 3 mm inset as Doepfer's
   figures.
 
+### Alps EC11E encoder — `encoder`, `encoder-compact`, `encoder-large`, `encoder-metal` (currently cited)
+
+**Question.** Is the vertical EC11E's bushing M7×0.75 when no Alps drawing of it
+gives a thread, and what should the citation point at?
+
+- **Reading A:** M7×0.75, so a 7.1 mm hole. The same catalog draws the 11 mm
+  EC11B horizontal as M7×0.75 (2013 catalog, Farnell mirror, p.3 drawings 1–3),
+  and the 2021 catalog draws the EC11 bushing as Ø7 (p.5, Shaft Dimensions).
+- **Reading B:** a plain Ø7 bushing, which the thread table does not cover, so
+  the current 7.2 is as defensible as 7.1. The vertical EC11E drawings give a
+  7 mm bushing length and a Ø6 shaft but no bushing diameter or thread — 2013
+  catalog p.3 drawings 4–5, and the current catalog (update 2510) p.2 drawings
+  1–3.
+- **Leaning:** A for the hole. The citation is the bigger problem: its note says
+  M7×0.75 and its URL, `/assets/products/catalog/ec11.en.pdf`, returns
+  AccessDenied. The catalog the EC11E series page now links does not show a
+  thread either, so repointing the URL there would cite a figure the page does
+  not carry. Either cite the Farnell mirror with a note saying only what it
+  shows, confirm the thread on a real part, or drop the citation — which means
+  changing the "cites a source for the cutouts people drill most" test.
+- **Source:** https://tech.alpsalpine.com/cms.media/product_catalog_ec_01_ec11e_en_611f078659.pdf
+  (current); https://www.farnell.com/datasheets/1837001.pdf (2013);
+  https://web.archive.org/web/20221110080409/https://tech.alpsalpine.com/assets/products/catalog/ec11.en.pdf
+  (2021, the URL the citation used to resolve to)
+- **Cost of guessing:** 0.1 mm on the hole either way. A citation that opens on a
+  page with no thread on it costs more, because it makes the figure look checked.
+
 ## Settled
 
 *Answered questions move here with a one-line note, so the same ambiguity is not
