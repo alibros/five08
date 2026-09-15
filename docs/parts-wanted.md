@@ -21,6 +21,7 @@ next person the search.
 - [x] **Song Huei 16K4** — 16 mm pot. The bushing is M7×0.75, not larger; the drawing gives a Ø7.5 panel hole and a Ø3 anti-rotation hole, which is not modelled. `knob-16mm`.
 - [x] **E-Switch 100 series** — miniature toggle, 1/4-40 bushing. The drawing gives a Ø6.35 panel hole; its keyway and locating-hole options are not modelled. `toggle-2`, `toggle-3`.
 - [x] **Bourns PTV09A** — 9 mm pot. It does **not** match M7×0.75: the only threaded bushing, PTV09A-6, is M9×0.75, so a 9.1 mm hole. The -1 and -5 bushings are plain sleeves and -4 has none; the datasheet gives no panel hole for those. `knob-ptv09`.
+- [x] **TT Electronics P092C** — 9 mm dual concentric pot. The 2-gang outline drawing on p.12 gives an M7×0.75 bushing, so a 7.1 mm hole, and a 12.05 mm body behind the mounting surface. `knob-concentric`, which used to borrow the single-shaft RD901F's citation for an 8 mm hole.
 - [x] **ISO 273 fine, M2.5 and M4** — 2.7 mm and 4.3 mm clearance holes, reached as size presets on the M3 hole. `mount-hole-m25`, `mount-hole-m4`.
 - [x] **Alps RK097** — 9 mm pot. Every drawing in the [Alps catalogue](https://tech.alpsalpine.com/cms.media/product_catalog_rv_01_rk097_en_d953249ce7.pdf) (1–9) shows an M7×0.75 bushing, the same thread as the RD901F, so the existing 9 mm knob cutouts already cover it — no new part. The snap-in RK09K/RK09D has no bushing, and its drawings give no panel hole.
 
