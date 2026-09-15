@@ -562,3 +562,7 @@ button:focus-visible,input:focus-visible,select:focus-visible { outline-color:va
 .focus-ring { pointer-events:none; }
 .canvas:focus { outline:none; }
 .canvas:focus-visible { outline:2px solid var(--trace); outline-offset:-2px; }
+.panel-svg { --rack-rail:#b9bab4; --rack-ghost:#c9cac4; --rack-edge:#8f918b; --rack-label:#71746e; }
+:root[data-theme="dark"] .panel-svg,
+:root:not([data-theme="light"]) .panel-svg { --rack-rail:#23262a; --rack-ghost:#1b1e21; --rack-edge:#33383d; --rack-label:#6b7278; }
+@media (prefers-color-scheme: light) { :root:not([data-theme="dark"]) .panel-svg { --rack-rail:#b9bab4; --rack-ghost:#c9cac4; --rack-edge:#8f918b; --rack-label:#71746e; } }

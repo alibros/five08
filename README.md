@@ -15,10 +15,14 @@ It runs entirely in the browser. There is no account, no server, and no upload. 
 - **A parts library.** Knobs, encoders, illuminated buttons, jacks, sliders, switches, displays, LEDs, mounting hardware, text, shapes and imported PNG artwork, with standard-size presets and locked dimensions for physical connectors.
 - **Millimetre placement.** Grid snapping, centre and edge guides, live neighbour distances, equal-gap detection, alignment, distribution, spreading and grid arrangement.
 - **Direct manipulation.** Drag, rubber-band select, resize, rotate, mirror, flip, lock, hide, reorder, duplicate, copy and paste — with undo throughout.
-- **Three views of the same layout.** Hardware, machining cutouts, and rear clearance.
+- **Three views of the same layout.** Hardware, machining cutouts, and rear clearance — plus a rack view showing the panel between its neighbours.
+- **Groups and arrays.** Bind a channel strip together and repeat it across the panel.
+- **Real panel typography.** Multi-line legends with a font, weight, alignment and tracking; knob scales; signal arrows.
 - **Panel previews.** Aluminium, acrylic, FR4, copper, powder-coated and bead-blasted finishes.
 - **Preflight.** Edge margins, cutout walls, mounting clashes, jack spanner clearance, part depth and off-HP widths. Click an issue and the offending part is selected and framed.
 - **A project library.** Named projects, autosave, recovery snapshots and portable project files.
+- **Traceable dimensions.** Every part says whether its figures came from a datasheet or a guess, and links to the source.
+- **Keyboard operable.** The canvas is a listbox: skip links, Tab between parts, arrow keys to place them.
 
 ![Five08 designer](docs/images/five08-editor.jpg)
 
@@ -80,7 +84,7 @@ Vite prints the local URL. The public page is at `/`; the designer is at `/app/`
 
 Projects, recovery snapshots and preferences are stored in your browser. Five08 does not upload projects or artwork. Copy and paste puts component JSON on the system clipboard so you can move parts between tabs; it is validated on the way back in.
 
-Use **Save** to download a portable project before clearing browser data or moving to another computer. PNG artwork is embedded in the project file, and individual PNGs are limited to 1.5 MB to keep browser persistence practical.
+Use **Save** to download a portable project before clearing browser data or moving to another computer. Artwork is embedded in the project file, and individual images are limited to 1.5 MB to keep browser persistence practical. Imported SVG is stripped to a presentational subset — scripts, event handlers, `foreignObject`, animation and external references are removed — both on import and again whenever a project is opened, because an exported SVG is a live document if someone opens it directly in a browser.
 
 ## Fabrication warning
 
@@ -123,6 +127,7 @@ The production build is written to `dist/`. The repository uses a Vite multi-pag
 | `src/store.ts` | Browser-local project library, recovery snapshots, preferences |
 | `src/palette.ts` | Command palette |
 | `src/history.ts` | Undo history, budgeted by bytes rather than step count |
+| `src/artwork.ts` | SVG import sanitiser |
 | `src/main.ts` | The editor |
 | `src/landing.ts`, `src/demo.ts` | The public page and the panel it shows |
 

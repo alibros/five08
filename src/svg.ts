@@ -115,3 +115,17 @@ export function templateSvg(p:Project,definitions:Map<string,ComponentDefinition
     </g>
   </svg>`;
 }
+
+/**
+ * The module in its case: rails above and below, neighbours either side.
+ * Panels are designed one at a time but they never live that way — this shows
+ * whether a control sits too close to whatever is bolted next to it.
+ */
+export function rackContextSvg(p:Project,neighbourHp=8){
+  const w=panelWidth(p.panel);
+  const reach=neighbourHp*5.08;
+  const rail=(y:number)=>`<rect x="${-reach}" y="${y}" width="${w+reach*2}" height="9" fill="var(--rack-rail)" stroke="var(--rack-edge)" stroke-width=".25"/>`;
+  const ghost=(x:number)=>`<g><rect x="${x}" y="0" width="${reach-1}" height="${PANEL_H}" fill="var(--rack-ghost)" stroke="var(--rack-edge)" stroke-width=".25"/>`
+    +`<text x="${x+(reach-1)/2}" y="${PANEL_H/2}" text-anchor="middle" font-family="var(--mono)" font-size="3" fill="var(--rack-label)">${neighbourHp} HP</text></g>`;
+  return`<g class="rack-context" pointer-events="none">${ghost(-reach)}${ghost(w+1)}${rail(-3)}${rail(PANEL_H-6)}</g>`;
+}

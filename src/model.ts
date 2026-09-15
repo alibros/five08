@@ -102,5 +102,12 @@ export const clamp=(v:number,min:number,max:number)=>Math.max(min,Math.min(max,v
 const num=(v:unknown,fallback:number)=>Number.isFinite(Number(v))?Number(v):fallback;
 const validColor=(v:unknown,fallback:string)=>typeof v==='string'&&/^#[0-9a-f]{6}$/i.test(v)?v:fallback;
 const safeText=(v:unknown,max:number,fallback:string)=>typeof v==='string'&&v.trim()?v.slice(0,max):fallback;
-const validPng=(v:unknown)=>typeof v==='string'&&v.length<=2_100_000&&/^data:image\/png;base64,[a-z0-9+/=]+$/i.test(v)?v:undefined;
+/**
+ * Artwork is a PNG or an SVG data URL. This only checks the shape and the size;
+ * SVG markup is stripped to a safe subset by artwork.ts wherever a project
+ * enters the editor, because an export embeds it into a file someone may later
+ * open directly in a browser.
+ */
+const validPng=(v:unknown)=>typeof v==='string'&&v.length<=2_800_000
+  &&/^data:image\/(png|svg\+xml);base64,[a-z0-9+/=]+$/i.test(v)?v:undefined;
 const finishForMaterial=(m:string)=>m==='Acrylic'?'smoke-acrylic':m==='FR4'?'fr4-green':m==='Wood'?'walnut':'brushed-silver';
