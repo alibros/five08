@@ -23,7 +23,7 @@ function panelSvg(){
   const w=panelWidth(project.panel);
   const parts=project.items.map(i=>componentSvg(i,catalogMap.get(i.componentId)!,project,false,view)).join('');
   return`<svg class="panel-render" viewBox="0 0 ${w} ${PANEL_H}" role="img" aria-label="A 12 HP Eurorack panel drawn in Five08, shown in ${view==='design'?'hardware':view==='cutout'?'cutout':'rear clearance'} view">
-    <defs>${panelFinishDefs(project)}<filter id="glow"><feGaussianBlur stdDeviation="1" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+    <defs>${panelFinishDefs(project)}<filter id="glow" x="-75%" y="-75%" width="250%" height="250%"><feGaussianBlur stdDeviation="1" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
     <style>.cut{fill:none;stroke:#ef523c;stroke-width:.45}</style></defs>
     ${panelFinishSurface(project,w)}${mounting()}${parts}
   </svg>`;

@@ -7,7 +7,13 @@ export const esc=(s:string)=>s.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>
 export function panelFinishDefs(p:Project){const f=p.panel.finish;let gradient=`<linearGradient id="panel-surface" x1="0" y1="0" x2="1" y2="0"><stop stop-color="${p.panelColor}"/><stop offset=".5" stop-color="${p.panelColor}"/><stop offset="1" stop-color="${p.panelColor}"/></linearGradient>`;let texture='';if(f==='brushed-silver')gradient=`<linearGradient id="panel-surface" x1="0" y1="0" x2="1" y2="0"><stop stop-color="#aeb1ae"/><stop offset=".12" stop-color="#e2e3df"/><stop offset=".48" stop-color="#c4c7c3"/><stop offset=".78" stop-color="#f0f0eb"/><stop offset="1" stop-color="#a9aca9"/></linearGradient>`;if(f==='black-anodized')gradient=`<linearGradient id="panel-surface" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#252926"/><stop offset=".5" stop-color="#111411"/><stop offset="1" stop-color="#202421"/></linearGradient>`;if(f==='powder-white')gradient=`<radialGradient id="panel-surface" cx="35%" cy="20%" r="95%"><stop stop-color="#fbfaf4"/><stop offset=".7" stop-color="#e8e6de"/><stop offset="1" stop-color="#d7d5ce"/></radialGradient>`;if(f==='smoke-acrylic')gradient=`<linearGradient id="panel-surface" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#53605d" stop-opacity=".92"/><stop offset=".35" stop-color="#202826" stop-opacity=".96"/><stop offset=".72" stop-color="#303b38" stop-opacity=".94"/><stop offset="1" stop-color="#141a18" stop-opacity=".98"/></linearGradient>`;if(f==='clear-acrylic')gradient=`<linearGradient id="panel-surface" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#f3ffff" stop-opacity=".93"/><stop offset=".35" stop-color="#c7dcda" stop-opacity=".78"/><stop offset=".55" stop-color="#ffffff" stop-opacity=".9"/><stop offset="1" stop-color="#a9c4c1" stop-opacity=".84"/></linearGradient>`;if(f==='fr4-green')gradient=`<linearGradient id="panel-surface" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#1d5542"/><stop offset=".5" stop-color="#103b2d"/><stop offset="1" stop-color="#082d22"/></linearGradient>`;if(f==='brushed-copper')gradient=`<linearGradient id="panel-surface" x1="0" y1="0" x2="1" y2="0"><stop stop-color="#70402f"/><stop offset=".15" stop-color="#c77b56"/><stop offset=".5" stop-color="#9b563b"/><stop offset=".78" stop-color="#d38a62"/><stop offset="1" stop-color="#6d3b2b"/></linearGradient>`;if(f==='walnut')gradient=`<radialGradient id="panel-surface" cx="35%" cy="22%" r="100%"><stop stop-color="#dedfd9"/><stop offset=".48" stop-color="#bfc0ba"/><stop offset="1" stop-color="#a7a9a3"/></radialGradient>`;if(['brushed-silver','black-anodized','brushed-copper'].includes(f))texture=`<pattern id="panel-texture" width="1" height="1.8" patternUnits="userSpaceOnUse"><path d="M0 .25H1M0 1.25H1" stroke="${f==='black-anodized'?'#fff':'#352d28'}" stroke-opacity=".07" stroke-width=".08"/></pattern>`;if(f==='fr4-green')texture=`<pattern id="panel-texture" width="7" height="7" patternUnits="userSpaceOnUse"><circle cx="1" cy="1" r=".12" fill="#e8c45d" opacity=".22"/><path d="M0 6Q3 3 7 5" fill="none" stroke="#65a57d" stroke-opacity=".08" stroke-width=".15"/></pattern>`;if(f==='walnut')texture=`<pattern id="panel-texture" width="3" height="3" patternUnits="userSpaceOnUse"><circle cx=".5" cy=".7" r=".08" fill="#fff" opacity=".18"/><circle cx="2.2" cy="1.8" r=".07" fill="#222" opacity=".1"/></pattern>`;if(f.includes('acrylic'))texture=`<linearGradient id="acrylic-shine" x1="0" y1="0" x2="1" y2="0"><stop stop-color="#fff" stop-opacity=".28"/><stop offset=".18" stop-color="#fff" stop-opacity=".03"/><stop offset=".72" stop-color="#fff" stop-opacity="0"/><stop offset="1" stop-color="#fff" stop-opacity=".18"/></linearGradient>`;return gradient+texture;}
 export function panelFinishSurface(p:Project,w:number){const f=p.panel.finish;let texture=f.includes('acrylic')?`<rect class="panel-finish" x=".7" y=".7" width="${w-1.4}" height="127.1" rx=".5" fill="url(#acrylic-shine)"/><path class="panel-finish" d="M2 2H${w-2}M2 2V126.5" stroke="#fff" stroke-opacity=".5" stroke-width=".45"/>`:`${['brushed-silver','black-anodized','brushed-copper','fr4-green','walnut'].includes(f)?`<rect class="panel-finish" width="${w}" height="128.5" rx=".6" fill="url(#panel-texture)"/>`:''}`;if(p.panelImage)texture=`<image class="panel-custom-image" href="${p.panelImage}" x="0" y="0" width="${w}" height="128.5" preserveAspectRatio="xMidYMid slice"/>`+texture;return`<g class="panel-finish"><rect width="${w}" height="128.5" rx=".6" fill="url(#panel-surface)"/>${texture}<rect x=".25" y=".25" width="${w-.5}" height="128" rx=".5" fill="none" stroke="${f.includes('acrylic')?'#eaffff':'#111'}" stroke-opacity="${f.includes('acrylic') ? .38 : .16}" stroke-width=".35"/></g>`;}
 
-export function componentSvg(i:Item,d:ComponentDefinition,p:Project,selected:boolean,view:'design'|'cutout'|'rear'){
+/**
+ * `wrapper` decides what the group is. On the panel it is an interactive item
+ * carrying its id; in a library preview it is inert decoration — giving a
+ * thumbnail the panel-item class and a data-id would make document-wide lookups
+ * find a picture in the sidebar instead of the part on the panel.
+ */
+export function componentSvg(i:Item,d:ComponentDefinition,p:Project,selected:boolean,view:'design'|'cutout'|'rear',wrapper:'panel'|'preview'='panel'){
   const ink=p.inkColor, w=i.width, h=i.height, c=i.color;let body='';
   if(view==='cutout'&&d.cutout){body=d.orientation==='horizontal'&&d.renderer==='hole'?`<rect x="${-w/2}" y="${-h/2}" width="${w}" height="${h}" rx="${h/2}" class="cut"/>`:d.cutoutShape==='rect'?`<rect x="${-(d.cutoutWidth??w*.8)/2}" y="${-(d.cutoutHeight??h*.8)/2}" width="${d.cutoutWidth??w*.8}" height="${d.cutoutHeight??h*.8}" rx=".3" class="cut"/>`:`<circle r="${d.cutout/2}" class="cut"/>`;}
   else if(view==='cutout'){body='';}
@@ -29,7 +35,11 @@ export function componentSvg(i:Item,d:ComponentDefinition,p:Project,selected:boo
   else body=d.id==='divider'?`<line x1="${-w/2}" x2="${w/2}" stroke="${c}" stroke-width="${h}"/>`:`<${d.id.includes('circle')?'ellipse':'rect'} ${d.id.includes('circle')?`rx="${w/2}" ry="${h/2}"`:`x="${-w/2}" y="${-h/2}" width="${w}" height="${h}" rx="1"`} fill="none" stroke="${c}" stroke-width=".6"/>`;
   const label=i.label&&d.renderer!=='text'&&view==='design'?`<text y="${h/2+3.6}" fill="${ink}" font-family="ui-monospace,monospace" font-size="2" font-weight="600" text-anchor="middle" letter-spacing=".06em">${esc(i.label.toUpperCase())}</text>`:'';
   const selection=selected?`<g class="selection-ui"><rect x="${-w/2-1.3}" y="${-h/2-1.3}" width="${w+2.6}" height="${h+2.6}" fill="none" stroke="${p.accentColor}" stroke-width=".45" stroke-dasharray="1.3 1" pointer-events="none"/>${dimensionLocked(d)?'':[['nw',-w/2-1.3,-h/2-1.3],['ne',w/2+1.3,-h/2-1.3],['sw',-w/2-1.3,h/2+1.3],['se',w/2+1.3,h/2+1.3]].map(([corner,x,y])=>`<rect class="resize-handle" data-resize="${corner}" x="${Number(x)-1.15}" y="${Number(y)-1.15}" width="2.3" height="2.3" rx=".35" fill="${p.accentColor}" stroke="#fff" stroke-width=".25" vector-effect="non-scaling-stroke" style="cursor:${corner==='nw'||corner==='se'?'nwse-resize':'nesw-resize'}"/>`).join('')}</g>`:'';
-  return `<g class="panel-item" data-id="${i.id}" transform="translate(${i.x} ${i.y}) rotate(${i.rotation})" opacity="${i.locked?.75:1}" style="cursor:${i.locked?'not-allowed':'move'}">${body}${label}${selection}</g>`;
+  const inner=`${body}${label}${selection}`;
+  const place=`transform="translate(${i.x} ${i.y}) rotate(${i.rotation})"`;
+  return wrapper==='preview'
+    ? `<g class="part-preview" ${place} pointer-events="none">${inner}</g>`
+    : `<g class="panel-item" data-id="${i.id}" ${place} opacity="${i.locked?.75:1}" style="cursor:${i.locked?'not-allowed':'move'}">${inner}</g>`;
 }
 
 /** Panel legends: multi-line, aligned, in a font that will survive the trip to a fabricator. */
@@ -129,3 +139,38 @@ export function rackContextSvg(p:Project,neighbourHp=8){
     +`<text x="${x+(reach-1)/2}" y="${PANEL_H/2}" text-anchor="middle" font-family="var(--mono)" font-size="3" fill="var(--rack-label)">${neighbourHp} HP</text></g>`;
   return`<g class="rack-context" pointer-events="none">${ghost(-reach)}${ghost(w+1)}${rail(-3)}${rail(PANEL_H-6)}</g>`;
 }
+
+/**
+ * The library thumbnail, drawn by the same renderer that draws the panel.
+ *
+ * These used to be a second, hand-drawn set of approximations keyed off the
+ * part id — a knob was a fixed-radius circle with a fixed pointer, whatever the
+ * real part looked like — so the picture and the component were free to drift
+ * apart, and did. Rendering the component itself means they cannot.
+ */
+export function thumbnailSvg(d:ComponentDefinition,p:Project,colour=d.color,px=40){
+  const nominal=(span:number):Item=>({
+    id:`thumb-${d.id}`,componentId:d.id,
+    x:span/2,y:span/2,rotation:0,
+    // Only text parts carry their own words; everything else would just repeat
+    // the row's title underneath the picture.
+    label:d.renderer==='text'?d.label||'Aa':'',
+    color:colour,width:d.width,height:d.height,
+    value:.62,locked:false,hidden:false,role:'none',identifier:'',
+  });
+
+  // Fit the part to the box with a proportional margin, so every thumbnail has
+  // the same visual breathing room whatever the part's real size. Anything
+  // wearing the glow filter needs more: the blur is a fixed millimetre radius,
+  // so on a 3 mm LED it spreads further than the part itself and would be
+  // clipped into a hard square at the edge of the box.
+  const round=(v:number)=>Math.round(v*100)/100;
+  const base=round(Math.max(d.width,d.height)*1.18);
+  const glows=componentSvg(nominal(base),d,p,false,'design','preview').includes('url(#glow)');
+  const span=round(glows?base+GLOW_BLEED*2:base);
+
+  return`<svg class="part-svg" viewBox="0 0 ${span} ${span}" width="${px}" height="${px}" aria-hidden="true">${componentSvg(nominal(span),d,p,false,'design','preview')}</svg>`;
+}
+
+/** How far the glow filter's blur carries, in millimetres. */
+const GLOW_BLEED=2.5;

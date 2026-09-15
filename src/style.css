@@ -566,3 +566,9 @@ button:focus-visible,input:focus-visible,select:focus-visible { outline-color:va
 :root[data-theme="dark"] .panel-svg,
 :root:not([data-theme="light"]) .panel-svg { --rack-rail:#23262a; --rack-ghost:#1b1e21; --rack-edge:#33383d; --rack-label:#6b7278; }
 @media (prefers-color-scheme: light) { :root:not([data-theme="dark"]) .panel-svg { --rack-rail:#b9bab4; --rack-ghost:#c9cac4; --rack-edge:#8f918b; --rack-label:#71746e; } }
+
+/* ---- part previews: the component itself, at three sizes ---- */
+.part-svg { display:block; width:100%; height:100%; overflow:visible; }
+.layer-icon { display:grid; place-items:center; width:20px; height:20px; flex:none; }
+.layer-icon .part-svg { width:18px; height:18px; }
+.part-thumbnail { display:grid; place-items:center; overflow:hidden; }

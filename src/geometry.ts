@@ -57,3 +57,24 @@ export const rotatePoint=(x:number,y:number,cx:number,cy:number,deg:number)=>{
   const rad=deg*Math.PI/180,cos=Math.cos(rad),sin=Math.sin(rad),dx=x-cx,dy=y-cy;
   return{x:cx+dx*cos-dy*sin,y:cy+dx*sin+dy*cos};
 };
+
+// One decimal place. The geometry keeps full precision; a label that reads
+// "30.1 × 15.48" only looks like it was computed rather than measured.
+const mm=(v:number)=>`${Math.round(v*10)/10}`;
+
+/**
+ * How a part's opening reads in the interface.
+ *
+ * Derived from the same shape the exporters cut, so a row cannot advertise
+ * "Ø22 cutout" for a part that actually gets a rectangular window — which is
+ * exactly what the previous hand-written version did after the displays were
+ * corrected.
+ */
+export function cutoutLabel(d:ComponentDefinition):string{
+  const nominal:Item={id:'nominal',componentId:d.id,x:0,y:0,rotation:0,label:'',color:d.color,
+    width:d.width,height:d.height,value:.5,locked:false,hidden:false,role:'none',identifier:''};
+  const shape=cutoutShape(nominal,d);
+  if(!shape)return'No cutout · surface mounted';
+  if(shape.kind==='circle')return`\u00d8${mm(shape.r*2)} cutout`;
+  return`${mm(shape.w)} \u00d7 ${mm(shape.h)} ${shape.kind==='obround'?'slot':'cutout'}`;
+}
