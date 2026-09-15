@@ -15,7 +15,7 @@ next person the search.
 ## Already traced
 
 - [x] **Thonkiconn PJ398SM / PJ301M-12** — 3.5 mm jack. 6 mm panel hole.
-- [x] **Taiwan Alpha RD901F** — 9 mm pot. M7×0.75 bushing, behind every knob cutout.
+- [x] **Taiwan Alpha RD901F** — 9 mm pot. Alpha's RD901F-40 drawing (SLH-211-208, p.2 of the specification) gives an M7×0.75 bushing and no panel hole, so a 7.1 mm hole from the thread table. Behind the plain knob caps.
 - [x] **Alps Alpine EC11** — encoder. M7×0.75 bushing.
 - [x] **ISO 273 fine** — M3 clearance, behind the mounting hardware.
 - [x] **Song Huei 16K4** — 16 mm pot. The bushing is M7×0.75, not larger; the drawing gives a Ø7.5 panel hole and a Ø3 anti-rotation hole, which is not modelled. `knob-16mm`.
