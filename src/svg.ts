@@ -1,5 +1,6 @@
 import type {ComponentDefinition,Item,Project} from './model';
 import {dimensionLocked,PANEL_H,panelWidth} from './model';
+import {cutoutShapes,mountingShapes,type Shape} from './geometry';
 
 export const esc=(s:string)=>s.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]!));
 
@@ -29,8 +30,19 @@ export function componentSvg(i:Item,d:ComponentDefinition,p:Project,selected:boo
   return `<g class="panel-item" data-id="${i.id}" transform="translate(${i.x} ${i.y}) rotate(${i.rotation})" opacity="${i.locked?.75:1}" style="cursor:${i.locked?'not-allowed':'move'}">${body}${label}${selection}</g>`;
 }
 
-export function mountingSvg(p:Project){if(p.panel.mounting==='none')return'';const w=panelWidth(p.panel),xs=p.panel.mounting==='four'?[7.5,w-7.5]:[7.5],pts=xs.flatMap(x=>[[x,3],[x,PANEL_H-3]]);return pts.map(([x,y])=>`<g class="mounting" transform="translate(${x} ${y})"><rect x="-3.25" y="-1.6" width="6.5" height="3.2" rx="1.6" fill="none" stroke="${p.inkColor}" stroke-width=".5"/><line x1="-1" x2="1" stroke="${p.inkColor}" stroke-width=".25"/></g>`).join('');}
+export function mountingSvg(p:Project){return mountingShapes(p.panel).map(s=>`<g class="mounting" transform="translate(${s.cx} ${s.cy})"><rect x="${-s.w/2}" y="${-s.h/2}" width="${s.w}" height="${s.h}" rx="${s.h/2}" fill="none" stroke="${p.inkColor}" stroke-width=".5"/><line x1="-1" x2="1" stroke="${p.inkColor}" stroke-width=".25"/></g>`).join('');}
 
-export function cutoutSvg(p:Project,definitions:Map<string,ComponentDefinition>){const w=panelWidth(p.panel);const mounting=p.panel.mounting==='none'?'':mountingSvg({...p,inkColor:'#000'});const parts=p.items.filter(i=>!i.hidden).map(i=>{const d=definitions.get(i.componentId);if(!d?.cutout)return'';let shape=d.cutoutShape==='rect'?`<rect x="${-(d.cutoutWidth??i.width*.8)/2}" y="${-(d.cutoutHeight??i.height*.8)/2}" width="${d.cutoutWidth??i.width*.8}" height="${d.cutoutHeight??i.height*.8}" rx=".3"/>`:`<circle r="${d.cutout/2}"/>`;if(d.renderer==='hole'&&d.orientation==='horizontal')shape=`<rect x="${-i.width/2}" y="${-i.height/2}" width="${i.width}" height="${i.height}" rx="${i.height/2}"/>`;return`<g transform="translate(${i.x} ${i.y}) rotate(${i.rotation})">${shape}</g>`;}).join('');return`<svg xmlns="http://www.w3.org/2000/svg" width="${w.toFixed(2)}mm" height="${PANEL_H}mm" viewBox="0 0 ${w} ${PANEL_H}"><g id="panel-outline" fill="none" stroke="#000" stroke-width=".2"><rect x=".1" y=".1" width="${w-.2}" height="${PANEL_H-.2}"/>${mounting}<g id="component-cutouts">${parts}</g></g></svg>`;}
+export function shapePath(s:Shape){
+  if(s.kind==='circle')return`<circle cx="${s.cx}" cy="${s.cy}" r="${s.r}"/>`;
+  const rx=s.kind==='obround'?Math.min(s.w,s.h)/2:.3;
+  return`<g transform="translate(${s.cx} ${s.cy}) rotate(${s.rotation})"><rect x="${-s.w/2}" y="${-s.h/2}" width="${s.w}" height="${s.h}" rx="${rx}"/></g>`;
+}
+
+export function cutoutSvg(p:Project,definitions:Map<string,ComponentDefinition>){
+  const w=panelWidth(p.panel);
+  const mounting=mountingShapes(p.panel).map(shapePath).join('');
+  const parts=cutoutShapes(p.items,definitions).map(shapePath).join('');
+  return`<svg xmlns="http://www.w3.org/2000/svg" width="${w.toFixed(2)}mm" height="${PANEL_H}mm" viewBox="0 0 ${w} ${PANEL_H}"><g id="panel-outline" fill="none" stroke="#000" stroke-width=".2"><rect x=".1" y=".1" width="${w-.2}" height="${PANEL_H-.2}"/><g id="mounting-slots">${mounting}</g><g id="component-cutouts">${parts}</g></g></svg>`;
+}
 
 export const bounds=(i:Item,d:ComponentDefinition)=>({l:i.x-Math.max(i.width,d.keepout||0)/2,r:i.x+Math.max(i.width,d.keepout||0)/2,t:i.y-Math.max(i.height,d.keepout||0)/2,b:i.y+Math.max(i.height,d.keepout||0)/2});

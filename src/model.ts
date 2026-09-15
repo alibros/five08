@@ -19,7 +19,7 @@ export type Item = {
 
 export type PanelProfile = {
   hp:number; widthMode:'nominal'|'doepfer'|'custom'; customWidth:number;
-  thickness:number; material:string; finish:string; mounting:'none'|'two'|'four';
+  thickness:number; material:string; finish:string; mounting:'none'|'two'|'diagonal'|'four';
 };
 
 export type Project = {
@@ -46,7 +46,7 @@ export function parseProject(raw:unknown, definitions:Map<string,ComponentDefini
   if(r.version!==2||!Array.isArray(r.items)||!r.panel||typeof r.panel!=='object') throw new Error('Unsupported project format');
   const base=emptyProject(),panel=r.panel as Record<string,unknown>;
   const widthMode=['nominal','doepfer','custom'].includes(String(panel.widthMode))?String(panel.widthMode) as PanelProfile['widthMode']:base.panel.widthMode;
-  const mounting=['none','two','four'].includes(String(panel.mounting))?String(panel.mounting) as PanelProfile['mounting']:base.panel.mounting;
+  const mounting=['none','two','diagonal','four'].includes(String(panel.mounting))?String(panel.mounting) as PanelProfile['mounting']:base.panel.mounting;
   const hp=clamp(num(panel.hp,12),2,84),material=safeText(panel.material,40,base.panel.material);
   const roles:Item['role'][]=['none','param','input','output','light','custom'];const seen=new Set<string>();
   const items=(r.items as unknown[]).slice(0,1000).flatMap(value=>{if(!value||typeof value!=='object')return[];const x=value as Record<string,unknown>,componentId=String(x.componentId||''),d=definitions.get(componentId);if(!d)return[];let id=safeText(x.id,80,uid());if(seen.has(id))id=uid();seen.add(id);const role=roles.includes(String(x.role) as Item['role'])?String(x.role) as Item['role']:'none',imageData=validPng(x.imageData);return[{id,componentId,x:clamp(num(x.x,10),-500,1000),y:clamp(num(x.y,20),-500,1000),rotation:clamp(num(x.rotation,0),-3600,3600),width:clamp(num(x.width,d.width),.5,500),height:clamp(num(x.height,d.height),.5,500),value:clamp(num(x.value,.5),0,1),label:safeText(x.label,200,''),color:validColor(x.color,d.color),locked:!!x.locked,hidden:!!x.hidden,role,identifier:safeText(x.identifier,100,''),...(imageData?{imageData}:{})}];});
