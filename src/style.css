@@ -648,20 +648,18 @@ button:focus-visible,input:focus-visible,select:focus-visible { outline-color:va
 .action-grid button:active, .status-control:active, .collapse-button:active, .finish-card:active, .template:active, .export-options button:active,
 .inspector-tabs button:active, .layer-toggle:active, .surface-upload:active, .surface-remove:active, .project-actions button:active { translate: 0 1px; }
 
-/* The primary button and the wordmark swell along the width axis. */
-.tool-button.primary { font-stretch: 100%; transition: font-stretch var(--fast) var(--ease), background-color var(--fast) var(--ease), border-color var(--fast) var(--ease), translate var(--press) linear; }
-.tool-button.primary:hover { font-stretch: 108%; }
+/* Hover changes colour, never the button's text metrics or hit area. */
+.tool-button.primary { font-stretch: 100%; }
+.tool-button.primary:hover { background: var(--ink-2); border-color: var(--ink-2); }
 .brand strong { transition: font-stretch var(--slow) var(--ease); }
 .brand:hover strong { font-stretch: 100%; letter-spacing: -.02em; }
 
-/* Tooltips arrive after a beat, so a quick pass never triggers one, and
-   anchor to the control so they flip away from the viewport edge. */
-[data-tooltip]::after { opacity: 0; visibility: hidden; translate: 0 -3px; transition: opacity var(--fast) var(--ease), translate var(--fast) var(--ease), visibility 0s linear var(--fast); }
-[data-tooltip]:hover::after, [data-tooltip]:focus-visible::after { opacity: 1; visibility: visible; translate: 0 0; transition-delay: 320ms, 320ms, 320ms; }
-@supports (position-try-fallbacks: flip-block) {
-  [data-tooltip] { position: static; anchor-name: --tip-host; }
-  [data-tooltip]::after { position: absolute; position-anchor: --tip-host; top: anchor(bottom); left: anchor(center); transform: translateX(-50%); margin-top: 7px; position-try-fallbacks: flip-block, flip-inline; }
-}
+/* Each tooltip stays in its own control's positioning context. A shared
+   named anchor can resolve to an unrelated button elsewhere in the editor. */
+[data-tooltip]::after { opacity: 0; visibility: hidden; transition: opacity var(--fast) var(--ease), visibility 0s linear var(--fast); }
+[data-tooltip]:hover::after, [data-tooltip]:focus-visible::after { opacity: 1; visibility: visible; transition-delay: 320ms, 320ms; }
+.topbar #help::after { left: auto; right: 0; transform: none; }
+.canvas-toolbar [data-tooltip]::after { top: auto; bottom: calc(100% + 7px); }
 
 /* Overlays fade and rise in; they close instantly, because closing is not
    a state anyone needs explained. */
