@@ -54,7 +54,7 @@ const shadow=(w:number)=>`<rect x="-.6" y="-.6" width="${w+1.2}" height="${PANEL
 const moduleSvg=(p:Project,prefix:string,defocus:boolean)=>{
   const w=panelWidth(p.panel);
   const parts=p.items.map(i=>componentSvg(i,catalogMap.get(i.componentId)!,p,false,'design','preview')).join('');
-  return`<g ${defocus?'filter="url(#defocus)" opacity=".94"':''}>${shadow(w)}${panelFinishSurface(p,w,prefix)}${mountingSvg(p)}${screwsSvg(p,prefix)}${parts}</g>`;
+  return`<g ${defocus?'filter="url(#defocus)" opacity=".94"':''}>${shadow(w)}${panelFinishSurface(p,w,prefix)}${mountingSvg(p)}${parts}</g>`;
 };
 
 export function rackSceneSvg(hero:Project){
@@ -83,8 +83,11 @@ export function rackSceneSvg(hero:Project){
   <rect x="${x0-60}" y="${-RAIL-30}" width="${total+120}" height="${PANEL_H+RAIL*2+60}" fill="url(#case)"/>
   <g transform="translate(${x0} 0)">${moduleSvg(left,'rl-',true)}</g>
   <g transform="translate(${x1} 0)">${moduleSvg(right,'rr-',true)}</g>
-  <g class="hero-module">${shadow(w)}${panelFinishSurface(hero,w,'rk-')}${mountingSvg(hero)}${screwsSvg(hero,'rk-')}${hero.items.map(i=>componentSvg(i,catalogMap.get(i.componentId)!,hero,false,'design','preview')).join('')}</g>
+  <g class="hero-module">${shadow(w)}${panelFinishSurface(hero,w,'rk-')}${mountingSvg(hero)}${hero.items.map(i=>componentSvg(i,catalogMap.get(i.componentId)!,hero,false,'design','preview')).join('')}</g>
   ${rail(-RAIL+3)}${rail(PANEL_H-3)}
+  <g transform="translate(${x0} 0)" filter="url(#defocus)" opacity=".94">${screwsSvg(left,'rl-')}</g>
+  <g transform="translate(${x1} 0)" filter="url(#defocus)" opacity=".94">${screwsSvg(right,'rr-')}</g>
+  <g class="hero-screws">${screwsSvg(hero,'rk-')}</g>
   ${cables.join('')}
 </svg>`;
 }

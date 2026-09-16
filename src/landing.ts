@@ -1,7 +1,7 @@
 import './landing.css';
 import {catalog,catalogMap} from './catalog';
 import {panelFinishes} from './finishes';
-import {demoPanel} from './demo';
+import {demoPanel,resizeDemoPanel} from './demo';
 import {HP_MM,PANEL_H,panelWidth} from './model';
 import {issueCounts,preflight} from './preflight';
 import {componentSvg,finishSwatchSvg,mountingSvg,panelFinishDefs,panelFinishSurface,screwsSvg,shapePath} from './svg';
@@ -138,7 +138,7 @@ const CHECKS=[
 
 /* ---------- page ---------- */
 
-const wordmark=`<img src="/five08-logo.svg" width="112" height="40" alt="Five08">`;
+const wordmark=`<img src="/five08-logo.svg" width="120" height="40" alt="Five08">`;
 
 /* The zone marks a drawing sheet carries in its border: letters down the
    sides, numbers along the top and bottom, a centring tick on each edge. */
@@ -351,18 +351,9 @@ const MIN_HP=6, MAX_HP=20;
 const caption=document.querySelector<HTMLElement>('#demo-caption')!;
 const hpValue=document.querySelector<HTMLOutputElement>('#hp-value')!;
 const hpMm=document.querySelector<HTMLElement>('#hp-mm')!;
-const home=demoPanel();
-const homeWidth=panelWidth(home.panel);
-
 function setHp(hp:number){
   const next=Math.max(MIN_HP,Math.min(MAX_HP,hp));
-  project.panel.hp=next;
-  project.panel.customWidth=next*HP_MM-.4;
-  const width=panelWidth(project.panel);
-  // Scale from the layout's own proportions every time, never from wherever it
-  // happens to be now — otherwise the mapping compounds and returning to 12 HP
-  // does not return to the layout you started with.
-  project.items.forEach((item,n)=>{item.x=Math.round(home.items[n].x/homeWidth*width*10)/10;});
+  resizeDemoPanel(project,next);
   redraw();
   describe();
 }

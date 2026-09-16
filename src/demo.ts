@@ -1,5 +1,5 @@
 import {catalogMap} from './catalog';
-import {panelWidth,uid,type Item,type Project} from './model';
+import {HP_MM,panelWidth,uid,type Item,type Project} from './model';
 
 /**
  * The panel shown on the public page. It is a normal project, rendered by the
@@ -33,4 +33,19 @@ export function demoPanel():Project{
     place('jack-mono',51,106,'OUT'),
   ];
   return project;
+}
+
+/** Keep the landing-page example legible while demonstrating narrow panels. */
+export function resizeDemoPanel(project:Project,hp:number){
+  const source=demoPanel();
+  const sourceWidth=panelWidth(source.panel);
+  project.panel.hp=hp;
+  project.panel.customWidth=hp*HP_MM-.4;
+  const scale=panelWidth(project.panel)/sourceWidth;
+  project.items.forEach((item,n)=>{
+    const original=source.items[n];
+    item.x=Math.round(original.x*scale*10)/10;
+    item.width=Math.round(original.width*scale*10)/10;
+    item.height=Math.round(original.height*scale*10)/10;
+  });
 }
