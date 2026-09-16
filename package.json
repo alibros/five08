@@ -24,7 +24,7 @@
     "check:citations": "node --experimental-strip-types scripts/check-citations.mjs"
   },
   "engines": {
-    "node": ">=20"
+    "node": ">=22"
   },
   "devDependencies": {
     "@fontsource-variable/archivo": "^5.3.0",
