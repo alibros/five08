@@ -55,7 +55,7 @@ h1, h2, h3, .standfirst, .terms, .band-head > p, .glance, .split, .spec, .hp-not
   border-bottom: 1px solid var(--ink);
 }
 .wordmark { display: inline-flex; align-items: center; flex: none; }
-.wordmark img { display: block; width: 80px; height: 20px; }
+.wordmark img { display: block; width: 96px; height: 30px; }
 .masthead .rev {
   font-family: var(--mono); font-size: 10px; letter-spacing: .08em;
   text-transform: uppercase; color: var(--faint);

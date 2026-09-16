@@ -86,7 +86,7 @@ app.innerHTML=`<div class="skip-links">
 <div class="toast" id="toast" role="status" aria-live="polite"></div>`;
 
 document.querySelector<HTMLAnchorElement>('.brand')!.innerHTML=
-  '<img src="/five08-logo.svg" width="160" height="40" alt="Five08"><small>Eurorack panel designer</small>';
+  '<img src="/five08-logo.svg" width="128" height="40" alt="Five08"><small>Eurorack panel designer</small>';
 
 function bootId(){
   const migrated=migrateLegacy();
