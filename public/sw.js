@@ -1,8 +1,8 @@
 /* Five08 offline cache.
    Hashed assets are served cache-first; HTML is fetched fresh when the network
    allows so a deploy lands, and falls back to the last copy when it does not. */
-const VERSION = 'five08-v1';
-const SHELL = ['/', '/app/', '/five08-mark.svg', '/site.webmanifest'];
+const VERSION = 'five08-v2';
+const SHELL = ['/', '/app/', '/five08-logo.svg', '/five08-mark.svg', '/site.webmanifest'];
 
 self.addEventListener('install', event => {
   event.waitUntil(

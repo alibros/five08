@@ -85,6 +85,9 @@ app.innerHTML=`<div class="skip-links">
 <svg class="defs-host" aria-hidden="true" width="0" height="0"><defs><filter id="glow" x="-75%" y="-75%" width="250%" height="250%"><feGaussianBlur stdDeviation="1" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs></svg>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>`;
 
+document.querySelector<HTMLAnchorElement>('.brand')!.innerHTML=
+  '<img src="/five08-logo.svg" width="160" height="40" alt="Five08"><small>Eurorack panel designer</small>';
+
 function bootId(){
   const migrated=migrateLegacy();
   if(migrated){setActiveId(migrated.id);return migrated.id;}

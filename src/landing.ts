@@ -138,7 +138,7 @@ const CHECKS=[
 
 /* ---------- page ---------- */
 
-const mark=`<svg viewBox="0 0 64 64" aria-hidden="true"><path d="M18 11h28M18 53h28"/><rect x="21" y="8" width="22" height="48" rx="4"/><circle class="signal" cx="32" cy="32" r="7"/><circle cx="32" cy="32" r="2.5"/></svg>`;
+const wordmark=`<img src="/five08-logo.svg" width="160" height="40" alt="Five08">`;
 
 /* The zone marks a drawing sheet carries in its border: letters down the
    sides, numbers along the top and bottom, a centring tick on each edge. */
@@ -175,7 +175,7 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML=`
 <a class="skip" href="#main">Skip to content</a>
 ${sheetFrame}
 <header class="masthead">
-  <a class="wordmark" href="/">${mark}<b>five08</b></a>
+  <a class="wordmark" href="/" aria-label="Five08 home">${wordmark}</a>
   <span class="rev">Eurorack panel layout · MIT</span>
   <nav aria-label="Sections">
     <a href="#about">1.0 What it is</a>
@@ -310,7 +310,7 @@ ${sheetFrame}
     </section>
   </div>
   <div class="title-block" role="group" aria-label="Sheet information">
-    <div class="tb-name"><a class="wordmark" href="/">${mark}<b>five08</b></a><span>Eurorack panel layout</span></div>
+    <div class="tb-name"><a class="wordmark" href="/" aria-label="Five08 home">${wordmark}</a><span>Eurorack panel layout</span></div>
     <div class="tb-title"><span class="legend">Title</span><b>A layout tool for Eurorack front panels</b></div>
     <div><span class="legend">Drawn</span><b><a href="https://forestofrods.com" rel="noreferrer">Ali Bross</a></b></div>
     <div><span class="legend">Licence</span><b>MIT</b></div>

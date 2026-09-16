@@ -54,15 +54,8 @@ h1, h2, h3, .standfirst, .terms, .band-head > p, .glance, .split, .spec, .hp-not
   content: ''; position: absolute; left: var(--gutter); right: var(--gutter); bottom: 0;
   border-bottom: 1px solid var(--ink);
 }
-.wordmark { display: flex; align-items: center; gap: 8px; }
-.wordmark svg { width: 21px; height: 21px; fill: none; stroke: currentColor; stroke-width: 2.6; }
-.wordmark svg .signal { fill: var(--signal); stroke: none; }
-.wordmark b {
-  font-stretch: var(--width-tight); font-weight: 700; font-size: 17px;
-  letter-spacing: -.03em;
-  transition: font-stretch var(--slow) var(--ease);
-}
-.wordmark:hover b { font-stretch: var(--width-normal); }
+.wordmark { display: inline-flex; align-items: center; flex: none; }
+.wordmark img { display: block; width: 80px; height: 20px; }
 .masthead .rev {
   font-family: var(--mono); font-size: 10px; letter-spacing: .08em;
   text-transform: uppercase; color: var(--faint);
