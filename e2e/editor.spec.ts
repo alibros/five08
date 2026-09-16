@@ -242,6 +242,23 @@ test.describe('public page',()=>{
     expect(errors).toEqual([]);
   });
 
+  test('the sheet is a page, not the window',async({page})=>{
+    // On a wide screen a viewport-width frame leaves the content column
+    // stranded in the middle with no relationship to the sheet edge.
+    const errors=watchConsole(page);
+    await page.setViewportSize({width:2200,height:900});
+    await page.goto('/');
+    const geo=await page.evaluate(()=>{
+      const frame=document.querySelector('.sheet-frame')!.getBoundingClientRect();
+      const head=document.querySelector('.masthead')!.getBoundingClientRect();
+      return{frameW:frame.width,left:head.left-frame.left,right:frame.right-head.right};
+    });
+    expect(geo.frameW).toBeLessThan(1400);
+    expect(Math.abs(geo.left-geo.right),'the sheet is centred on the column').toBeLessThan(2);
+    expect(geo.left,'a steady margin between the sheet edge and the column').toBeGreaterThan(40);
+    expect(errors).toEqual([]);
+  });
+
   test('the hero panel can be used, not just looked at',async({page})=>{
     const errors=watchConsole(page);
     await page.goto('/');

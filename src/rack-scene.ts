@@ -49,10 +49,12 @@ function cable(x1:number,y1:number,x2:number,y2:number,colour:string,droop:numbe
   return`<g class="cable"><path d="${d}" fill="none" stroke="#000" stroke-opacity=".28" stroke-width="3.2" transform="translate(.6 1.4)"/><path d="${d}" fill="none" stroke="${colour}" stroke-width="2.4" stroke-linecap="round"/><path d="${d}" fill="none" stroke="#fff" stroke-opacity=".28" stroke-width=".6" transform="translate(-.5 -.6)"/>${plug(x1,y1)}${plug(x2,y2)}</g>`;
 }
 
+const shadow=(w:number)=>`<rect x="-.6" y="-.6" width="${w+1.2}" height="${PANEL_H+1.2}" rx=".8" fill="#000" fill-opacity=".45" transform="translate(.4 1.6)"/>`;
+
 const moduleSvg=(p:Project,prefix:string,defocus:boolean)=>{
   const w=panelWidth(p.panel);
   const parts=p.items.map(i=>componentSvg(i,catalogMap.get(i.componentId)!,p,false,'design','preview')).join('');
-  return`<g ${defocus?'filter="url(#defocus)" opacity=".94"':''}>${panelFinishSurface(p,w,prefix)}${mountingSvg(p)}${screwsSvg(p,prefix)}${parts}</g>`;
+  return`<g ${defocus?'filter="url(#defocus)" opacity=".94"':''}>${shadow(w)}${panelFinishSurface(p,w,prefix)}${mountingSvg(p)}${screwsSvg(p,prefix)}${parts}</g>`;
 };
 
 export function rackSceneSvg(hero:Project){
@@ -70,18 +72,18 @@ export function rackSceneSvg(hero:Project){
   if(outJack&&in2)cables.push(cable(outJack.x,outJack.y,x1+in2.x,in2.y,'#c8321e',34));
   if(sqr&&cv)cables.push(cable(x0+sqr.x,sqr.y,cv.x,cv.y,'#2b2b2b',20));
   const rail=(y:number)=>`<g><rect x="${x0-40}" y="${y}" width="${total+80}" height="${RAIL}" fill="url(#rail)"/><path d="M${x0-40} ${y+RAIL-1.2}H${x0+total+40}" stroke="#000" stroke-opacity=".35" stroke-width=".5"/><path d="M${x0-40} ${y+1}H${x0+total+40}" stroke="#fff" stroke-opacity=".5" stroke-width=".4"/>${Array.from({length:Math.ceil((total+80)/HP_MM)},(_,n)=>`<circle cx="${(x0-40+n*HP_MM+HP_MM/2).toFixed(2)}" cy="${y+RAIL/2}" r=".75" fill="#2b2c29" fill-opacity=".55"/>`).join('')}</g>`;
-  return`<svg class="rack-scene" viewBox="${x0-30} ${-RAIL-14} ${total+60} ${PANEL_H+RAIL*2+28}" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+  return`<svg class="rack-scene" viewBox="${x0-30} ${-RAIL-14} ${total+60} ${PANEL_H+RAIL*2+28}" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
   <defs>
     ${panelFinishDefs(hero,'rk-')}${panelFinishDefs(left,'rl-')}${panelFinishDefs(right,'rr-')}
     <linearGradient id="rail" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#b9bbb6"/><stop offset=".45" stop-color="#8f918c"/><stop offset="1" stop-color="#5f615c"/></linearGradient>
     <filter id="defocus" x="-5%" y="-5%" width="110%" height="110%"><feGaussianBlur stdDeviation=".7"/></filter>
     <filter id="glow" x="-75%" y="-75%" width="250%" height="250%"><feGaussianBlur stdDeviation="1" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
-    <linearGradient id="case" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#2a2b28"/><stop offset="1" stop-color="#151613"/></linearGradient>
+    <linearGradient id="case" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#4a4b46"/><stop offset=".5" stop-color="#3a3b36"/><stop offset="1" stop-color="#2b2c28"/></linearGradient>
   </defs>
   <rect x="${x0-60}" y="${-RAIL-30}" width="${total+120}" height="${PANEL_H+RAIL*2+60}" fill="url(#case)"/>
   <g transform="translate(${x0} 0)">${moduleSvg(left,'rl-',true)}</g>
   <g transform="translate(${x1} 0)">${moduleSvg(right,'rr-',true)}</g>
-  <g class="hero-module"><rect x="-.6" y="-.6" width="${w+1.2}" height="${PANEL_H+1.2}" rx=".8" fill="#000" fill-opacity=".45" transform="translate(.4 1.6)"/>${panelFinishSurface(hero,w,'rk-')}${mountingSvg(hero)}${screwsSvg(hero,'rk-')}${hero.items.map(i=>componentSvg(i,catalogMap.get(i.componentId)!,hero,false,'design','preview')).join('')}</g>
+  <g class="hero-module">${shadow(w)}${panelFinishSurface(hero,w,'rk-')}${mountingSvg(hero)}${screwsSvg(hero,'rk-')}${hero.items.map(i=>componentSvg(i,catalogMap.get(i.componentId)!,hero,false,'design','preview')).join('')}</g>
   ${rail(-RAIL+3)}${rail(PANEL_H-3)}
   ${cables.join('')}
 </svg>`;

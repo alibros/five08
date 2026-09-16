@@ -9,6 +9,10 @@
   --gutter: 30px;
   --frame: 1240px;
   --sheet-inset: 18px;
+  /* The sheet is a page, not the window: it stops at a fixed width and sits
+     in the middle, so the margin between its edge and the document column is
+     the same on a laptop and on a 32-inch monitor. */
+  --sheet-w: calc(var(--frame) + 124px);
   font-family: var(--sans);
   font-synthesis: none;
   color: var(--ink);
@@ -20,13 +24,6 @@ html { scroll-behavior: smooth; background: var(--paper); }
 /* The sheet frame sits between the paper and the content, so the body itself
    paints nothing. */
 body { margin: 0; padding-top: calc(var(--sheet-inset) + 1px); background: transparent; -webkit-font-smoothing: antialiased; }
-/* The margin outside the sheet edge is paper, not a window onto the page:
-   content scrolls under the frame rather than over it, so the frame stays a
-   closed rectangle however far down you are. */
-body::after {
-  content: ''; position: fixed; inset: 0; z-index: 30; pointer-events: none;
-  border: var(--sheet-inset) solid var(--paper);
-}
 a { color: inherit; text-decoration: none; }
 p { margin: 0; text-wrap: pretty; }
 h1, h2, h3 { margin: 0; font-stretch: var(--width-tight); font-weight: 620; letter-spacing: -.015em; line-height: 1.05; text-wrap: balance; }
@@ -37,7 +34,8 @@ h1, h2, h3, .standfirst, .terms, .band-head > p, .glance, .split, .spec, .hp-not
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
 .skip { position: absolute; left: -9999px; }
 .skip:focus {
-  left: calc(var(--sheet-inset) + 14px); top: calc(var(--sheet-inset) + 10px); z-index: 60;
+  left: max(calc(var(--sheet-inset) + 14px), calc(50% - var(--sheet-w) / 2 + 14px));
+  top: calc(var(--sheet-inset) + 10px); z-index: 60;
   padding: 9px 13px; background: var(--ink); color: var(--on-ink);
 }
 
@@ -73,7 +71,7 @@ h1, h2, h3, .standfirst, .terms, .band-head > p, .glance, .split, .spec, .hp-not
 .masthead nav { display: flex; gap: 2px; margin-left: auto; }
 .masthead nav a {
   font-family: var(--mono); font-size: 11px; color: var(--muted);
-  padding: 5px 9px;
+  padding: 5px 9px; white-space: nowrap;
   background:
     linear-gradient(var(--ink), var(--ink)) no-repeat 9px 100% / 0 1px;
   transition: background-size var(--fast) var(--ease), color var(--fast) var(--ease);
@@ -114,8 +112,14 @@ main { max-width: var(--frame); margin: 0 auto; padding: 0 var(--gutter); }
    frame is fixed to the viewport and the page scrolls inside it — and it
    draws above everything, because an edge with a hole in it is not an edge. */
 .sheet-frame {
-  position: fixed; inset: var(--sheet-inset); z-index: 40; pointer-events: none;
+  position: fixed; z-index: 40; pointer-events: none;
+  top: var(--sheet-inset); bottom: var(--sheet-inset);
+  left: 50%; translate: -50% 0;
+  width: min(var(--sheet-w), 100% - var(--sheet-inset) * 2);
   border: 1px solid var(--rule-strong);
+  /* Everything outside the sheet is paper, so the page scrolls under its edge
+     rather than over it and the frame stays a closed rectangle. */
+  box-shadow: 0 0 0 100vmax var(--paper);
 }
 .zones {
   position: absolute; display: flex; justify-content: space-around;
@@ -310,11 +314,12 @@ h1 { font-size: clamp(34px,4.4vw,58px); max-width: 14ch; line-height: 1.0; lette
    edges. */
 .rack { margin: 0; padding: 0 0 8px; border-top: 1px solid var(--rule); }
 .rack-scene-host {
-  height: clamp(300px, 38vw, 470px); overflow: hidden; display: flex; justify-content: center;
-  background: #1b1c19; border-radius: 2px;
+  display: flex; overflow: hidden; border-radius: 2px;
   box-shadow: inset 0 0 0 1px rgb(0 0 0 / .4), 0 1px 0 rgb(255 255 255 / .35);
 }
-.rack-scene { display: block; height: 100%; width: 100%; }
+/* The scene carries its own aspect ratio from its viewBox, so the figure is
+   exactly as tall as the rack it holds and nothing is cropped. */
+.rack-scene { display: block; width: 100%; height: auto; }
 .rack figcaption {
   display: grid; grid-template-columns: 72px minmax(0, 1fr); gap: 0 18px;
   padding: 12px 0 0; max-width: 78ch; font-size: 12.5px; line-height: 1.6; color: var(--muted);
@@ -440,6 +445,8 @@ h1 { font-size: clamp(34px,4.4vw,58px); max-width: 14ch; line-height: 1.0; lette
 .tb-links a { transition: color var(--fast) var(--ease); }
 .tb-links a:hover { color: var(--ink); }
 
+/* The section links need the room before the strapline does. */
+@media (max-width: 1180px) { .masthead .rev { display: none; } }
 @media (max-width: 960px) {
   .colophon { grid-template-columns: 1fr; }
   .lead { grid-template-columns: 1fr; gap: 38px; padding: 42px 0; }
@@ -452,7 +459,6 @@ h1 { font-size: clamp(34px,4.4vw,58px); max-width: 14ch; line-height: 1.0; lette
   :root { --gutter: 18px; --sheet-inset: 0px; }
   .sheet-frame { display: none; }
   body { padding-top: 0; }
-  body::after { display: none; }
   .masthead { top: 0; }
   .zone-mark { left: 0; font-size: 110px; }
   .title-block { grid-template-columns: repeat(3, 1fr); }
