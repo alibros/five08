@@ -83,17 +83,17 @@ const DOES:Array<[string,string,string]>=[
   ['Geometry','128.5 mm × 2–84 HP','Nominal, with the Doepfer allowance, or a custom width in millimetres'],
   ['Parts',`${catalog.length}`,'Knobs, encoders, jacks, sliders, switches, displays, LEDs, mounting hardware, text, tick scales, PNG and SVG artwork'],
   ['Placement','0.1 mm','Grid snapping, centre and edge guides, live gap measurements, equal-gap detection'],
-  ['Views','3 + rack','Hardware, cutout and rear clearance, and the module between its neighbours'],
-  ['Checks','8','Edge margins, cutout walls, mounting clashes, jack pitch, part depth, off-HP widths'],
+  ['Views','4 + rack','Hardware, cutouts, rear clearance and interactive 3D inspection'],
+  ['Checks','4 groups','Configurable machining, assembly, ergonomics and artwork checks'],
   ['Provenance','Per figure','Datasheet or estimate, with the source linked from the inspector and the parts list'],
-  ['Persistence','Local','Undo, autosave, named projects, a portable .panel.json'],
-  ['Exports','8 formats','SVG, DXF, PNG, a 1:1 drilling template, VCV Rack, CSV, the project file'],
+  ['Persistence','Local','Undo, autosave, named projects and reusable, portable assemblies'],
+  ['Exports','9 formats','SVG, DXF, KiCad mechanical PCB, PNG, 1:1 print, VCV Rack, CSV and project JSON'],
 ];
 
 const DOES_NOT=[
   'It does not know your parts. Most dimensions are generic estimates; where a cutout is traced to a named datasheet the part says so and links to it. Everything else is a starting point.',
-  'It is not CAD. No constraints, no 3D, no PCB, no tolerance stack-up.',
-  'It does not do illustration. Text, simple shapes and imported PNGs only.',
+  'It is not a constraint-based CAD or circuit-design tool. The 3D view uses simplified hardware and clearance envelopes, not manufacturer CAD models.',
+  'KiCad export contains the panel outline and openings only, not electrical footprints, artwork or a fabrication-ready PCB.',
   'It does not store anything on a server. Open it on another machine and your work is not there — export the project file.',
   'It does not quote, order or manufacture panels.',
 ];
@@ -117,6 +117,7 @@ const EXPORTS:Array<[string,string,string]>=[
   ['Artwork SVG','.svg','Physical-size panel graphics, PNG artwork embedded'],
   ['Cutout SVG','.svg','Outline, mounting slots and apertures, nothing decorative'],
   ['Cutout DXF','.dxf','R12, millimetres, layered — what a laser cutter or panel shop wants'],
+  ['KiCad mechanical PCB','.kicad_pcb','Exact Edge.Cuts outline and openings; no artwork or circuitry'],
   ['PNG render','.png','150 to 1200 dpi, for documentation and posts'],
   ['Print at 1:1','paper','Cutout template with centre marks and a 100 mm scale bar'],
   ['VCV Rack SVG','.svg','Artwork plus coloured component-role markers'],
@@ -125,7 +126,7 @@ const EXPORTS:Array<[string,string,string]>=[
 ];
 
 const CHECKS=[
-  ['Off the panel','A part or its keepout crosses the outline.'],
+  ['Off the panel','A physical part or artwork crosses the outline.'],
   ['Edge margin','A part sits in the 3 mm strip the rails and neighbours use.'],
   ['Cutout overlap','Two holes would be machined as one ragged opening.'],
   ['Thin wall','Less than 1.2 mm of material left between two cutouts.'],
@@ -133,6 +134,8 @@ const CHECKS=[
   ['Jack pitch','Two 3.5 mm jacks too close to get a spanner on the nut.'],
   ['Part depth','Deeper than a shallow skiff case allows.'],
   ['Off-HP width','A custom width that is not a whole number of HP.'],
+  ['Knob clearance','Physical skirt collisions and configurable finger clearance.'],
+  ['Readability','Text smaller than the configured minimum physical size.'],
 ];
 
 
@@ -169,6 +172,7 @@ const REVISIONS:Array<[string,string,string]>=[
   ['A','2026-07-13','First release: HP widths, parts library, SVG export.'],
   ['B','2026-09-15','Datasheet identity. Traced part dimensions, DXF and 1:1 print, preflight, offline.'],
   ['C',__FIVE08_DATE__,'Set on paper. Sheet frame, material hero, editor bench.'],
+  ['D','2026-09-16','Physical-size locks, assemblies, panel typography, configurable preflight, KiCad and 3D inspection.'],
 ];
 
 document.querySelector<HTMLDivElement>('#app')!.innerHTML=`

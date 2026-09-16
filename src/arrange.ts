@@ -1,4 +1,5 @@
 import {PANEL_H,type Item} from './model';
+import {shapeBounds} from './geometry';
 
 /** Where a batch operation wants an item to end up. Applying it is the caller's job. */
 export type Placement={id:string;x:number;y:number;rotation?:number;width?:number;height?:number};
@@ -6,10 +7,10 @@ export type Placement={id:string;x:number;y:number;rotation?:number;width?:numbe
 const size=(i:Item,axis:'x'|'y')=>axis==='x'?i.width:i.height;
 const readingOrder=(items:Item[],rowTolerance=4)=>[...items].sort((a,b)=>Math.abs(a.y-b.y)>rowTolerance?a.y-b.y:a.x-b.x);
 
-export const extent=(items:Item[])=>({
-  l:Math.min(...items.map(i=>i.x-i.width/2)), r:Math.max(...items.map(i=>i.x+i.width/2)),
-  t:Math.min(...items.map(i=>i.y-i.height/2)), b:Math.max(...items.map(i=>i.y+i.height/2)),
-});
+export const extent=(items:Item[])=>{
+  const bounds=items.map(i=>shapeBounds({kind:'rect',cx:i.x,cy:i.y,w:i.width,h:i.height,rotation:i.rotation}));
+  return{l:Math.min(...bounds.map(b=>b.l)),r:Math.max(...bounds.map(b=>b.r)),t:Math.min(...bounds.map(b=>b.t)),b:Math.max(...bounds.map(b=>b.b))};
+};
 
 /**
  * Lays a selection out as a grid, reading order preserved. Columns take the
@@ -88,10 +89,17 @@ export function applyPlacements(items:Item[],placements:Placement[]){
 export function repeatItems(items:Item[],count:number,dx:number,dy:number,nextId:()=>string):Item[]{
   if(items.length===0||count<2)return[];
   const copies:Item[]=[];
-  for(let n=1;n<count;n++)
-    for(const item of items)
-      copies.push({...structuredClone(item),id:nextId(),x:round(item.x+dx*n),y:round(item.y+dy*n)});
+  for(let n=1;n<count;n++)copies.push(...copyItems(items,dx*n,dy*n,nextId));
   return copies;
+}
+/** A copied channel must not remain linked to the source channel's selection group. */
+export function copyItems(items:Item[],dx:number,dy:number,nextId:()=>string):Item[]{
+  const groups=new Map<string,string>();
+  return items.map(item=>{
+    if(item.groupId&&!groups.has(item.groupId))groups.set(item.groupId,nextId());
+    return{...structuredClone(item),id:nextId(),identifier:'',x:round(item.x+dx),y:round(item.y+dy),
+      ...(item.groupId?{groupId:groups.get(item.groupId)!}:{})};
+  });
 }
 const round=(v:number)=>Math.round(v*100)/100;
 

@@ -1,4 +1,5 @@
 import './style.css';
+import './studio.css';
 import {catalog,catalogMap,categories} from './catalog';
 import {applyFinish,panelFinishes} from './finishes';
 import {clone,dimensionLocked,emptyProject,PANEL_H,panelWidth,parseProject,uid,type ComponentDefinition,type Item,type Project} from './model';
@@ -16,6 +17,12 @@ import {pulse,roll} from './roll';
 import {units} from './units';
 import {applyTheme,nextTheme,watchSystemTheme,type Theme} from './theme';
 import {registerOffline} from './offline';
+import {restorePhysicalDimensions} from './model';
+import {copyItems} from './arrange';
+import {designControls,bindDesignControls,scaleControls,bindScaleControls} from './studio-controls';
+import {assemblyDialog} from './assembly-dialog';
+import {panelKiCad} from './kicad';
+import {ISSUE_CATEGORIES} from './preflight';
 
 const PX=4, grids=[.5,1,2.54,5.08];
 const MIN_ZOOM=.3, MAX_ZOOM=6;
@@ -87,6 +94,10 @@ app.innerHTML=`<div class="skip-links">
 
 document.querySelector<HTMLAnchorElement>('.brand')!.innerHTML=
   '<img src="/five08-logo.svg" width="120" height="40" alt="Five08"><small>Eurorack panel designer</small>';
+document.querySelector('.library-tools')!.insertAdjacentHTML('beforeend',`<button class="tool-button assembly-library-button" id="open-assemblies">${icon('folder')} Assemblies</button>`);
+document.querySelector('#views')!.insertAdjacentHTML('afterend',`<button class="quiet inspection-button" id="inspect-3d" title="Inspect panel in 3D">${icon('dxf')}<span>3D</span></button>`);
+document.querySelector('#open-assemblies')!.addEventListener('click',openAssemblies);
+document.querySelector('#inspect-3d')!.addEventListener('click',()=>void inspect3d());
 
 function bootId(){
   const migrated=migrateLegacy();
@@ -127,13 +138,15 @@ function setSaveStatus(state:'saving'|'saved'|'quota'|'unavailable'){
 function savePrefs(){writePrefs({theme,grid:grids[gridIndex],snap,smartGuides,showGrid,showSafe,focusRing});}
 function saveRecovery(){pushRecovery(project);}
 function fitZoom(){
-  const width=Math.max(320,window.innerWidth-(leftOpenAtBoot()?700:220));
-  const height=Math.max(320,window.innerHeight-210);
+  const canvas=document.querySelector<HTMLElement>('#canvas');
+  const padding=canvas?getComputedStyle(canvas):null;
+  const width=Math.max(100,canvas&&padding?canvas.clientWidth-parseFloat(padding.paddingLeft)-parseFloat(padding.paddingRight):window.innerWidth-(leftOpenAtBoot()?700:220));
+  const height=Math.max(100,canvas&&padding?canvas.clientHeight-parseFloat(padding.paddingTop)-parseFloat(padding.paddingBottom):window.innerHeight-280);
   const w=panelWidth(project.panel);
   return Math.max(MIN_ZOOM,Math.min(2.4,Math.min(height/(PANEL_H*PX),width/(w*PX))));
 }
 function leftOpenAtBoot(){return window.innerWidth>1180;}
-function mutate(fn:()=>void){fn();history.push(project);persist();render();}
+function mutate(fn:()=>void){fn();restorePhysicalDimensions(project.items,catalogMap);history.push(project);persist();render();}
 function notify(s:string){const e=document.querySelector('#toast')!;window.clearTimeout(toastTimer);e.textContent=s;e.classList.add('show');toastTimer=window.setTimeout(()=>e.classList.remove('show'),2200);}
 function sv(v:number){return snap?Math.round(v/grids[gridIndex])*grids[gridIndex]:Math.round(v*10)/10;}
 function magneticGrid(v:number){const free=Math.round(v*100)/100;if(!snap)return free;const step=grids[gridIndex],nearest=Math.round(v/step)*step,tolerance=Math.max(.05,Math.min(.18,.9/(PX*zoom)));return Math.abs(nearest-v)<=tolerance?nearest:free;}
@@ -157,15 +170,15 @@ const ALIGNS:Array<[string,string]>=[['start','Left'],['middle','Centre'],['end'
 /** Typography is only meaningful on the text part; ticks only on the scale. */
 function graphicsControl(i:Item,d:ComponentDefinition){
   if(d.renderer==='scale')
-    return`<div class="section-card"><div class="section-label">Scale</div>${field('Tick marks','ticks',i.count??11,'number',1,'')}</div>`;
+    return`<div class="section-card"><div class="section-label">Scale</div>${field('Tick marks','ticks',i.count??11,'number',1,'')}${scaleControls(i)}</div>`;
   if(d.renderer!=='text')return'';
   return`<div class="section-card"><div class="section-label">Type</div>
     <div class="form-row"><label>Text</label><textarea id="field-text-body" rows="2" spellcheck="false" aria-label="Label text">${esc(i.label)}</textarea></div>
     <div class="two-col">
-      <div class="form-row"><label>Font</label><select id="text-font">${FONTS.map(([v,n])=>`<option value="${v}" ${(i.font??'sans')===v?'selected':''}>${n}</option>`).join('')}</select></div>
+      <div class="form-row"><label for="text-font">Font</label><select id="text-font"><option value="inherit" ${!i.font?'selected':''}>Panel default</option>${FONTS.map(([v,n])=>`<option value="${v}" ${i.font===v?'selected':''}>${n}</option>`).join('')}</select></div>
       <div class="form-row"><label>Align</label><select id="text-align">${ALIGNS.map(([v,n])=>`<option value="${v}" ${(i.align??'middle')===v?'selected':''}>${n}</option>`).join('')}</select></div>
     </div>
-    <div class="two-col">${field('Weight','text-weight',i.weight??700,'number',100,'')}${field('Tracking','text-tracking',i.tracking??.04,'number',.01,'em')}</div>
+    <div class="two-col">${field('Weight','text-weight',i.weight??project.design?.weight??700,'number',100,'')}${field('Tracking','text-tracking',i.tracking??0,'number',.01,'em')}</div>
     <p class="section-hint">Outline the text in a vector editor before fabrication — a fabricator without the font will silently substitute another.</p>
   </div>`;
 }
@@ -179,18 +192,18 @@ function bindGraphicsControl(i:Item,d:ComponentDefinition){
     const el=document.querySelector<HTMLSelectElement>(`#${id}`);
     if(el)el.onchange=()=>mutate(()=>apply(el.value));
   };
-  if(d.renderer==='scale')num('ticks',v=>i.count=Math.max(2,Math.min(64,Math.round(v))));
+  if(d.renderer==='scale'){num('ticks',v=>i.count=Math.max(2,Math.min(64,Math.round(v))));bindScaleControls(document.querySelector('#inspector')!,i,mutate);}
   if(d.renderer!=='text')return;
   const body=document.querySelector<HTMLTextAreaElement>('#field-text-body');
   if(body)body.onchange=()=>mutate(()=>i.label=body.value.slice(0,200));
-  pick('text-font',v=>i.font=v as Item['font']);
+  pick('text-font',v=>{if(v==='inherit')delete i.font;else i.font=v as Item['font'];});
   pick('text-align',v=>i.align=v as Item['align']);
   num('text-weight',v=>i.weight=Math.max(100,Math.min(900,Math.round(v/100)*100)));
   num('text-tracking',v=>i.tracking=Math.max(-.2,Math.min(1,v)));
 }
 
 function sizeControl(d:ComponentDefinition){const owner=presetOwner(d);if(owner)return`<div class="form-row size-preset"><label>Standard size</label><select id="size-preset">${owner.sizePresets!.map(p=>`<option value="${p.componentId}" ${p.componentId===d.id?'selected':''}>${p.label}</option>`).join('')}</select></div>`;return dimensionLocked(d)?`<div class="locked-size-note"><span>${icon('lock')}</span><div><strong>Mechanical size locked</strong><small>${d.width} × ${d.height} mm · based on the selected hardware</small></div></div>`:'';}
-function renderCanvas(){const w=panelWidth(project.panel),stage=document.querySelector<HTMLDivElement>('#panel-stage')!;stage.style.width=`${w*PX*zoom}px`;stage.style.height=`${PANEL_H*PX*zoom}px`;const safe=showSafe?`<g class="design-guide"><rect x="3" y="3" width="${w-6}" height="${PANEL_H-6}" rx="1" fill="none" stroke="${project.accentColor}" stroke-opacity=".35" stroke-width=".3" stroke-dasharray="1 1"/><rect width="${w}" height="8" fill="${project.accentColor}" opacity=".045"/><rect y="${PANEL_H-8}" width="${w}" height="8" fill="${project.accentColor}" opacity=".045"/></g>`:'';const grid=showGrid?`<rect class="design-guide" width="${w}" height="${PANEL_H}" fill="url(#grid)"/>`:'';const visible=project.items.filter(i=>!i.hidden);stage.innerHTML=`<svg class="panel-svg" id="panel-svg" width="${w*PX}" height="${PANEL_H*PX}" viewBox="0 0 ${w} ${PANEL_H}" style="transform:scale(${zoom});transform-origin:top left"><defs>${panelFinishDefs(project)}<pattern id="grid" width="${grids[gridIndex]}" height="${grids[gridIndex]}" patternUnits="userSpaceOnUse"><path d="M ${grids[gridIndex]} 0H0V${grids[gridIndex]}" fill="none" stroke="${project.inkColor}" stroke-opacity=".08" stroke-width=".1"/></pattern><style>.cut{fill:none;stroke:#ef523c;stroke-width:.45}.panel-item:focus{outline:none}.smart-line{stroke:var(--trace,#2563a8);stroke-width:.42;vector-effect:non-scaling-stroke}.measure-line{stroke:var(--signal,#c8321e);stroke-width:.35;vector-effect:non-scaling-stroke}.measure-text{fill:#fff;font:1.75px ui-monospace,monospace;paint-order:stroke;stroke:var(--signal-ink,#8e2415);stroke-width:.7px}.equal-pill{fill:var(--signal,#c8321e)}.equal-text{fill:#fff;font:bold 1.45px ui-monospace,monospace}.marquee{fill:var(--trace,#2563a8);fill-opacity:.08;stroke:var(--ink,#191b1e);stroke-width:.3;stroke-dasharray:1.2 .9;vector-effect:non-scaling-stroke}.marquee-hit{fill:none;stroke:var(--trace,#2563a8);stroke-width:.35;stroke-dasharray:1 .8;vector-effect:non-scaling-stroke}.marquee-dim{fill:var(--ink,#191b1e);font:1.9px ui-monospace,monospace;paint-order:stroke;stroke:var(--paper,#f2efe6);stroke-width:.8px}.focus-ring{fill:none;stroke:var(--trace,#2563a8);stroke-width:1.6;stroke-dasharray:2 1.4;vector-effect:non-scaling-stroke;paint-order:stroke}</style></defs>${showRack?rackContextSvg(project):''}<rect class="light-sheet" width="${w}" height="${PANEL_H}" rx=".6" fill="#fff"/>${panelFinishSurface(project,w)}${grid}${safe}${view!=='rear'?mountingSvg(project)+(showRack&&view==='design'?screwsSvg(project):''):''}${visible.map(i=>componentSvg(i,catalogMap.get(i.componentId)!,project,selection.has(i.id),view)).join('')}<g id="smart-guide-layer" pointer-events="none"></g><g id="overlay-layer" pointer-events="none"></g><g id="focus-layer" pointer-events="none"></g>${project.items.length===0?emptyPanelSvg(w):''}</svg>`;const selectionKey=[...selection].sort().join();if(selectionKey!==lastSelectionKey){stage.querySelectorAll('.selection-ui').forEach(g=>g.classList.add('landing'));lastSelectionKey=selectionKey;}bindCanvas();renderRuler(w);}
+function renderCanvas(){const w=panelWidth(project.panel),stage=document.querySelector<HTMLDivElement>('#panel-stage')!;stage.style.width=`${w*PX*zoom}px`;stage.style.height=`${PANEL_H*PX*zoom}px`;const safeMargin=project.rules?.edgeMargin??3;const safe=showSafe?`<g class="design-guide"><rect x="${safeMargin}" y="${safeMargin}" width="${Math.max(0,w-2*safeMargin)}" height="${PANEL_H-2*safeMargin}" rx="1" fill="none" stroke="${project.accentColor}" stroke-opacity=".35" stroke-width=".3" stroke-dasharray="1 1"/><rect width="${w}" height="8" fill="${project.accentColor}" opacity=".045"/><rect y="${PANEL_H-8}" width="${w}" height="8" fill="${project.accentColor}" opacity=".045"/></g>`:'';const grid=showGrid?`<rect class="design-guide" width="${w}" height="${PANEL_H}" fill="url(#grid)"/>`:'';const visible=project.items.filter(i=>!i.hidden);stage.innerHTML=`<svg class="panel-svg" id="panel-svg" width="${w*PX}" height="${PANEL_H*PX}" viewBox="0 0 ${w} ${PANEL_H}" style="transform:scale(${zoom});transform-origin:top left"><defs>${panelFinishDefs(project)}<pattern id="grid" width="${grids[gridIndex]}" height="${grids[gridIndex]}" patternUnits="userSpaceOnUse"><path d="M ${grids[gridIndex]} 0H0V${grids[gridIndex]}" fill="none" stroke="${project.inkColor}" stroke-opacity=".08" stroke-width=".1"/></pattern><style>.cut{fill:none;stroke:#ef523c;stroke-width:.45}.panel-item:focus{outline:none}.smart-line{stroke:var(--trace,#2563a8);stroke-width:.42;vector-effect:non-scaling-stroke}.measure-line{stroke:var(--signal,#c8321e);stroke-width:.35;vector-effect:non-scaling-stroke}.measure-text{fill:#fff;font:1.75px ui-monospace,monospace;paint-order:stroke;stroke:var(--signal-ink,#8e2415);stroke-width:.7px}.equal-pill{fill:var(--signal,#c8321e)}.equal-text{fill:#fff;font:bold 1.45px ui-monospace,monospace}.marquee{fill:var(--trace,#2563a8);fill-opacity:.08;stroke:var(--ink,#191b1e);stroke-width:.3;stroke-dasharray:1.2 .9;vector-effect:non-scaling-stroke}.marquee-hit{fill:none;stroke:var(--trace,#2563a8);stroke-width:.35;stroke-dasharray:1 .8;vector-effect:non-scaling-stroke}.marquee-dim{fill:var(--ink,#191b1e);font:1.9px ui-monospace,monospace;paint-order:stroke;stroke:var(--paper,#f2efe6);stroke-width:.8px}.focus-ring{fill:none;stroke:var(--trace,#2563a8);stroke-width:1.6;stroke-dasharray:2 1.4;vector-effect:non-scaling-stroke;paint-order:stroke}</style></defs>${showRack?rackContextSvg(project):''}<rect class="light-sheet" width="${w}" height="${PANEL_H}" rx=".6" fill="#fff"/>${panelFinishSurface(project,w)}${grid}${safe}${view!=='rear'?mountingSvg(project)+(showRack&&view==='design'?screwsSvg(project):''):''}${visible.map(i=>componentSvg(i,catalogMap.get(i.componentId)!,project,selection.has(i.id),view)).join('')}<g id="smart-guide-layer" pointer-events="none"></g><g id="overlay-layer" pointer-events="none"></g><g id="focus-layer" pointer-events="none"></g>${project.items.length===0?emptyPanelSvg(w):''}</svg>`;const selectionKey=[...selection].sort().join();if(selectionKey!==lastSelectionKey){stage.querySelectorAll('.selection-ui').forEach(g=>g.classList.add('landing'));lastSelectionKey=selectionKey;}bindCanvas();renderRuler(w);}
 /**
  * Rulers with real millimetre ticks, like a drawing board's: every mm when
  * there is room, every 5 otherwise, numbered every 10. The grid drawn behind
@@ -387,7 +400,7 @@ function zoomFit(){zoom=fitZoom();applyZoom();centreView();}
 function centreView(){
   const canvas=canvasEl(),stage=stageEl();
   canvas.scrollLeft=(stage.offsetLeft+stage.offsetWidth/2)-canvas.clientWidth/2;
-  canvas.scrollTop=Math.max(0,stage.offsetTop-40);
+  canvas.scrollTop=0;
   renderRuler(panelWidth(project.panel));
 }
 
@@ -510,7 +523,7 @@ function preflightPanel(){
   const counts=issueCounts(issues);
   const badge=counts.errors?`<span class="badge bad">${counts.errors}</span>`:counts.warnings?`<span class="badge warning">${counts.warnings}</span>`:`<span class="badge good">Clear</span>`;
   const body=issues.length
-    ?issues.map((issue,n)=>`<button class="issue ${issue.severity}" data-issue="${n}"><span class="issue-mark">${issue.severity==='error'?icon('cross'):icon('warn')}</span><span><strong>${esc(issue.message)}</strong><small>${esc(issue.detail)}</small></span></button>`).join('')
+    ?ISSUE_CATEGORIES.map(category=>{const group=issues.filter(i=>i.category===category);return group.length?`<div class="preflight-category"><h3>${category}<span>${group.length}</span></h3>${group.map(issue=>`<button class="issue ${issue.severity}" data-issue="${issues.indexOf(issue)}"><span class="issue-mark">${issue.severity==='error'?icon('cross'):icon('warn')}</span><span><strong>${esc(issue.message)}</strong><small>${esc(issue.detail)}</small></span></button>`).join('')}</div>`:'';}).join('')
     :`<div class="clear-state">${icon('check')}<span>Nothing on this panel breaks an edge, a wall or a mounting slot.</span></div>`;
   return`<div class="subhead preflight-head">Preflight ${badge}</div><div class="preflight">${body}</div><p class="section-hint">Checks edge margins, cutout walls, mounting clashes, jack spacing and part depth. It is not a substitute for a datasheet.</p>`;
 }
@@ -524,7 +537,7 @@ function bindPreflight(){
     focusSelection();
   });
 }
-function renderInspector(){const el=document.querySelector<HTMLDivElement>('#inspector')!;let items=selectedItems();if(inspectorTab==='layers'){document.querySelector('#inspector-title')!.textContent='Object layers';el.innerHTML=`<div class="pane-intro"><strong>${project.items.length} objects</strong><span>Reorder, hide or lock what is on the panel.</span></div><div id="layers"></div>`;renderLayers();return;}if(inspectorTab==='panel')items=[];document.querySelector('#inspector-title')!.textContent=inspectorTab==='panel'?'Panel settings':items.length>1?`${items.length} selected`:items.length===1?'Component':'Panel overview';if(items.length===0){el.innerHTML=`<div class="section-card"><div class="section-label">Panel geometry</div>${field('Width','hp',project.panel.hp,'number',1,'HP')}<div class="form-row"><label>Width profile</label><select id="width-mode"><option value="doepfer">Doepfer compatible</option><option value="nominal">Nominal HP × 5.08</option><option value="custom">Custom width</option></select></div>${project.panel.widthMode==='custom'?field('Custom width','customWidth',project.panel.customWidth,'number',.01,'mm'):''}<div class="two-col">${field('Thickness','thickness',project.panel.thickness,'number',.1,'mm')}<div class="form-row"><label>Mounting</label><select id="mounting"><option value="none">None</option><option value="two">2 slots · centred</option><option value="diagonal">2 slots · diagonal</option><option value="four">4 slots</option></select></div></div></div><div class="section-card finish-section"><div class="section-label">Surface finish</div><p class="section-hint">Pick a material, then adjust the three colours below it.</p><div class="finish-grid">${finishCards()}</div></div><div class="section-card"><div class="section-label">Custom palette</div><div class="named-colors"><label><span>Panel</span><input id="panel-color" aria-label="Panel colour" type="color" value="${project.panelColor}"></label><label><span>Ink</span><input id="ink-color" aria-label="Ink colour" type="color" value="${project.inkColor}"></label><label><span>Accent</span><input id="accent-color" aria-label="Accent colour" type="color" value="${project.accentColor}"></label></div></div>${preflightPanel()}`;bindPanelInspector();bindPreflight();return;}
+function renderInspector(){const el=document.querySelector<HTMLDivElement>('#inspector')!;let items=selectedItems();if(inspectorTab==='layers'){document.querySelector('#inspector-title')!.textContent='Object layers';el.innerHTML=`<div class="pane-intro"><strong>${project.items.length} objects</strong><span>Reorder, hide or lock what is on the panel.</span></div><div id="layers"></div>`;renderLayers();return;}if(inspectorTab==='panel')items=[];document.querySelector('#inspector-title')!.textContent=inspectorTab==='panel'?'Panel settings':items.length>1?`${items.length} selected`:items.length===1?'Component':'Panel overview';if(items.length===0){el.innerHTML=`<div class="section-card"><div class="section-label">Panel geometry</div>${field('Width','hp',project.panel.hp,'number',1,'HP')}<div class="form-row"><label>Width profile</label><select id="width-mode"><option value="doepfer">Doepfer compatible</option><option value="nominal">Nominal HP × 5.08</option><option value="custom">Custom width</option></select></div>${project.panel.widthMode==='custom'?field('Custom width','customWidth',project.panel.customWidth,'number',.01,'mm'):''}<div class="two-col">${field('Thickness','thickness',project.panel.thickness,'number',.1,'mm')}<div class="form-row"><label>Mounting</label><select id="mounting"><option value="none">None</option><option value="two">2 slots · centred</option><option value="diagonal">2 slots · diagonal</option><option value="four">4 slots</option></select></div></div></div><div class="section-card finish-section"><div class="section-label">Surface finish</div><p class="section-hint">Pick a material, then adjust the three colours below it.</p><div class="finish-grid">${finishCards()}</div></div><div class="section-card"><div class="section-label">Custom palette</div><div class="named-colors"><label><span>Panel</span><input id="panel-color" aria-label="Panel colour" type="color" value="${project.panelColor}"></label><label><span>Ink</span><input id="ink-color" aria-label="Ink colour" type="color" value="${project.inkColor}"></label><label><span>Accent</span><input id="accent-color" aria-label="Accent colour" type="color" value="${project.accentColor}"></label></div></div>${designControls(project)}${preflightPanel()}`;bindPanelInspector();bindDesignControls(el,project,mutate);bindPreflight();return;}
  if(items.length>1){
    const box=extent(items);
    el.innerHTML=`<div class="selection-summary"><span class="selection-kicker">Multi-selection</span><strong>${items.length} components</strong><span>${(box.r-box.l).toFixed(1)} × ${(box.b-box.t).toFixed(1)} mm${items.every(i=>i.groupId)&&new Set(items.map(i=>i.groupId)).size===1?' · grouped':''}</span></div>
@@ -540,7 +553,7 @@ function renderInspector(){const el=document.querySelector<HTMLDivElement>('#ins
       <button id="i-match">Match sizes</button><button id="i-same">Select same part</button>
       <button id="i-repeat">Repeat…</button><button id="i-group">${items.every(i=>i.groupId)?'Regroup':'Group'}</button>
     </div></div>
-    <button class="tool-button wide" id="duplicate">Duplicate selection</button>`;
+    <div class="button-row"><button class="tool-button wide" id="duplicate">Duplicate selection</button><button class="tool-button" id="save-assembly">Save assembly</button></div>`;
    bindGroupButtons('i-');
    const on=(id:string,fn:()=>void)=>document.querySelector(`#i-${id}`)?.addEventListener('click',fn);
    on('center-v',()=>center('y'));on('spread-h',()=>spreadAcrossPanel('x'));on('spread-v',()=>spreadAcrossPanel('y'));
@@ -548,13 +561,14 @@ function renderInspector(){const el=document.querySelector<HTMLDivElement>('#ins
    on('mirror',mirrorSelection);on('flip',flipSelection);on('match',matchSizes);on('same',selectSameKind);
    on('repeat',repeatDialog);on('group',groupSelection);
    document.querySelector('#duplicate')!.addEventListener('click',duplicate);
+   document.querySelector('#save-assembly')!.addEventListener('click',openAssemblies);
    return;
  }
  const i=items[0],d=catalogMap.get(i.componentId)!,lockedSize=dimensionLocked(d);el.innerHTML=`<div class="part-heading"><span class="part-thumbnail large">${thumbnailSvg(d,project,i.color,46)}</span><div><strong>${d.name}</strong><small>${d.manufacturer?`${d.manufacturer} · ${d.partNumber}`:d.description}</small><div class="provenance">${d.source
   ?`<span class="provenance-mark ${d.status==='verified'?'traced':'partial'}">${d.status==='verified'?'Traced':'Cutout traced'}</span>${d.source.url?`<a href="${d.source.url}" target="_blank" rel="noreferrer">${esc(d.source.note)}</a>`:`<span>${esc(d.source.note)}</span>`}`
   :`<span>No datasheet behind these figures — check the real part.</span>`}</div><div class="mechanical-line">${d.id.includes('encoder')?'Endless rotation · Push switch · ':d.id.includes('lit')?'Illuminated · ':''}${cutoutLabel(d)} · ${d.depth?`${d.depth} mm deep`:'surface'}</div></div><span class="badge">${d.status}</span></div><div class="inspector-section"><div class="section-label">Transform</div><div class="two-col">${field('X','x',i.x,'number',.1,'mm')}${field('Y','y',i.y,'number',.1,'mm')}</div><div class="two-col">${field('Width','width',i.width,'number',.1,'mm',lockedSize)}${field('Height','height',i.height,'number',.1,'mm',lockedSize)}</div>${sizeControl(d)}${field('Rotation','rotation',i.rotation,'number',1,'°')}</div>${graphicsControl(i,d)}<div class="inspector-section"><div class="section-label">Appearance</div>${d.renderer==="image"?imageControl(i):""}${d.renderer!=='led'&&d.renderer!=='hole'?field('Label','label',i.label,'text'):''}${['knob','slider','touch','led'].includes(d.renderer)?field('Preview value','value',i.value,'range',.01):''}<div class="form-row"><label>Component colour</label><div class="color-row"><input id="item-color" aria-label="Component colour" type="color" value="${i.color}"><input id="item-color-text" aria-label="Component colour hex" value="${i.color}"></div></div></div><div class="inspector-section"><div class="section-label">Export mapping</div><div class="form-row"><label>VCV role</label><select id="role">${['none','param','input','output','light','custom'].map(x=>`<option value="${x}" ${i.role===x?'selected':''}>${x}</option>`).join('')}</select></div>${field('Order spec','item-spec',i.spec??'','text')}${field('Identifier','identifier',i.identifier,'text')}<div class="meta-grid"><span>Cutout</span><strong>${d.cutout?cutoutLabel(d):'None'}</strong><span>Rear depth</span><strong>${d.depth?`${d.depth} mm`:'—'}</strong><span>Keepout</span><strong>${d.keepout?`${d.keepout} mm`:'—'}</strong></div></div><div class="button-row layer-order"><button class="tool-button wide" id="send-back">Send back</button><button class="tool-button wide" id="bring-forward">Bring forward</button></div><div class="button-row"><button class="tool-button wide" id="duplicate">Duplicate</button><button class="tool-button" id="lock">${i.locked?'Unlock':'Lock'}</button></div>`;bindItemInspector(i);}
 
-function field(label:string,id:string,value:string|number,type:string,step:string|number='',unit='',disabled=false){return`<div class="form-row"><label>${label}</label><div class="input-unit"><input id="field-${id}" type="${type}" value="${esc(String(value))}" ${step!==''?`step="${step}"`:''} ${type==='range'?'min="0" max="1"':''} ${disabled?'disabled':''}>${unit?`<span>${unit}</span>`:''}</div></div>`;}
+function field(label:string,id:string,value:string|number,type:string,step:string|number='',unit='',disabled=false){return`<div class="form-row"><label for="field-${id}">${label}</label><div class="input-unit"><input id="field-${id}" type="${type}" value="${esc(String(value))}" ${step!==''?`step="${step}"`:''} ${type==='range'?'min="0" max="1"':''} ${disabled?'disabled':''}>${unit?`<span>${unit}</span>`:''}</div></div>`;}
 function bindPanelInspector(){const get=(id:string)=>document.querySelector<HTMLInputElement|HTMLSelectElement>(id)!;get('#field-hp').onchange=e=>mutate(()=>{project.panel.hp=Math.max(2,Math.min(84,Number((e.target as HTMLInputElement).value)));});get('#width-mode').value=project.panel.widthMode;get('#width-mode').onchange=e=>mutate(()=>project.panel.widthMode=(e.target as HTMLSelectElement).value as Project['panel']['widthMode']);document.querySelector<HTMLInputElement>('#field-customWidth')?.addEventListener('change',e=>mutate(()=>project.panel.customWidth=Number((e.target as HTMLInputElement).value)));get('#field-thickness').onchange=e=>mutate(()=>project.panel.thickness=Number((e.target as HTMLInputElement).value));get('#mounting').value=project.panel.mounting;get('#mounting').onchange=e=>mutate(()=>project.panel.mounting=(e.target as HTMLSelectElement).value as Project['panel']['mounting']);document.querySelectorAll<HTMLElement>('[data-finish]').forEach(b=>b.onclick=()=>mutate(()=>applyFinish(project,b.dataset.finish!)));(['panel','ink','accent'] as const).forEach(k=>get(`#${k}-color`).oninput=e=>{project[`${k}Color`]=(e.target as HTMLInputElement).value;if(k==='panel'){project.panel.finish='custom-flat';document.querySelector('.finish-card.selected')?.classList.remove('selected');}persist();renderCanvas();});}
 /**
  * Reads an artwork file into a data URL. SVG is stripped to a presentational
@@ -595,7 +609,7 @@ function bindImageObject(i:Item){
 
 function bindItemInspector(i:Item){bindImageObject(i);bindGraphicsControl(i,catalogMap.get(i.componentId)!);
   const spec=document.querySelector<HTMLInputElement>('#field-item-spec');
-  if(spec)spec.onchange=()=>mutate(()=>{const value=spec.value.trim();value?i.spec=value:delete i.spec;});const preset=document.querySelector<HTMLSelectElement>('#size-preset');if(preset)preset.onchange=()=>{const next=catalogMap.get(preset.value);if(!next)return;mutate(()=>{i.componentId=next.id;i.width=next.width;i.height=next.height;});};document.querySelector("#send-back")?.addEventListener("click",()=>moveLayer(i,-1));document.querySelector("#bring-forward")?.addEventListener("click",()=>moveLayer(i,1));['x','y','width','height','rotation','label','value','identifier'].forEach(k=>{const e=document.querySelector<HTMLInputElement>(`#field-${k}`);if(!e)return;e.onchange=ev=>mutate(()=>{const v=(ev.target as HTMLInputElement).value;(i as unknown as Record<string,string|number>)[k]=['label','identifier'].includes(k)?v:Number(v);});e.oninput=k==='value'?ev=>{i.value=Number((ev.target as HTMLInputElement).value);renderCanvas();}:null;});const color=document.querySelector<HTMLInputElement>('#item-color')!,hex=document.querySelector<HTMLInputElement>('#item-color-text')!;color.oninput=()=>{i.color=color.value;hex.value=color.value;renderCanvas();};color.onchange=()=>mutate(()=>i.color=color.value);hex.onchange=()=>mutate(()=>i.color=hex.value);document.querySelector<HTMLSelectElement>('#role')!.onchange=e=>mutate(()=>i.role=(e.target as HTMLSelectElement).value as Item['role']);document.querySelector('#duplicate')!.addEventListener('click',duplicate);document.querySelector('#lock')!.addEventListener('click',()=>mutate(()=>i.locked=!i.locked));}
+  if(spec)spec.onchange=()=>mutate(()=>{const value=spec.value.trim();value?i.spec=value:delete i.spec;});const preset=document.querySelector<HTMLSelectElement>('#size-preset');if(preset)preset.onchange=()=>{const next=catalogMap.get(preset.value);if(!next)return;mutate(()=>{i.componentId=next.id;i.width=next.width;i.height=next.height;});};document.querySelector("#send-back")?.addEventListener("click",()=>moveLayer(i,-1));document.querySelector("#bring-forward")?.addEventListener("click",()=>moveLayer(i,1));['x','y','width','height','rotation','label','value','identifier'].forEach(k=>{const e=document.querySelector<HTMLInputElement>(`#field-${k}`);if(!e||(['width','height'].includes(k)&&dimensionLocked(catalogMap.get(i.componentId)!)))return;e.onchange=ev=>mutate(()=>{const v=(ev.target as HTMLInputElement).value;(i as unknown as Record<string,string|number>)[k]=['label','identifier'].includes(k)?v:Number(v);});e.oninput=k==='value'?ev=>{i.value=Number((ev.target as HTMLInputElement).value);renderCanvas();}:null;});const color=document.querySelector<HTMLInputElement>('#item-color')!,hex=document.querySelector<HTMLInputElement>('#item-color-text')!;color.oninput=()=>{i.color=color.value;hex.value=color.value;renderCanvas();};color.onchange=()=>mutate(()=>i.color=color.value);hex.onchange=()=>mutate(()=>i.color=hex.value);document.querySelector<HTMLSelectElement>('#role')!.onchange=e=>mutate(()=>i.role=(e.target as HTMLSelectElement).value as Item['role']);document.querySelector('#duplicate')!.addEventListener('click',duplicate);document.querySelector('#lock')!.addEventListener('click',()=>mutate(()=>i.locked=!i.locked));}
 function renderLayers(){const el=document.querySelector('#layers');if(!el)return;el.innerHTML=`<div class="layers">${[...project.items].reverse().map(i=>{const d=catalogMap.get(i.componentId)!;return`<div class="layer ${selection.has(i.id)?'selected':''}" style="view-transition-name:l-${i.id.replace(/[^a-z0-9-]/gi,'')}"><button class="layer-main" data-layer="${i.id}"><span class="layer-icon">${thumbnailSvg(d,project,i.color,18)}</span><span class="layer-name">${esc(i.label||d.name)}</span></button><button class="layer-toggle ${i.hidden?'':'on'}" data-visibility="${i.id}" aria-label="${i.hidden?'Show':'Hide'}" aria-pressed="${!i.hidden}">${i.hidden?icon('eye-off'):icon('eye')}</button><button class="layer-toggle ${i.locked?'on':''}" data-lock="${i.id}" aria-label="${i.locked?'Unlock':'Lock'}" aria-pressed="${i.locked}">${i.locked?icon('lock'):icon('unlock')}</button></div>`}).join('')}</div>`;el.querySelectorAll<HTMLElement>('[data-layer]').forEach(b=>b.onclick=e=>{selection=(e.shiftKey?new Set([...selection,b.dataset.layer!]):new Set([b.dataset.layer!]));render();});el.querySelectorAll<HTMLElement>('[data-visibility]').forEach(b=>b.onclick=()=>{const i=project.items.find(x=>x.id===b.dataset.visibility)!;mutate(()=>i.hidden=!i.hidden);});el.querySelectorAll<HTMLElement>('[data-lock]').forEach(b=>b.onclick=()=>{const i=project.items.find(x=>x.id===b.dataset.lock)!;mutate(()=>i.locked=!i.locked);});}
 
 const exact=(v:number)=>Math.round(v*100)/100;
@@ -636,7 +650,7 @@ function moveLayer(item:Item,delta:number){
   // With the layers list on screen, rows slide to their new order instead of re-rendering in place.
   if(inspectorTab==='layers'&&document.startViewTransition)document.startViewTransition(reorder);else reorder();
 }
-function duplicate(){const copies=selectedItems().map(i=>({...clone(i),id:uid(),x:sv(i.x+3),y:sv(i.y+3)}));if(!copies.length)return;selection=new Set(copies.map(i=>i.id));mutate(()=>project.items.push(...copies));}
+function duplicate(){const copies=copyItems(selectedItems(),3,3,uid);if(!copies.length)return;selection=new Set(copies.map(i=>i.id));mutate(()=>project.items.push(...copies));}
 function remove(){if(!selection.size)return;mutate(()=>project.items=project.items.filter(i=>!selection.has(i.id)));selection.clear();render();}
 /* ---------- clipboard ---------- */
 
@@ -659,7 +673,7 @@ async function pasteClipboard(){
     if(parsed?.five08==='items'&&Array.isArray(parsed.items))items=parseProject({...emptyProject(),items:parsed.items},catalogMap).items;
   }catch{/* not JSON, or no clipboard permission: use what we copied in this tab */}
   if(!items.length){notify('Nothing to paste');return;}
-  const copies=items.map(i=>({...clone(i),id:uid(),x:sv(i.x+3),y:sv(i.y+3)}));
+  const copies=copyItems(sanitizeProjectArtwork({items}).project.items,3,3,uid);
   selection=new Set(copies.map(i=>i.id));
   mutate(()=>project.items.push(...copies));
   notify(`${copies.length} component${copies.length===1?'':'s'} pasted`);
@@ -902,6 +916,9 @@ function commands():Command[]{
     {id:'import',group:'File',title:'Import a .panel.json file',keywords:'open load',run:()=>document.querySelector<HTMLInputElement>('#file-input')!.click()},
     {id:'export',group:'Export',title:'Export panel…',keys:`${mod}E`,keywords:'svg dxf png bom',run:exportDialog},
     {id:'export-dxf',group:'Export',title:'Export cutout DXF',keywords:'laser cnc fabrication r12',run:()=>void doExport('dxf')},
+    {id:'export-kicad',group:'Export',title:'Export KiCad mechanical board',keywords:'pcb fr4 edge cuts',run:()=>void doExport('kicad')},
+    {id:'assemblies',group:'Edit',title:'Saved assemblies',keywords:'macro channel reuse library save selection',run:openAssemblies},
+    {id:'inspect-3d',group:'View',title:'Inspect panel in 3D',keywords:'thickness depth orbit rear',run:()=>void inspect3d()},
     {id:'export-cut',group:'Export',title:'Export cutout SVG',keywords:'drill machining',run:()=>void doExport('cut')},
     {id:'export-art',group:'Export',title:'Export artwork SVG',keywords:'graphics print',run:()=>void doExport('art')},
     {id:'export-png',group:'Export',title:'Export PNG render',keywords:'raster image screenshot',run:()=>void doExport('png')},
@@ -1014,7 +1031,7 @@ const TEMPLATES:Template[]=[
 
 function newProjectDialog(){
   document.body.insertAdjacentHTML('beforeend',`<div class="modal-backdrop" id="modal"><div class="modal library-modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
-    <div class="modal-head"><h2 id="modal-title">Start a new panel</h2><p>Every template is a normal project — move, delete or resize anything in it.</p></div>
+    <div class="modal-head"><h2 id="modal-title">Start a new panel</h2><p>Every template is a normal project — move any part and resize artwork in it.</p></div>
     <div class="template-grid">${TEMPLATES.map(t=>`<button class="template" data-template="${t.id}"><div class="template-preview">${miniPanel(t.build(),78)}</div><strong>${t.name}</strong><small>${t.note}</small></button>`).join('')}</div>
     <div class="modal-actions"><span>Added to your panels; the one you have open is untouched.</span><button class="tool-button" id="cancel-modal">Cancel</button></div>
   </div></div>`);
@@ -1042,6 +1059,7 @@ const EXPORTS:Array<{id:string;mark:IconName;title:string;blurb:string}>=[
   {id:'art',mark:'art',title:'Artwork SVG',blurb:'Front-panel graphics at physical size'},
   {id:'cut',mark:'cut',title:'Cutout SVG',blurb:'Outline, slots and apertures only'},
   {id:'dxf',mark:'dxf',title:'Cutout DXF',blurb:'R12 file for laser cutters and panel shops'},
+  {id:'kicad',mark:'dxf',title:'KiCad mechanical PCB',blurb:'Edge.Cuts outline and openings; no artwork or circuitry'},
   {id:'png',mark:'png',title:'PNG render',blurb:'Raster image for posts and documentation'},
   {id:'print',mark:'print',title:'Print at 1:1',blurb:'Cutout template with centre marks and a scale bar'},
   {id:'vcv',mark:'vcv',title:'VCV Rack SVG',blurb:'Artwork with component-role markers'},
@@ -1095,17 +1113,59 @@ function helpDialog(){
   document.querySelector('#cancel-modal')!.addEventListener('click',closeModal);
   document.querySelector<HTMLElement>('#cancel-modal')!.focus();
 }
-function closeModal(){document.querySelector('#modal')?.remove();}
+let disposeModal:(()=>void)|undefined;
+function closeModal(){disposeModal?.();disposeModal=undefined;document.querySelector('#modal')?.remove();}
+
+function openAssemblies(){
+  closeModal();
+  assemblyDialog({project,selected:selectedItems(),close:closeModal,notify,download,icon,
+    insert:items=>{selection=new Set(items.map(i=>i.id));mutate(()=>project.items.push(...items));}});
+}
+
+async function inspect3d(){
+  closeModal();
+  const art=exportableSvg('art');
+  const artDoc=new DOMParser().parseFromString(art,'image/svg+xml');
+  const panelImage=artDoc.querySelector('.panel-custom-image');
+  if(panelImage)artDoc.documentElement.insertBefore(panelImage,artDoc.documentElement.firstChild);
+  artDoc.querySelectorAll('.panel-finish,.mounting,.rack-context').forEach(n=>n.remove());
+  const textureScale=1536/Math.max(panelWidth(project.panel),PANEL_H);
+  artDoc.documentElement.setAttribute('width',String(Math.round(panelWidth(project.panel)*textureScale)));
+  artDoc.documentElement.setAttribute('height',String(Math.round(PANEL_H*textureScale)));
+  document.body.insertAdjacentHTML('beforeend',`<div class="modal-backdrop inspection-backdrop" id="modal"><section class="inspection-modal" role="dialog" aria-modal="true" aria-label="3D panel inspection">
+    <header class="inspection-head"><div><strong>${esc(project.name)}</strong><span class="mono">${panelWidth(project.panel).toFixed(2)} x ${PANEL_H} x ${project.panel.thickness} mm</span></div><button class="icon-button" id="close-inspection" aria-label="Close 3D inspection">${icon('cross')}</button></header>
+    <div class="inspection-scene" id="inspection-scene"></div>
+    <div class="inspection-toolbar"><div class="segmented" role="group" aria-label="3D viewpoint"><button data-camera="front">Front</button><button data-camera="iso" class="on">Perspective</button><button data-camera="rear">Rear</button></div><label><input id="inspect-hardware" type="checkbox" checked>Hardware</label><label><input id="inspect-rear" type="checkbox" checked>Rear envelopes</label></div>
+    <footer class="inspection-note">Rear envelopes are catalogue estimates; front elevations are illustrative. Wiring, PCBs and fasteners are not modelled.</footer>
+  </section></div>`);
+  const modal=document.querySelector('#modal')!,host=document.querySelector<HTMLElement>('#inspection-scene')!;
+  document.querySelector('#close-inspection')!.addEventListener('click',closeModal);
+  document.querySelector<HTMLButtonElement>('#close-inspection')!.focus();
+  try{
+    const {createInspection}=await import('./inspect3d');
+    if(!modal.isConnected)return;
+    const inspection=createInspection(host,project,catalogMap,new XMLSerializer().serializeToString(artDoc));
+    disposeModal=inspection.dispose;
+    modal.querySelectorAll<HTMLButtonElement>('[data-camera]').forEach(b=>b.onclick=()=>{
+      inspection.setView(b.dataset.camera as 'front'|'rear'|'iso');
+      modal.querySelectorAll('[data-camera]').forEach(el=>{el.classList.toggle('on',el===b);el.setAttribute('aria-pressed',String(el===b));});
+    });
+    modal.querySelector<HTMLInputElement>('#inspect-hardware')!.onchange=e=>inspection.setHardware((e.target as HTMLInputElement).checked);
+    modal.querySelector<HTMLInputElement>('#inspect-rear')!.onchange=e=>inspection.setRear((e.target as HTMLInputElement).checked);
+  }catch{host.innerHTML='<p class="inspection-error">3D inspection is unavailable. Enable WebGL or use the Rear clearance view.</p>';}
+}
 /** Builds a clean, physical-size SVG of the current panel with editor chrome stripped out. */
-function exportableSvg(kind:'art'|'cut'|'vcv'){
+function exportableSvg(kind:'art'|'cut'|'vcv'|'preview'){
   const previous=view;
   view=kind==='cut'?'cutout':'design';
   renderCanvas();
   const svg=document.querySelector<SVGSVGElement>('#panel-svg')!.cloneNode(true) as SVGSVGElement;
   view=previous;renderCanvas();
   // Guides, selection, and the rendered grain of the material: none of it is artwork.
-  svg.querySelectorAll('.design-guide,.selection-ui,.empty-panel,#smart-guide-layer,#marquee,.panel-texture,.screw,.light-sheet,#overlay-layer,#focus-layer').forEach(n=>n.remove());
+  svg.querySelectorAll('.design-guide,.selection-ui,.empty-panel,#smart-guide-layer,#marquee,.screw,.light-sheet,#overlay-layer,#focus-layer,.rack-context').forEach(n=>n.remove());
   svg.removeAttribute('style');
+  if(kind!=='preview')svg.querySelectorAll('.component-hardware,.panel-texture,.mounting').forEach(n=>n.remove());
+  svg.querySelectorAll('.panel-item').forEach(n=>{n.removeAttribute('opacity');n.removeAttribute('style');});
   svg.setAttribute('width',`${panelWidth(project.panel).toFixed(2)}mm`);
   svg.setAttribute('height',`${PANEL_H}mm`);
   svg.setAttribute('xmlns','http://www.w3.org/2000/svg');
@@ -1113,7 +1173,7 @@ function exportableSvg(kind:'art'|'cut'|'vcv'){
     const colors:Record<string,string>={param:'#ff0000',input:'#00ff00',output:'#0000ff',light:'#ff00ff',custom:'#ffff00'};
     const layer=document.createElementNS('http://www.w3.org/2000/svg','g');
     layer.setAttribute('id','components');
-    project.items.filter(i=>i.role!=='none').forEach(i=>{
+    project.items.filter(i=>!i.hidden&&i.role!=='none').forEach(i=>{
       const e=document.createElementNS('http://www.w3.org/2000/svg','circle');
       e.setAttribute('cx',String(i.x));e.setAttribute('cy',String(i.y));e.setAttribute('r','1.5');
       e.setAttribute('fill',colors[i.role]||'#ffff00');
@@ -1129,7 +1189,7 @@ function bomCsv(){
   // Two of the same part with different values are two lines to order, not one.
   const rows=new Map<string,{d:ComponentDefinition;spec:string;n:number}>();
   project.items.forEach(i=>{
-    const d=catalogMap.get(i.componentId);if(!d)return;
+    const d=catalogMap.get(i.componentId);if(!d||i.hidden||d.category==='Graphics')return;
     const spec=i.spec?.trim()??'';
     const key=`${i.componentId}\u0000${spec}`;
     const row=rows.get(key);
@@ -1151,9 +1211,10 @@ async function doExport(type:string){
     if(type==='bom'){download(`${name}-bom.csv`,bomCsv(),'text/csv');notify('Bill of materials exported');return;}
     if(type==='cut'){download(`${name}-cut.svg`,cutoutSvg(project,catalogMap),'image/svg+xml');notify('Cutout SVG exported');return;}
     if(type==='dxf'){download(`${name}-cut.dxf`,panelDxf(project,catalogMap,{engraveLabels}),'application/dxf');notify(`DXF exported${engraveLabels?' with engraving layer':''}`);return;}
+    if(type==='kicad'){download(`${name}.kicad_pcb`,panelKiCad(project,catalogMap),'application/x-kicad-pcb');notify('KiCad mechanical board exported; artwork and circuitry are not included');return;}
     if(type==='print'){printSheet(templateSvg(project,catalogMap),`${esc(project.name)} · ${project.panel.hp} HP · ${panelWidth(project.panel).toFixed(2)} × ${PANEL_H} mm · cutout template at 1:1 — check the 100 mm bar with a ruler before you drill`);return;}
     if(type==='png'){
-      const svg=exportableSvg('art');
+      const svg=exportableSvg('preview');
       notify(`Rendering ${exportDpi} dpi PNG…`);
       const blob=await svgToPng(svg,panelWidth(project.panel),PANEL_H,exportDpi,project.panelColor);
       downloadBlob(`${name}-${exportDpi}dpi.png`,blob);
@@ -1204,6 +1265,7 @@ window.addEventListener('pointermove',e=>{
     const item=project.items.find(i=>i.id===current.itemId);
     if(!item)return;
     const def=catalogMap.get(item.componentId)!;
+    if(dimensionLocked(def))return;
     const dx=(p.x-current.startX)*(current.corner.includes('e')?2:-2),dy=(p.y-current.startY)*(current.corner.includes('s')?2:-2);
     const rawW=Math.max(.5,current.startWidth+dx),rawH=Math.max(.5,current.startHeight+dy);
     const proportional=['knob','jack','button','led','hole'].includes(def.renderer);
@@ -1297,6 +1359,16 @@ window.addEventListener('keydown',e=>{
   if(e.key==='Tab'&&!typing(e.target)&&!document.querySelector('#modal,#palette')
      &&(document.activeElement as HTMLElement|null)?.closest?.('.panel-item')){
     if(moveFocus(e.shiftKey?-1:1))e.preventDefault();
+    return;
+  }
+  const modal=document.querySelector('#modal');
+  if(modal){
+    if(e.key==='Tab'){
+      const focusable=[...modal.querySelectorAll<HTMLElement>('button:not(:disabled),input:not(:disabled):not([type="hidden"]),select,textarea,[tabindex="0"]')].filter(el=>el.getClientRects().length);
+      const first=focusable[0],last=focusable.at(-1);
+      if(e.shiftKey&&document.activeElement===first){e.preventDefault();last?.focus();}
+      else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first?.focus();}
+    }
     return;
   }
   if((e.key==='Enter'||e.key==='ArrowDown')&&document.activeElement===canvasEl()&&!typing(e.target)){

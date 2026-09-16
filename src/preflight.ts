@@ -1,5 +1,6 @@
 import {cutoutShape,mountingShapes,shapeBounds,type Shape} from './geometry';
-import {PANEL_H,panelWidth,type ComponentDefinition,type Item,type Project} from './model';
+import {DEFAULT_RULES,PANEL_H,panelWidth,type ComponentDefinition,type Item,type Project} from './model';
+import {legendStyle} from './design';
 
 /**
  * Layout checks that catch the mistakes a panel only reveals after it has been
@@ -9,7 +10,9 @@ import {PANEL_H,panelWidth,type ComponentDefinition,type Item,type Project} from
  * Every issue names the components involved so the editor can select them.
  */
 export type Severity='error'|'warning';
-export type Issue={code:string;severity:Severity;message:string;detail:string;itemIds:string[]};
+export type IssueCategory='Machining'|'Assembly'|'Ergonomics'|'Artwork';
+export const ISSUE_CATEGORIES:IssueCategory[]=['Machining','Assembly','Ergonomics','Artwork'];
+export type Issue={code:string;category:IssueCategory;severity:Severity;message:string;detail:string;itemIds:string[]};
 
 /** Clear space kept at the panel edge so a cutout does not break through. */
 export const EDGE_MARGIN=3;
@@ -28,22 +31,23 @@ const gap=(a:Shape,b:Shape)=>{
 
 const bodyBounds=(i:Item,d:ComponentDefinition)=>{
   const w=Math.max(i.width,d.keepout??0),h=Math.max(i.height,d.keepout??0);
-  return{l:i.x-w/2,r:i.x+w/2,t:i.y-h/2,b:i.y+h/2};
+  return shapeBounds({kind:'rect',cx:i.x,cy:i.y,w,h,rotation:i.rotation});
 };
 
 export function preflight(p:Project,definitions:Map<string,ComponentDefinition>):Issue[]{
-  const issues:Issue[]=[],w=panelWidth(p.panel);
+  const issues:Omit<Issue,'category'>[]=[],w=panelWidth(p.panel);
+  const {edgeMargin:EDGE_MARGIN,minWall:MIN_WALL,jackPitch:MIN_JACK_PITCH,rearDepth:SKIFF_DEPTH,fingerGap,minText}=p.rules??DEFAULT_RULES;
   const visible=p.items.filter(i=>!i.hidden);
   const parts=visible.flatMap(i=>{const d=definitions.get(i.componentId);return d?[{i,d,cut:cutoutShape(i,d)}]:[];});
   // "Small knob “2”" reads better in a warning than a bare label of "2".
   const name=(i:Item,d:ComponentDefinition)=>i.label.trim()?`${d.name} \u201c${i.label.trim()}\u201d`:d.name;
 
   for(const{i,d,cut} of parts){
-    const body=bodyBounds(i,d);
+    const body=shapeBounds({kind:'rect',cx:i.x,cy:i.y,w:i.width,h:i.height,rotation:i.rotation});
     const offPanel=body.l<0||body.r>w||body.t<0||body.b>PANEL_H;
     if(offPanel)
       issues.push({code:'off-panel',severity:'error',message:`${name(i,d)} hangs over the panel edge`,detail:'Move it back inside the outline or the part will not mount.',itemIds:[i.id]});
-    else if(body.l<EDGE_MARGIN||body.r>w-EDGE_MARGIN||body.t<EDGE_MARGIN||body.b>PANEL_H-EDGE_MARGIN)
+    else if(d.category!=='Graphics'&&(body.l<EDGE_MARGIN||body.r>w-EDGE_MARGIN||body.t<EDGE_MARGIN||body.b>PANEL_H-EDGE_MARGIN))
       issues.push({code:'edge-margin',severity:'warning',message:`${name(i,d)} sits inside the ${EDGE_MARGIN} mm edge margin`,detail:'Rails and neighbouring modules use this strip.',itemIds:[i.id]});
 
     if(cut){
@@ -58,7 +62,10 @@ export function preflight(p:Project,definitions:Map<string,ComponentDefinition>)
     }
 
     if((d.depth??0)>SKIFF_DEPTH)
-      issues.push({code:'deep-part',severity:'warning',message:`${name(i,d)} is ${d.depth} mm deep`,detail:`Deeper than the ${SKIFF_DEPTH} mm a shallow skiff case allows.`,itemIds:[i.id]});
+      issues.push({code:'deep-part',severity:'warning',message:`${name(i,d)} is ${d.depth} mm deep`,detail:`Exceeds the configured ${SKIFF_DEPTH} mm rear space. Allow extra room for wiring.`,itemIds:[i.id]});
+    const textSize=d.renderer==='text'?i.height:legendStyle(p,i).size;
+    if(i.label.trim()&&textSize<minText)
+      issues.push({code:'small-text',severity:'warning',message:`${name(i,d)} text is ${textSize} mm`,detail:`Below the configured ${minText} mm minimum. Check readability at physical size.`,itemIds:[i.id]});
   }
 
   for(let a=0;a<parts.length;a++)for(let b=a+1;b<parts.length;b++){
@@ -77,8 +84,15 @@ export function preflight(p:Project,definitions:Map<string,ComponentDefinition>)
     }
     const fb=bodyBounds(first.i,first.d),sb=bodyBounds(second.i,second.d);
     const overlapping=fb.l<sb.r&&fb.r>sb.l&&fb.t<sb.b&&fb.b>sb.t;
-    if(overlapping&&!(first.cut&&second.cut&&gap(first.cut,second.cut)<0)&&(first.d.keepout||second.d.keepout)&&first.d.renderer!=='image'&&second.d.renderer!=='image'&&first.d.renderer!=='shape'&&second.d.renderer!=='shape'&&first.d.renderer!=='text'&&second.d.renderer!=='text')
-      issues.push({code:'body-clash',severity:'warning',message:`${name(first.i,first.d)} and ${name(second.i,second.d)} bodies touch`,detail:'Knob skirts or component bodies will foul each other.',itemIds:[first.i.id,second.i.id]});
+    if(overlapping&&!(first.cut&&second.cut&&gap(first.cut,second.cut)<0)&&(first.d.keepout||second.d.keepout)&&first.d.category!=='Graphics'&&second.d.category!=='Graphics')
+      issues.push({code:'body-clash',severity:'warning',message:`${name(first.i,first.d)} and ${name(second.i,second.d)} clearance envelopes overlap`,detail:'Conservative rotated bounding boxes; confirm the actual component bodies and wiring.',itemIds:[first.i.id,second.i.id]});
+    if(first.d.renderer==='knob'&&second.d.renderer==='knob'){
+      const space=Math.hypot(first.i.x-second.i.x,first.i.y-second.i.y)-(first.i.width+second.i.width)/2;
+      if(space<-.001)
+        issues.push({code:'hardware-overlap',severity:'error',message:`${name(first.i,first.d)} and ${name(second.i,second.d)} knob skirts overlap`,detail:'The chosen physical knob sizes cannot occupy these positions together.',itemIds:[first.i.id,second.i.id]});
+      if(space>=0&&space<fingerGap)
+        issues.push({code:'finger-gap',severity:'warning',message:`Only ${space.toFixed(1)} mm between knob skirts`,detail:`Below the configured ${fingerGap} mm finger clearance.`,itemIds:[first.i.id,second.i.id]});
+    }
   }
 
   if(p.panel.widthMode==='custom'){
@@ -89,7 +103,15 @@ export function preflight(p:Project,definitions:Map<string,ComponentDefinition>)
 
   const seen=new Set<string>();
   return issues.filter(issue=>{const key=issue.code+issue.itemIds.join(',');if(seen.has(key))return false;seen.add(key);return true;})
+    .map(issue=>({...issue,category:categoryFor(issue.code,issue.itemIds,definitions,p)}))
     .sort((a,b)=>a.severity===b.severity?0:a.severity==='error'?-1:1);
+}
+
+function categoryFor(code:string,ids:string[],definitions:Map<string,ComponentDefinition>,p:Project):IssueCategory{
+  if(code==='small-text'||(code==='off-panel'&&ids.every(id=>definitions.get(p.items.find(i=>i.id===id)!.componentId)?.category==='Graphics')))return'Artwork';
+  if(['finger-gap','jack-pitch'].includes(code))return'Ergonomics';
+  if(['deep-part','body-clash','hardware-overlap','off-panel','edge-margin'].includes(code))return'Assembly';
+  return'Machining';
 }
 
 export const issueCounts=(issues:Issue[])=>({

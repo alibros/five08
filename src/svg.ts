@@ -1,7 +1,8 @@
 import type {ComponentDefinition,Item,Project} from './model';
 import type {PanelFinish} from './finishes';
 import {dimensionLocked,FONT_STACK,PANEL_H,panelWidth} from './model';
-import {cutoutShapes,mountingShapes,type Shape} from './geometry';
+import {cutoutShape,cutoutShapes,mountingShapes,type Shape} from './geometry';
+import {legendStyle,scaleTicks} from './design';
 
 export const esc=(s:string)=>s.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]!));
 
@@ -104,7 +105,7 @@ export function screwsSvg(p:Project,prefix=''){
  */
 export function componentSvg(i:Item,d:ComponentDefinition,p:Project,selected:boolean,view:'design'|'cutout'|'rear',wrapper:'panel'|'preview'='panel'){
   const ink=p.inkColor, w=i.width, h=i.height, c=i.color;let body='';
-  if(view==='cutout'&&d.cutout){body=d.orientation==='horizontal'&&d.renderer==='hole'?`<rect x="${-w/2}" y="${-h/2}" width="${w}" height="${h}" rx="${h/2}" class="cut"/>`:d.cutoutShape==='rect'?`<rect x="${-(d.cutoutWidth??w*.8)/2}" y="${-(d.cutoutHeight??h*.8)/2}" width="${d.cutoutWidth??w*.8}" height="${d.cutoutHeight??h*.8}" rx=".3" class="cut"/>`:`<circle r="${d.cutout/2}" class="cut"/>`;}
+  if(view==='cutout'&&d.cutout){const shape=cutoutShape({...i,x:0,y:0,rotation:0},d);body=shape?`<g class="cut">${shapePath(shape)}</g>`:'';}
   else if(view==='cutout'){body='';}
   else if(view==='rear'&&d.keepout){body=`<rect x="${-d.keepout/2}" y="${-Math.max(d.keepout,h)/2}" width="${d.keepout}" height="${Math.max(d.keepout,h)}" rx="1" fill="${p.accentColor}" fill-opacity=".17" stroke="${p.accentColor}" stroke-dasharray="1 1"/><text y="1" text-anchor="middle" font-size="1.7" fill="${ink}">${d.depth??'—'} mm</text>`;}
   else if(d.renderer==='knob'){const r=Math.min(w,h)/2,a=(i.value*270+135)*Math.PI/180,encoder=d.id.includes('encoder');const flutes=d.id.includes('fluted')?Array.from({length:16},(_,n)=>`<line x1="0" y1="${-r*.82}" x2="0" y2="${-r}" stroke="${ink}" stroke-width=".35" transform="rotate(${n*22.5})"/>`).join(''):'';const halo=d.id==='encoder-ring'?`<circle r="${r*.9}" fill="none" stroke="${p.accentColor}" stroke-width="1.3" stroke-dasharray="2.4 1" filter="url(#glow)"/>`:'';const metal=d.id==='encoder-metal'?`<circle r="${r*.72}" fill="none" stroke="#eef1ec" stroke-opacity=".65" stroke-width=".35"/>`:'';const push=encoder?`<circle r="${r*.42}" fill="none" stroke="${ink}" stroke-opacity=".42" stroke-width=".45"/><circle cy="${-r*.56}" r=".65" fill="${p.accentColor}"/>`:`<line x2="${Math.cos(a)*r*.68}" y2="${Math.sin(a)*r*.68}" stroke="${p.accentColor}" stroke-width=".8" stroke-linecap="round"/>`;body=`${halo}<circle r="${r}" fill="${c}" stroke="${ink}" stroke-width=".65"/><circle r="${r*.78}" fill="none" stroke="${ink}" stroke-opacity=".25" stroke-width=".3"/>${flutes}${metal}${push}`;}
@@ -116,20 +117,22 @@ export function componentSvg(i:Item,d:ComponentDefinition,p:Project,selected:boo
   else if(d.renderer==='display'){if(d.id==='bargraph')body=Array.from({length:10},(_,n)=>`<rect x="${-w*.32}" y="${h/2-(n+1)*h/10+1}" width="${w*.64}" height="${h/12}" rx=".3" fill="${n<i.value*10?c:'#293029'}"/>`).join('');else body=`<rect x="${-w/2}" y="${-h/2}" width="${w}" height="${h}" rx="1" fill="#090d0b" stroke="${ink}" stroke-width=".5"/><text fill="${c}" font-family="ui-monospace,monospace" font-size="${Math.min(h*.42,4)}" text-anchor="middle" dominant-baseline="middle">${d.id==='seven-seg'?'12':d.id==='vu-meter'?'−12  0  +3':'WAVE 01'}</text>`;}
   else if(d.renderer==='connector')body=`<rect x="${-w/2}" y="${-h/2}" width="${w}" height="${h}" rx="${d.id==='midi-din'?h/2:1}" fill="#11120f" stroke="${ink}" stroke-width=".7"/>${d.id==='midi-din'?Array.from({length:5},(_,n)=>`<circle cx="${(n-2)*2.4}" cy="${n%2?1:-1}" r=".6" fill="#aaa"/>`).join(''):''}`;
   else if(d.renderer==='hole')body=d.orientation==='horizontal'?`<rect x="${-w/2}" y="${-h/2}" width="${w}" height="${h}" rx="${h/2}" fill="none" stroke="${ink}" stroke-width=".7"/>`:`<circle r="${w/2}" fill="none" stroke="${ink}" stroke-width=".7"/><line x1="${-w*.3}" x2="${w*.3}" stroke="${ink}" stroke-width=".3"/>`;
-  else if(d.renderer==='text')body=textSvg(i,c);
+  else if(d.renderer==='text')body=textSvg({...i,font:i.font??p.design?.font,weight:i.weight??p.design?.weight},c);
   else if(d.renderer==='scale')body=scaleSvg(i,ink);
   else if(d.renderer==='arrow')body=arrowSvg(i,c);
   else if(d.renderer==='image')body=i.imageData?`<image href="${i.imageData}" x="${-w/2}" y="${-h/2}" width="${w}" height="${h}" preserveAspectRatio="none"/>`:`<g opacity=".6"><rect x="${-w/2}" y="${-h/2}" width="${w}" height="${h}" rx="1" fill="none" stroke="${ink}" stroke-width=".4" stroke-dasharray="1 1"/><path d="M${-w*.35} ${h*.3}l${w*.25}-${h*.28} ${w*.18} ${h*.16} ${w*.2}-${h*.24} ${w*.22} ${h*.2}" fill="none" stroke="${ink}" stroke-width=".5"/><circle cx="${-w*.2}" cy="${-h*.22}" r="${Math.min(w,h)*.07}" fill="${c}"/></g>`;
   else if(d.renderer==='touch')body=d.id==='joystick'?`<circle r="${w/2}" fill="#20221e" stroke="${ink}" stroke-width=".7"/><circle cx="${(i.value-.5)*w*.35}" cy="${(i.value-.5)*-h*.35}" r="${w*.18}" fill="${c}" stroke="${ink}" stroke-width=".5"/>`:`<rect x="${-w/2}" y="${-h/2}" width="${w}" height="${h}" rx="${w/2}" fill="#20221e" stroke="${c}" stroke-width=".6"/>`;
   else body=d.id==='divider'?`<line x1="${-w/2}" x2="${w/2}" stroke="${c}" stroke-width="${h}"/>`:`<${d.id.includes('circle')?'ellipse':'rect'} ${d.id.includes('circle')?`rx="${w/2}" ry="${h/2}"`:`x="${-w/2}" y="${-h/2}" width="${w}" height="${h}" rx="1"`} fill="none" stroke="${c}" stroke-width=".6"/>`;
-  const label=i.label&&d.renderer!=='text'&&view==='design'?`<text y="${h/2+3.6}" fill="${ink}" font-family="ui-monospace,monospace" font-size="2" font-weight="600" text-anchor="middle" letter-spacing=".06em">${esc(i.label.toUpperCase())}</text>`:'';
+  const style=legendStyle(p,i),labelY=h/2+3.6,labelW=Math.max(style.size,style.label.length*style.size*.67+2);
+  const label=i.label&&d.renderer!=='text'&&view==='design'?`<g class="component-legend">${style.inverted?`<rect x="${-labelW/2}" y="${labelY-style.size}" width="${labelW}" height="${style.size*1.5}" rx=".3" fill="${ink}"/>`:''}<text y="${labelY}" fill="${style.inverted?p.panelColor:ink}" font-family="${esc(style.font)}" font-size="${style.size}" font-weight="${style.weight}" text-anchor="middle">${esc(style.label)}</text></g>`:'';
   const selection=selected?`<g class="selection-ui"><rect x="${-w/2-1.3}" y="${-h/2-1.3}" width="${w+2.6}" height="${h+2.6}" fill="none" stroke="${p.accentColor}" stroke-width=".45" stroke-dasharray="1.3 1" pointer-events="none"/>${dimensionLocked(d)?'':[['nw',-w/2-1.3,-h/2-1.3],['ne',w/2+1.3,-h/2-1.3],['sw',-w/2-1.3,h/2+1.3],['se',w/2+1.3,h/2+1.3]].map(([corner,x,y])=>`<rect class="resize-handle" data-resize="${corner}" x="${Number(x)-1.15}" y="${Number(y)-1.15}" width="2.3" height="2.3" rx=".35" fill="${p.accentColor}" stroke="#fff" stroke-width=".25" vector-effect="non-scaling-stroke" style="cursor:${corner==='nw'||corner==='se'?'nwse-resize':'nesw-resize'}"/>`).join('')}</g>`:'';
   const place=`transform="translate(${i.x} ${i.y}) rotate(${i.rotation})"`;
+  const hit=view==='design'&&d.renderer==='toggle'?`<rect class="component-hit-area design-guide" x="${-w/2}" y="${-h/2}" width="${w}" height="${h}" fill="transparent"/>`:'';
   // On the panel the drawing sits in its own group so it can be lifted while
   // dragged without disturbing the selection handles around it.
   return wrapper==='preview'
     ? `<g class="part-preview" ${place} pointer-events="none">${body}${label}</g>`
-    : `<g class="panel-item" data-id="${i.id}" data-kind="${d.renderer}" ${place} opacity="${i.locked?.75:1}" style="cursor:${i.locked?'not-allowed':'move'}"><g class="part-body">${body}${label}</g>${selection}</g>`;
+    : `<g class="panel-item" data-id="${i.id}" data-kind="${d.renderer}" ${place} opacity="${i.locked?.75:1}" style="cursor:${i.locked?'not-allowed':'move'}">${hit}<g class="part-body"><g class="${d.category==='Graphics'?'component-artwork':'component-hardware'}">${body}</g>${label}</g>${selection}</g>`;
 }
 
 /** Panel legends: multi-line, aligned, in a font that will survive the trip to a fabricator. */
@@ -140,22 +143,12 @@ export function textSvg(i:Item,colour:string){
   const leading=i.height*1.25;
   const top=-(lines.length-1)*leading/2;
   const rows=lines.map((line,n)=>`<tspan x="${x}" y="${(top+n*leading).toFixed(3)}">${esc(line)}</tspan>`).join('');
-  return`<text fill="${colour}" font-family="${FONT_STACK[i.font??'sans']}" font-size="${i.height}" font-weight="${i.weight??700}" text-anchor="${anchor}" dominant-baseline="middle" letter-spacing="${i.tracking??.04}em">${rows}</text>`;
+  return`<text fill="${colour}" font-family="${esc(FONT_STACK[i.font??'sans'])}" font-size="${i.height}" font-weight="${i.weight??700}" text-anchor="${anchor}" dominant-baseline="middle" letter-spacing="${i.tracking??0}em">${rows}</text>`;
 }
 
 /** The tick arc printed around a knob. 270° of sweep, matching the pot's travel. */
 export function scaleSvg(i:Item,ink:string){
-  const count=Math.max(2,i.count??11);
-  const outer=Math.min(i.width,i.height)/2;
-  const inner=outer-Math.max(.9,outer*.16);
-  const sweep=270,start=135;
-  const ticks=Array.from({length:count},(_,n)=>{
-    const angle=(start+sweep*(n/(count-1)))*Math.PI/180;
-    const major=n===0||n===count-1||(count>4&&n===(count-1)/2);
-    const from=major?inner-Math.max(.6,outer*.1):inner;
-    return`<line x1="${(Math.cos(angle)*from).toFixed(3)}" y1="${(Math.sin(angle)*from).toFixed(3)}" x2="${(Math.cos(angle)*outer).toFixed(3)}" y2="${(Math.sin(angle)*outer).toFixed(3)}" stroke="${ink}" stroke-width="${major?.45:.3}" stroke-linecap="round"/>`;
-  }).join('');
-  return ticks;
+  return scaleTicks(i).map(t=>`<line x1="${t.x1.toFixed(3)}" y1="${t.y1.toFixed(3)}" x2="${t.x2.toFixed(3)}" y2="${t.y2.toFixed(3)}" stroke="${ink}" stroke-width="${t.width}" stroke-linecap="round"/>`).join('');
 }
 
 /** A signal-flow arrow. Drawn along its own width so rotation aims it. */
@@ -169,7 +162,7 @@ export function mountingSvg(p:Project){return mountingShapes(p.panel).map(s=>`<g
 
 export function shapePath(s:Shape){
   if(s.kind==='circle')return`<circle cx="${s.cx}" cy="${s.cy}" r="${s.r}"/>`;
-  const rx=s.kind==='obround'?Math.min(s.w,s.h)/2:.3;
+  const rx=s.kind==='obround'?Math.min(s.w,s.h)/2:0;
   return`<g transform="translate(${s.cx} ${s.cy}) rotate(${s.rotation})"><rect x="${-s.w/2}" y="${-s.h/2}" width="${s.w}" height="${s.h}" rx="${rx}"/></g>`;
 }
 
@@ -177,7 +170,7 @@ export function cutoutSvg(p:Project,definitions:Map<string,ComponentDefinition>)
   const w=panelWidth(p.panel);
   const mounting=mountingShapes(p.panel).map(shapePath).join('');
   const parts=cutoutShapes(p.items,definitions).map(shapePath).join('');
-  return`<svg xmlns="http://www.w3.org/2000/svg" width="${w.toFixed(2)}mm" height="${PANEL_H}mm" viewBox="0 0 ${w} ${PANEL_H}"><g id="panel-outline" fill="none" stroke="#000" stroke-width=".2"><rect x=".1" y=".1" width="${w-.2}" height="${PANEL_H-.2}"/><g id="mounting-slots">${mounting}</g><g id="component-cutouts">${parts}</g></g></svg>`;
+  return`<svg xmlns="http://www.w3.org/2000/svg" width="${w.toFixed(2)}mm" height="${PANEL_H}mm" viewBox="0 0 ${w} ${PANEL_H}"><g id="panel-outline" fill="none" stroke="#000" stroke-width=".2"><rect x="0" y="0" width="${w}" height="${PANEL_H}"/><g id="mounting-slots">${mounting}</g><g id="component-cutouts">${parts}</g></g></svg>`;
 }
 
 export const bounds=(i:Item,d:ComponentDefinition)=>({l:i.x-Math.max(i.width,d.keepout||0)/2,r:i.x+Math.max(i.width,d.keepout||0)/2,t:i.y-Math.max(i.height,d.keepout||0)/2,b:i.y+Math.max(i.height,d.keepout||0)/2});
@@ -233,9 +226,11 @@ export function plotSheetSvg(p:Project,definitions:Map<string,ComponentDefinitio
   const engraving=opts.engrave?p.items.filter(i=>i.label&&!i.hidden).map(i=>{
     const d=definitions.get(i.componentId);
     if(!d)return'';
-    const size=d.renderer==='text'?i.height:2;
+    const style=legendStyle(p,i);
+    const size=d.renderer==='text'?i.height:style.size;
     const y=d.renderer==='text'?i.y:i.y+i.height/2+3.6;
-    return`<text x="${i.x}" y="${y}" font-size="${size}" text-anchor="middle" dominant-baseline="middle" transform="rotate(${i.rotation} ${i.x} ${i.y})">${esc(i.label.split('\n')[0].toUpperCase())}</text>`;
+    const lines=(d.renderer==='text'?i.label:style.label).split('\n').slice(0,8),top=y-(lines.length-1)*size*1.25/2;
+    return lines.map((line,n)=>`<text x="${i.x}" y="${top+n*size*1.25}" font-size="${size}" text-anchor="middle" dominant-baseline="middle" transform="rotate(${i.rotation} ${i.x} ${i.y})">${esc(line)}</text>`).join('');
   }).join(''):'';
   const bx=m+w+6,rows:Array<[string,string]>=[
     ['Title',p.name||'Untitled panel'],

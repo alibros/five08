@@ -14,6 +14,7 @@ export default defineConfig({
   use: {
     baseURL: 'http://localhost:4173',
     trace: 'retain-on-failure',
+    ...(process.env.PLAYWRIGHT_CHROME_PATH?{launchOptions:{executablePath:process.env.PLAYWRIGHT_CHROME_PATH}}:{}),
   },
   webServer: {
     command: 'npm run preview -- --port 4173 --strictPort',

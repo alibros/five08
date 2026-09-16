@@ -287,7 +287,9 @@ test.describe('public page',()=>{
 
   test('hovering a part dimensions it',async({page})=>{
     const errors=watchConsole(page);
+    await page.emulateMedia({reducedMotion:'reduce'});
     await page.goto('/');
+    await page.evaluate(()=>document.fonts.ready);
     await page.locator('.panel-item').nth(3).hover();
     const notes=page.locator('#hero-notes');
     await expect(notes.locator('text')).not.toHaveCount(0);
@@ -306,7 +308,7 @@ test.describe('public page',()=>{
     for(let n=0;n<5;n++)await page.click('#hp-down');
     await expect(page.locator('#hp-value')).toHaveText('7 HP');
     await expect(page.locator('#hp-mm')).toHaveText('35.16 mm');
-    await expect(page.locator('#demo-caption')).toContainText('error');
+    await expect(page.locator('#demo-caption')).toContainText('warning');
 
     for(let n=0;n<5;n++)await page.click('#hp-up');
     await expect(page.locator('#demo-caption')).toContainText('Preflight: clear');

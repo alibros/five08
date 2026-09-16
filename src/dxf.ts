@@ -1,5 +1,6 @@
-import {cutoutShapes,mountingShapes,type Shape} from './geometry';
+import {cutoutShapes,mountingShapes,rotatePoint,type Shape} from './geometry';
 import {PANEL_H,panelWidth,type ComponentDefinition,type Project} from './model';
+import {legendStyle} from './design';
 
 /**
  * DXF R12 (AC1009) writer.
@@ -73,12 +74,15 @@ export function panelDxf(p:Project,definitions:Map<string,ComponentDefinition>,o
     ?p.items.filter(i=>!i.hidden&&i.label.trim()).flatMap(i=>{
         const d=definitions.get(i.componentId);if(!d)return[];
         const rotation=-i.rotation*Math.PI/180;
-        if(d.renderer!=='text')return[text('ENGRAVING',flip(i.x,i.y+i.height/2+3.6),2,i.label.toUpperCase(),rotation)];
+        if(d.renderer!=='text'){
+          const style=legendStyle(p,i),pos=rotatePoint(i.x,i.y+i.height/2+3.6,i.x,i.y,i.rotation);
+          return[text('ENGRAVING',flip(pos.x,pos.y),style.size,style.label,rotation)];
+        }
         // Multi-line legends engrave as one TEXT entity per line, laid out the
         // same way the artwork renders them.
         const lines=i.label.split('\n').slice(0,8),leading=i.height*1.25;
         const top=i.y-(lines.length-1)*leading/2;
-        return lines.map((line,n)=>text('ENGRAVING',flip(i.x,top+n*leading),i.height,line.toUpperCase(),rotation));
+        return lines.map((line,n)=>{const pos=rotatePoint(i.x,top+n*leading,i.x,i.y,i.rotation);return text('ENGRAVING',flip(pos.x,pos.y),i.height,line,rotation);});
       }).join('')
     :'';
 

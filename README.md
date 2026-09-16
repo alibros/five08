@@ -12,14 +12,14 @@ It runs entirely in the browser. There is no account, no server, and no upload. 
 ## What it does
 
 - **Real Eurorack geometry.** 128.5 mm tall; nominal HP widths, the Doepfer allowance, or a custom width in millimetres.
-- **A parts library.** Knobs, encoders, illuminated buttons, jacks, sliders, switches, displays, LEDs, mounting hardware, text, shapes and imported PNG artwork, with standard-size presets and locked dimensions for physical connectors.
+- **A parts library.** Knobs, encoders, illuminated buttons, jacks, sliders, switches, displays, LEDs, mounting hardware, text, shapes and imported artwork. All physical components keep their catalog dimensions; size presets select another real part rather than stretch the current one.
 - **Millimetre placement.** Grid snapping, centre and edge guides, live neighbour distances, equal-gap detection, alignment, distribution, spreading and grid arrangement.
 - **Direct manipulation.** Drag, rubber-band select, resize, rotate, mirror, flip, lock, hide, reorder, duplicate, copy and paste — with undo throughout.
-- **Three views of the same layout.** Hardware, machining cutouts, and rear clearance — plus a rack view showing the panel between its neighbours.
-- **Groups and arrays.** Bind a channel strip together and repeat it across the panel.
-- **Real panel typography.** Multi-line legends with a font, weight, alignment and tracking; knob scales; signal arrows.
+- **Four views of the same layout.** Hardware, machining cutouts, rear clearance and orbitable 3D inspection, plus rack context. Panel thickness and openings use the same millimetre geometry as the exports.
+- **Groups, arrays and assemblies.** Repeat a channel strip, or save it as a reusable assembly with portable JSON import/export. Copies have independent group IDs.
+- **Panel typography.** Panel-wide font, weight, legend size, case and inverted output labels, with individual text overrides. Scale graphics have configurable start, sweep, tick count, major ticks, length and line weight.
 - **Panel previews.** Aluminium, acrylic, FR4, copper, powder-coated and bead-blasted finishes.
-- **Preflight.** Edge margins, cutout walls, mounting clashes, jack spanner clearance, part depth and off-HP widths. Click an issue and the offending part is selected and framed.
+- **Preflight.** Machining, assembly, ergonomics and artwork categories. Configure wall/edge clearance, jack pitch, available rear depth, knob finger clearance and minimum text size. Click an issue to select and frame the parts.
 - **A project library.** Named projects, autosave, recovery snapshots and portable project files.
 - **Traceable dimensions.** Every part says whether its figures came from a datasheet or a guess, and links to the source.
 - **Keyboard operable.** The canvas is a listbox: skip links, Tab between parts, arrow keys to place them.
@@ -33,17 +33,20 @@ It runs entirely in the browser. There is no account, no server, and no upload. 
 | Artwork SVG | Physical-size panel artwork, including embedded PNG graphics |
 | Cutout SVG | Panel outline, mounting slots, holes and component apertures |
 | Cutout DXF | R12, millimetres, layered `PANEL_OUTLINE` / `MOUNTING` / `CUTOUTS` / `ENGRAVING` |
+| KiCad mechanical PCB | KiCad 7+ `.kicad_pcb`, exact `Edge.Cuts` outline and openings, including true slot arcs and panel thickness; no artwork, electrical footprints or circuitry |
 | PNG | 150–1200 dpi raster render |
 | Print at 1:1 | A paper drilling template at actual size |
 | VCV Rack SVG | Artwork with component-role helper markers |
 | BOM CSV | Quantities, part names, cutouts, rear depths and whether a dimension is generic |
 | `.panel.json` | Editable Five08 project |
 
-The cutout SVG and the DXF are generated from the same geometry (`src/geometry.ts`), so they cannot describe different holes.
+Cutout SVG, DXF, KiCad and 3D inspection share `src/geometry.ts`. Artwork SVG excludes rendered knobs, jacks and other physical hardware; PNG retains the hardware preview. Hidden objects do not contribute to the BOM or VCV helper markers. SVG text remains editable: outline it in a vector editor before fabrication or use with VCV's SVG tooling.
+
+See [the studio workflow](docs/studio-workflow.md) for assemblies, styles, rules and inspection, and [the research roadmap](docs/research-roadmap.md) for the rationale and remaining work.
 
 ## Use it locally
 
-Requires Node.js 20 or newer.
+Requires Node.js 22 or newer and a current browser. 3D inspection requires WebGL 2 and downloads its rendering code on first use; open it online once before relying on it offline.
 
 ```bash
 git clone https://github.com/alibros/five08.git
@@ -67,7 +70,7 @@ Vite prints the local URL. The public page is at `/`; the designer is at `/app/`
 | Pan | `Space` + drag, or middle-button drag |
 | Zoom at the pointer | `Cmd/Ctrl` + scroll |
 | Fit panel / zoom to selection | `0` / `F` |
-| Resize | Drag a selection-box corner |
+| Resize artwork | Drag a selection-box corner; hardware uses standard-size presets |
 | Preserve aspect ratio | `Shift` + resize |
 | Nudge by the grid step | Arrow key |
 | Nudge 1 mm | `Shift` + arrow key |
@@ -82,7 +85,7 @@ Vite prints the local URL. The public page is at `/`; the designer is at `/app/`
 
 ## Project storage and privacy
 
-Projects, recovery snapshots and preferences are stored in your browser. Five08 does not upload projects or artwork. Copy and paste puts component JSON on the system clipboard so you can move parts between tabs; it is validated on the way back in.
+Projects, assemblies, recovery snapshots and preferences are stored in your browser. Five08 does not upload projects or artwork. Copy and paste puts component JSON on the system clipboard so you can move parts between tabs; it is validated on the way back in. Assemblies have separate `.assembly.json` backups and are not included in a project's backup.
 
 Use **Save** to download a portable project before clearing browser data or moving to another computer. Artwork is embedded in the project file, and individual images are limited to 1.5 MB to keep browser persistence practical. Imported SVG is stripped to a presentational subset — scripts, event handlers, `foreignObject`, animation and external references are removed — both on import and again whenever a project is opened, because an exported SVG is a live document if someone opens it directly in a browser.
 
@@ -121,6 +124,10 @@ The production build is written to `dist/`. The repository uses a Vite multi-pag
 | `src/geometry.ts` | Cutout and mounting geometry, shared by every exporter |
 | `src/svg.ts` | Component and panel rendering |
 | `src/dxf.ts` | DXF R12 writer |
+| `src/kicad.ts` | Mechanical KiCad board writer |
+| `src/inspect3d.ts` | On-demand Three.js inspection and resource disposal |
+| `src/assemblies.ts`, `src/assembly-dialog.ts` | Validated reusable selections, storage and library UI |
+| `src/design.ts`, `src/studio-controls.ts` | Shared legend/scale geometry and panel-style/rule controls |
 | `src/raster.ts` | PNG rendering and the 1:1 print sheet |
 | `src/preflight.ts` | Layout checks |
 | `src/arrange.ts` | Align, distribute, mirror, rotate and grid placement |

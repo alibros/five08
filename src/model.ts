@@ -30,12 +30,19 @@ export type Item = {
   font?:TextFont; weight?:number; align?:TextAlign; tracking?:number;
   /** Repeat count for parts made of a series: scale ticks, ring segments. */
   count?:number;
+  scale?:ScaleStyle;
   /** Members of a group share this id and are selected together. */
   groupId?:string;
 };
 
 export type TextFont='sans'|'condensed'|'mono';
 export type TextAlign='start'|'middle'|'end';
+export type ScaleStyle={start:number;sweep:number;majorEvery:number;tickLength:number;lineWidth:number};
+export type PanelDesign={font:TextFont;weight:number;labelSize:number;uppercase:boolean;outputLabels:'plain'|'inverted'};
+export type RuleProfile={edgeMargin:number;minWall:number;jackPitch:number;rearDepth:number;fingerGap:number;minText:number};
+export const DEFAULT_DESIGN:PanelDesign={font:'mono',weight:600,labelSize:2,uppercase:true,outputLabels:'plain'};
+export const DEFAULT_RULES:RuleProfile={edgeMargin:3,minWall:1.2,jackPitch:9.5,rearDepth:25,fingerGap:2,minText:1.5};
+export const DEFAULT_SCALE:ScaleStyle={start:135,sweep:270,majorEvery:5,tickLength:1.4,lineWidth:.3};
 
 /**
  * Fonts named in an exported SVG have to exist on whatever opens it, so the
@@ -57,6 +64,7 @@ export type PanelProfile = {
 export type Project = {
   version:2; name:string; panel:PanelProfile; panelColor:string; inkColor:string;
   accentColor:string; panelImage?:string; items:Item[]; notes:string;
+  design?:PanelDesign; rules?:RuleProfile;
 };
 
 export const PANEL_H = 128.5;
@@ -64,7 +72,11 @@ export const HP_MM = 5.08;
 export const panelWidth = (p:PanelProfile) => p.widthMode==='custom' ? p.customWidth : p.widthMode==='doepfer' ? Math.max(5,p.hp*HP_MM-.4) : p.hp*HP_MM;
 export const uid = () => crypto.randomUUID?.() ?? Math.random().toString(36).slice(2,11);
 export const clone = <T,>(x:T):T => structuredClone(x);
-export const dimensionLocked=(d:ComponentDefinition)=>d.resizable===false||d.status==='verified'||['jack','connector','toggle','hole'].includes(d.renderer);
+export const dimensionLocked=(d:ComponentDefinition)=>d.category!=='Graphics'||d.resizable===false;
+/** Only artwork is resizable. Choosing a different hardware size changes the part. */
+export function restorePhysicalDimensions(items:Item[],definitions:Map<string,ComponentDefinition>){
+  for(const i of items){const d=definitions.get(i.componentId);if(d&&dimensionLocked(d)){i.width=d.width;i.height=d.height;}}
+}
 export const emptyProject = ():Project => ({version:2,name:'Untitled panel',panel:{hp:12,widthMode:'doepfer',customWidth:60.56,thickness:2,material:'Aluminium',finish:'brushed-silver',mounting:'four'},panelColor:'#d9d8d1',inkColor:'#1b1c19',accentColor:'#ff5d3b',items:[],notes:''});
 
 type V1Item={id:string;kind:string;x:number;y:number;size:number;label:string;color:string;value?:number};
@@ -74,16 +86,17 @@ const legacyMap:Record<string,string>={knob:'knob-medium',jack:'jack-mono',led:'
 export function parseProject(raw:unknown, definitions:Map<string,ComponentDefinition>):Project {
   if(!raw||typeof raw!=='object') throw new Error('Project is not an object');
   const r=raw as Record<string,unknown>;
-  if(r.version===1){const old=r as unknown as V1Project;const p=emptyProject();p.name=String(old.name||'Imported panel');p.panel.hp=clamp(Number(old.hp)||12,2,84);p.panel.customWidth=p.panel.hp*HP_MM-.4;p.panelColor=validColor(old.panelColor,p.panelColor);p.inkColor=validColor(old.inkColor,p.inkColor);p.accentColor=validColor(old.accentColor,p.accentColor);p.items=(old.items||[]).map(x=>{const def=definitions.get(legacyMap[x.kind]||'shape-circle')!;return{id:String(x.id||uid()),componentId:def.id,x:num(x.x,10),y:num(x.y,20),rotation:0,label:String(x.label||def.label),color:validColor(x.color,def.color),width:num(x.size,def.width),height:x.kind==='fader'?num(x.size,def.height):def.height,value:num(x.value,.5),locked:false,hidden:false,role:'none',identifier:''};});return p;}
+  if(r.version===1){const old=r as unknown as V1Project;const p=emptyProject();p.name=String(old.name||'Imported panel');p.panel.hp=clamp(Number(old.hp)||12,2,84);p.panel.customWidth=p.panel.hp*HP_MM-.4;p.panelColor=validColor(old.panelColor,p.panelColor);p.inkColor=validColor(old.inkColor,p.inkColor);p.accentColor=validColor(old.accentColor,p.accentColor);p.items=(old.items||[]).map(x=>{const def=definitions.get(legacyMap[x.kind]||'shape-circle')!;return{id:String(x.id||uid()),componentId:def.id,x:num(x.x,10),y:num(x.y,20),rotation:0,label:String(x.label||def.label),color:validColor(x.color,def.color),width:num(x.size,def.width),height:x.kind==='fader'?num(x.size,def.height):def.height,value:num(x.value,.5),locked:false,hidden:false,role:'none',identifier:''};});return parseProject(p,definitions);}
   if(r.version!==2||!Array.isArray(r.items)||!r.panel||typeof r.panel!=='object') throw new Error('Unsupported project format');
   const base=emptyProject(),panel=r.panel as Record<string,unknown>;
   const widthMode=['nominal','doepfer','custom'].includes(String(panel.widthMode))?String(panel.widthMode) as PanelProfile['widthMode']:base.panel.widthMode;
   const mounting=['none','two','diagonal','four'].includes(String(panel.mounting))?String(panel.mounting) as PanelProfile['mounting']:base.panel.mounting;
   const hp=clamp(num(panel.hp,12),2,84),material=safeText(panel.material,40,base.panel.material);
   const roles:Item['role'][]=['none','param','input','output','light','custom'];const seen=new Set<string>();
-  const items=(r.items as unknown[]).slice(0,1000).flatMap(value=>{if(!value||typeof value!=='object')return[];const x=value as Record<string,unknown>,componentId=String(x.componentId||''),d=definitions.get(componentId);if(!d)return[];let id=safeText(x.id,80,uid());if(seen.has(id))id=uid();seen.add(id);const role=roles.includes(String(x.role) as Item['role'])?String(x.role) as Item['role']:'none',imageData=validPng(x.imageData);return[{id,componentId,x:clamp(num(x.x,10),-500,1000),y:clamp(num(x.y,20),-500,1000),rotation:clamp(num(x.rotation,0),-3600,3600),width:clamp(num(x.width,d.width),.5,500),height:clamp(num(x.height,d.height),.5,500),value:clamp(num(x.value,.5),0,1),label:safeText(x.label,200,''),color:validColor(x.color,d.color),locked:!!x.locked,hidden:!!x.hidden,role,identifier:safeText(x.identifier,100,''),...(imageData?{imageData}:{}),...(safeText(x.spec,80,'')?{spec:safeText(x.spec,80,'')}:{}),...textStyle(x)}];});
+  const items=(r.items as unknown[]).slice(0,1000).flatMap(value=>{if(!value||typeof value!=='object')return[];const x=value as Record<string,unknown>,componentId=String(x.componentId||''),d=definitions.get(componentId);if(!d)return[];let id=typeof x.id==='string'&&/^[a-z0-9_-]{1,80}$/i.test(x.id)?x.id:uid();if(seen.has(id))id=uid();seen.add(id);const role=roles.includes(String(x.role) as Item['role'])?String(x.role) as Item['role']:'none',imageData=validPng(x.imageData);return[{id,componentId,x:clamp(num(x.x,10),-500,1000),y:clamp(num(x.y,20),-500,1000),rotation:clamp(num(x.rotation,0),-3600,3600),width:clamp(num(x.width,d.width),.5,500),height:clamp(num(x.height,d.height),.5,500),value:clamp(num(x.value,.5),0,1),label:safeText(x.label,200,''),color:validColor(x.color,d.color),locked:!!x.locked,hidden:!!x.hidden,role,identifier:safeText(x.identifier,100,''),...(imageData?{imageData}:{}),...(safeText(x.spec,80,'')?{spec:safeText(x.spec,80,'')}:{}),...textStyle(x)}];});
+  restorePhysicalDimensions(items,definitions);
   const panelImage=validPng(r.panelImage);
-  return{version:2,name:safeText(r.name,120,base.name),panel:{hp,widthMode,customWidth:clamp(num(panel.customWidth,hp*HP_MM),5,430),thickness:clamp(num(panel.thickness,2),.5,10),material,finish:safeText(panel.finish,50,finishForMaterial(material)),mounting},panelColor:validColor(r.panelColor,base.panelColor),inkColor:validColor(r.inkColor,base.inkColor),accentColor:validColor(r.accentColor,base.accentColor),...(panelImage?{panelImage}:{}),items,notes:safeText(r.notes,10000,'')};
+  return{version:2,name:safeText(r.name,120,base.name),panel:{hp,widthMode,customWidth:clamp(num(panel.customWidth,hp*HP_MM),5,430),thickness:clamp(num(panel.thickness,2),.5,10),material,finish:safeText(panel.finish,50,finishForMaterial(material)),mounting},panelColor:validColor(r.panelColor,base.panelColor),inkColor:validColor(r.inkColor,base.inkColor),accentColor:validColor(r.accentColor,base.accentColor),...(panelImage?{panelImage}:{}),...(r.design?{design:parseDesign(r.design)}:{}),...(r.rules?{rules:parseRules(r.rules)}:{}),items,notes:safeText(r.notes,10000,'')};
 }
 const fonts:TextFont[]=['sans','condensed','mono'];
 const aligns:TextAlign[]=['start','middle','end'];
@@ -94,9 +107,28 @@ function textStyle(x:Record<string,unknown>){
   if(Number.isFinite(Number(x.weight)))out.weight=clamp(Math.round(Number(x.weight)/100)*100,100,900);
   if(Number.isFinite(Number(x.tracking)))out.tracking=clamp(Number(x.tracking),-.2,1);
   if(Number.isFinite(Number(x.count)))out.count=clamp(Math.round(Number(x.count)),2,64);
+  if(x.scale)out.scale=parseScale(x.scale);
   const groupId=safeText(x.groupId,80,'');
   if(groupId)out.groupId=groupId;
   return out;
+}
+const record=(v:unknown):Record<string,unknown>=>v&&typeof v==='object'?v as Record<string,unknown>:{};
+export function parseDesign(value:unknown):PanelDesign{
+  const x=record(value);
+  return{font:fonts.includes(x.font as TextFont)?x.font as TextFont:DEFAULT_DESIGN.font,
+    weight:clamp(Math.round(num(x.weight,600)/100)*100,100,900),labelSize:clamp(num(x.labelSize,2),.8,6),
+    uppercase:x.uppercase!==false,outputLabels:x.outputLabels==='inverted'?'inverted':'plain'};
+}
+export function parseRules(value:unknown):RuleProfile{
+  const x=record(value);
+  return{edgeMargin:clamp(num(x.edgeMargin,3),0,10),minWall:clamp(num(x.minWall,1.2),.1,5),
+    jackPitch:clamp(num(x.jackPitch,9.5),6,30),rearDepth:clamp(num(x.rearDepth,25),5,200),
+    fingerGap:clamp(num(x.fingerGap,2),0,15),minText:clamp(num(x.minText,1.5),.5,5)};
+}
+export function parseScale(value:unknown):ScaleStyle{
+  const x=record(value);
+  return{start:clamp(num(x.start,135),-360,360),sweep:clamp(num(x.sweep,270),10,360),
+    majorEvery:clamp(Math.round(num(x.majorEvery,5)),1,32),tickLength:clamp(num(x.tickLength,1.4),.2,10),lineWidth:clamp(num(x.lineWidth,.3),.1,2)};
 }
 export const clamp=(v:number,min:number,max:number)=>Math.max(min,Math.min(max,v));
 const num=(v:unknown,fallback:number)=>Number.isFinite(Number(v))?Number(v):fallback;
