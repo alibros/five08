@@ -35,17 +35,37 @@ export function demoPanel():Project{
   return project;
 }
 
-/** Keep the landing-page example legible while demonstrating narrow panels. */
+/** Reflow the landing example without changing any real-world component size. */
 export function resizeDemoPanel(project:Project,hp:number){
   const source=demoPanel();
   const sourceWidth=panelWidth(source.panel);
   project.panel.hp=hp;
   project.panel.customWidth=hp*HP_MM-.4;
-  const scale=panelWidth(project.panel)/sourceWidth;
+  const width=panelWidth(project.panel);
+  const compact=hp<=8;
   project.items.forEach((item,n)=>{
     const original=source.items[n];
-    item.x=Math.round(original.x*scale*10)/10;
-    item.width=Math.round(original.width*scale*10)/10;
-    item.height=Math.round(original.height*scale*10)/10;
+    item.width=original.width;
+    item.height=original.height;
+    item.y=original.y;
+    item.x=Math.round(original.x/sourceWidth*width*10)/10;
   });
+  if(!compact)return;
+
+  const at=(label:string,renderer:string)=>project.items.find(item=>item.label===label&&catalogMap.get(item.componentId)?.renderer===renderer)!;
+  const label=at('WAVEFOLDER','text');
+  label.x=width/2;
+  label.width=Math.min(label.width,width-4);
+  at('FOLD','knob').x=width/2;
+  Object.assign(at('SYMMETRY','knob'),{x:8,y:58});
+  Object.assign(at('DRIVE','knob'),{x:width-8,y:58});
+  Object.assign(at('RANGE','toggle'),{x:width/2,y:76});
+
+  const leds=project.items.filter(item=>catalogMap.get(item.componentId)?.renderer==='led');
+  Object.assign(leds[0],{x:9,y:88});
+  Object.assign(leds[1],{x:width-9,y:88});
+
+  const jacks=project.items.filter(item=>catalogMap.get(item.componentId)?.renderer==='jack');
+  const columns=[width*.27,width*.73];
+  jacks.forEach((jack,n)=>Object.assign(jack,{x:columns[n%2],y:n<2?101.5:113.5}));
 }
