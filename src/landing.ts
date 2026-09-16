@@ -138,7 +138,7 @@ const CHECKS=[
 
 /* ---------- page ---------- */
 
-const wordmark=`<img src="/five08-logo.svg" width="128" height="40" alt="Five08">`;
+const wordmark=`<img src="/five08-logo.svg" width="112" height="40" alt="Five08">`;
 
 /* The zone marks a drawing sheet carries in its border: letters down the
    sides, numbers along the top and bottom, a centring tick on each edge. */

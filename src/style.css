@@ -17,7 +17,7 @@ button { color: inherit; }
 .app { height: 100vh; display: grid; grid-template-rows: 58px 1fr 30px; }
 .topbar { display: flex; align-items: center; gap: 10px; padding: 0 16px; border-bottom: 1px solid var(--line); background: rgba(17,18,15,.96); z-index: 5; }
 .brand { display: flex; align-items: center; gap: 10px; margin-right: 14px; }
-.brand > img { display:block; width:96px; height:30px; flex:none; }
+.brand > img { display:block; width:105px; height:37.5px; flex:none; }
 .brand-mark { width: 28px; height: 28px; border: 1px solid #65695e; border-radius: 50%; position: relative; }
 .brand-mark::before, .brand-mark::after { content: ''; position: absolute; background: var(--accent); }
 .brand-mark::before { width: 12px; height: 2px; left: 7px; top: 12px; }
@@ -146,7 +146,7 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline:2px so
 body { min-width:760px; background:var(--bg); }
 .app { grid-template-rows:64px 1fr 32px; }
 .topbar { gap:8px; padding:0 14px; background:#101310; border-color:#272d27; box-shadow:0 1px 0 #080908; }
-.brand { min-width:190px; margin-right:0; }.brand-mark { width:30px;height:30px;border-color:#495249 }.brand strong{font-size:13px}.brand small{font: 8px/1.4 var(--mono);color:#798278;max-width:76px}
+.brand { min-width:214px; margin-right:0; }.brand-mark { width:30px;height:30px;border-color:#495249 }.brand strong{font-size:13px}.brand small{font: 8px/1.4 var(--mono);color:#798278;max-width:76px}
 .top-divider { width:1px;height:28px;background:var(--line);margin:0 6px; }.project-identity { display:flex;flex-direction:column;justify-content:center;gap:1px }.eyebrow { color:#717a70;font: 8px/1.4 var(--mono);text-transform:uppercase;letter-spacing:.13em }.project-name { width:190px;height:27px;padding:2px 5px;font-size:12px }.project-name:hover,.project-name:focus{background:#1c211c}
 .history-group,.file-group{display:flex;gap:4px}.history-group{margin-left:6px}.file-group{padding-right:8px;border-right:1px solid var(--line)}
 .ui-icon { width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round;flex:none }.tool-button .ui-icon{width:14px;height:14px}

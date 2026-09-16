@@ -55,7 +55,7 @@ h1, h2, h3, .standfirst, .terms, .band-head > p, .glance, .split, .spec, .hp-not
   border-bottom: 1px solid var(--ink);
 }
 .wordmark { display: inline-flex; align-items: center; flex: none; }
-.wordmark img { display: block; width: 96px; height: 30px; }
+.wordmark img { display: block; width: 112px; height: 40px; }
 .masthead .rev {
   font-family: var(--mono); font-size: 10px; letter-spacing: .08em;
   text-transform: uppercase; color: var(--faint);
@@ -453,6 +453,7 @@ h1 { font-size: clamp(34px,4.4vw,58px); max-width: 14ch; line-height: 1.0; lette
   .sheet-frame { display: none; }
   body { padding-top: 0; }
   .masthead { top: 0; }
+  .wordmark img { width: 92px; height: 33px; }
   .zone-mark { left: 0; font-size: 110px; }
   .title-block { grid-template-columns: repeat(3, 1fr); }
   .title-block > div:nth-child(6n) { border-right: 1px solid var(--rule); }
