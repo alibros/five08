@@ -1,7 +1,34 @@
 import {describe,expect,it} from 'vitest';
 import {catalog,catalogMap} from './catalog';
 import {emptyProject,type Item} from './model';
-import {arrowSvg,componentSvg,cutoutSvg,panelFinishSurface,scaleSvg,templateSvg,textSvg,thumbnailSvg} from './svg';
+import {arrowSvg,componentSvg,cutoutSvg,panelFinishSurface,panelViewTransform,scaleSvg,templateSvg,textSvg,thumbnailSvg} from './svg';
+
+describe('rear projection',()=>{
+  const p=emptyProject();
+  const item=(id:string):Item=>{const d=catalogMap.get(id)!;return{id,componentId:id,x:18,y:27,rotation:30,label:'FRONT',color:d.color,width:d.width,height:d.height,value:.5,locked:false,hidden:false,role:'none',identifier:''};};
+
+  it('mirrors only the rear viewing transform',()=>{
+    expect(panelViewTransform(101.2,'rear')).toBe('translate(101.2 0) scale(-1 1)');
+    expect(panelViewTransform(101.2,'design')).toBe('');
+    expect(panelViewTransform(101.2,'cutout')).toBe('');
+  });
+
+  it('shows actual openings and readable depth annotations without modifying the item',()=>{
+    const i=item('jack-mono'),before=structuredClone(i);
+    const rear=componentSvg(i,catalogMap.get(i.componentId)!,p,false,'rear');
+    expect(rear).toContain('class="cut"');
+    expect(rear).toContain('class="rear-keepout"');
+    expect(rear).toContain('transform="rotate(-30) scale(-1 1)"');
+    expect(rear).not.toContain('component-legend');
+    expect(i).toEqual(before);
+  });
+
+  it('omits front artwork, including parts without rear keepouts',()=>{
+    for(const d of catalog.filter(d=>d.category==='Graphics'))expect(componentSvg(item(d.id),d,p,false,'rear')).toBe('');
+    const hole=item('mount-hole');
+    expect(componentSvg(hole,catalogMap.get(hole.componentId)!,p,false,'rear')).toContain('class="cut"');
+  });
+});
 
 describe('machining export',()=>it('uses explicit geometry without visual texture',()=>{const p=emptyProject();p.items=[{id:'a',componentId:'button-lit-rect',x:20,y:30,rotation:0,label:'',color:'#ffffff',width:18,height:10,value:.5,locked:false,hidden:false,role:'none',identifier:''}];const svg=cutoutSvg(p,catalogMap);expect(svg).toContain('width="14.4"');expect(svg).toContain('height="8"');expect(svg).not.toContain('panel-surface');expect(svg).not.toContain('<text');}));
 describe('custom surface',()=>it('embeds a PNG beneath the panel details',()=>{const p=emptyProject();p.panelImage='data:image/png;base64,aGVsbG8=';const svg=panelFinishSurface(p,60);expect(svg).toContain('class="panel-custom-image"');expect(svg).toContain('preserveAspectRatio="xMidYMid slice"');}));

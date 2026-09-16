@@ -26,7 +26,7 @@ html { scroll-behavior: smooth; background: var(--paper); }
 body { margin: 0; padding-top: calc(var(--sheet-inset) + 1px); background: transparent; -webkit-font-smoothing: antialiased; }
 a { color: inherit; text-decoration: none; }
 p { margin: 0; text-wrap: pretty; }
-h1, h2, h3 { margin: 0; font-stretch: var(--width-tight); font-weight: 620; letter-spacing: -.015em; line-height: 1.05; text-wrap: balance; }
+h1, h2, h3 { margin: 0; font-stretch: var(--width-tight); font-weight: 620; letter-spacing: 0; line-height: 1.05; text-wrap: balance; }
 /* Ink sits in the paper rather than on it. Only text blocks blend: anything
    carrying a background of its own (section numbers, the panel) stays put. */
 h1, h2, h3, .standfirst, .terms, .band-head > p, .glance, .split, .spec, .hp-note,
@@ -102,7 +102,7 @@ main { max-width: var(--frame); margin: 0 auto; padding: 0 var(--gutter); }
 /* ---- the sheet ----
    A drawing sheet is a bordered frame with zone marks: letters down the
    sides, numbers along the top and bottom, so a note can say "see C4". The
-   frame is fixed to the viewport and the page scrolls inside it — and it
+   frame is fixed to the viewport and the page scrolls inside it, and it
    draws above everything, because an edge with a hole in it is not an edge. */
 .sheet-frame {
   position: fixed; z-index: 40; pointer-events: none;
@@ -164,7 +164,7 @@ main { max-width: var(--frame); margin: 0 auto; padding: 0 var(--gutter); }
 @keyframes drift { from { translate: 0 14px; } to { translate: 0 -14px; } }
 .band-head { display: grid; grid-template-columns: 72px minmax(0,1fr); gap: 0 18px; margin-bottom: 24px; }
 .band-head .section-no { padding-top: 5px; position: relative; z-index: 1; background: var(--paper); padding-bottom: 4px; }
-.band h2 { font-size: clamp(21px,2.3vw,28px); }
+.band h2 { font-size: 28px; }
 .band-head > p { grid-column: 2; margin-top: 11px; max-width: var(--measure); font-size: 14.5px; line-height: 1.6; color: var(--muted); }
 .band-body { padding-left: 90px; }
 
@@ -178,10 +178,10 @@ main { max-width: var(--frame); margin: 0 auto; padding: 0 var(--gutter); }
   content: ''; position: absolute; left: 72px; top: 0; bottom: 0;
   border-left: 1px solid var(--rule);
 }
-.lead-copy { display: grid; grid-template-columns: 72px minmax(0,1fr); gap: 0 18px; }
+.lead-copy { display: grid; grid-template-columns: 72px minmax(0,1fr); gap: 0 18px; min-width:0; }
 .lead-copy > * { grid-column: 2; }
 .lead-copy > .section-no { grid-column: 1; grid-row: 1; padding-top: 8px; position: relative; z-index: 1; background: var(--paper); padding-bottom: 4px; }
-h1 { font-size: clamp(34px,4.4vw,58px); max-width: 14ch; line-height: 1.0; letter-spacing: -.022em; font-stretch: 85%; font-weight: 640; }
+h1 { font-size: 58px; max-width: 14ch; line-height: 1.0; letter-spacing: 0; font-stretch: 85%; font-weight: 640; }
 .standfirst { margin-top: 18px; max-width: var(--measure); font-size: 16px; line-height: 1.6; color: var(--ink-2); }
 .terms {
   margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--rule);
@@ -195,7 +195,7 @@ h1 { font-size: clamp(34px,4.4vw,58px); max-width: 14ch; line-height: 1.0; lette
 .glance dd { margin: 5px 0 0; font-family: var(--mono); font-size: 15px; font-variant-numeric: tabular-nums; color: var(--ink); }
 
 /* ---- the live panel ---- */
-.demo { margin: 0; --panel-h: min(60vh,520px); }
+.demo { margin: 0; --panel-h: min(60vh,460px); }
 .demo-frame { display: flex; gap: 6px; align-items: flex-start; }
 .demo-scale { position: relative; width: 30px; height: var(--panel-h); margin-top: 11px; }
 .demo-scale span {
@@ -207,7 +207,7 @@ h1 { font-size: clamp(34px,4.4vw,58px); max-width: 14ch; line-height: 1.0; lette
 .demo-scale i { position: absolute; right: 0; top: 50%; width: 4px; height: 1px; background: var(--rule-strong); }
 .demo-scale span.major i { width: 7px; background: var(--ink-2); }
 .demo-panel {
-  flex: 1; position: relative; display: flex; justify-content: center; padding: 18px 11px 34px;
+  flex: 1; min-width:0; position: relative; display: flex; justify-content: center; padding: 18px 11px 34px;
   /* Light falling across the panel from wherever the pointer is; from above
      left when nobody is looking. */
   --mx: 35%; --my: 20%; --tx: 0deg; --ty: 0deg;
@@ -227,7 +227,7 @@ h1 { font-size: clamp(34px,4.4vw,58px); max-width: 14ch; line-height: 1.0; lette
    dark where the panel meets the surface, wide and soft beneath it), the
    sheen that follows the pointer, and the lean. */
 .panel-body {
-  position: relative; display: block; border-radius: 2px;
+  position: relative; display: block; border-radius: 2px; max-width:100%;
   box-shadow:
     0 1px 0 rgb(255 255 255 / .45),
     0 2px 3px rgb(0 0 0 / .28),
@@ -242,13 +242,12 @@ h1 { font-size: clamp(34px,4.4vw,58px); max-width: 14ch; line-height: 1.0; lette
   background: linear-gradient(100deg, transparent calc(var(--mx) - 24%), rgb(255 255 255 / .16) var(--mx), transparent calc(var(--mx) + 24%));
 }
 .panel-render {
-  display: block; width: auto; height: var(--panel-h); overflow: visible;
+  display: block; width: 100%; height: auto; overflow: visible;
   touch-action: none;
 }
 
-/* A lit indicator breathes while nobody is touching the panel — a module on
-   standby — and holds still the moment the pointer arrives. */
-.demo-panel .led-body[fill="#ff5d3b"] { animation: breathe 4s ease-in-out infinite; transform-box: fill-box; transform-origin: center; }
+/* A lit indicator breathes on standby and holds still when the pointer arrives. */
+.demo-panel .led-body[fill="#ff7955"] { animation: breathe 4s ease-in-out infinite; transform-box: fill-box; transform-origin: center; }
 .demo-panel:hover .led-body { animation-play-state: paused; }
 @keyframes breathe { 50% { opacity: .78; scale: .96; } }
 
@@ -281,7 +280,7 @@ h1 { font-size: clamp(34px,4.4vw,58px); max-width: 14ch; line-height: 1.0; lette
   opacity: .8;
 }
 .panel-render {
-  width: auto; height: var(--panel-h); overflow: visible;
+  width: 100%; height: auto; overflow: visible;
   filter: drop-shadow(0 1px 0 rgb(255 255 255 / .5)) drop-shadow(0 14px 28px rgb(0 0 0 / .22));
   touch-action: none;
 }
@@ -377,7 +376,7 @@ h1 { font-size: clamp(34px,4.4vw,58px); max-width: 14ch; line-height: 1.0; lette
 }
 .caveat b { color: var(--ink); }
 
-.closing h2 { font-size: clamp(23px,2.9vw,34px); }
+.closing h2 { font-size: 34px; }
 .closing p { margin-top: 12px; max-width: var(--measure); font-size: 14.5px; line-height: 1.6; color: var(--muted); }
 
 /* ---- colophon: notes, revisions and the title block ----
@@ -442,8 +441,8 @@ h1 { font-size: clamp(34px,4.4vw,58px); max-width: 14ch; line-height: 1.0; lette
 @media (max-width: 1180px) { .masthead .rev { display: none; } }
 @media (max-width: 960px) {
   .colophon { grid-template-columns: 1fr; }
-  .lead { grid-template-columns: 1fr; gap: 38px; padding: 42px 0; }
-  .panel-render { height: min(52vh,420px); }
+  .lead { grid-template-columns: minmax(0,1fr); gap: 38px; padding: 42px 0; }
+  .demo { --panel-h:min(52vh,420px); }
   .masthead nav, .masthead .rev { display: none; }
   .band-body { padding-left: 0; }
 }
@@ -452,7 +451,9 @@ h1 { font-size: clamp(34px,4.4vw,58px); max-width: 14ch; line-height: 1.0; lette
   :root { --gutter: 18px; --sheet-inset: 0px; }
   .sheet-frame { display: none; }
   body { padding-top: 0; }
-  .masthead { top: 0; }
+  .masthead { top: 0; gap: 12px; }
+  .masthead > .button { margin-left:auto; padding:0 10px; font-size:11px; letter-spacing:0; }
+  .masthead > .ghost { padding:0 8px; }
   .wordmark img { width: 93px; height: 31px; }
   .zone-mark { left: 0; font-size: 110px; }
   .title-block { grid-template-columns: repeat(3, 1fr); }
@@ -464,7 +465,8 @@ h1 { font-size: clamp(34px,4.4vw,58px); max-width: 14ch; line-height: 1.0; lette
   .lead::before, .band::before { display: none; }
   .rack figcaption { grid-template-columns: 1fr; }
   .spec.compact .figure { text-align: left; padding-right: 0; }
-  .lead-copy, .band-head { grid-template-columns: 1fr; }
+  .lead-copy, .band-head { grid-template-columns: minmax(0,1fr); }
+  .glance { grid-template-columns:repeat(2,minmax(0,1fr)); }
   .lead-copy > .section-no, .band-head .section-no { grid-column: 1; grid-row: auto; padding: 0 0 6px; }
   .lead-copy > *, .band-head > p { grid-column: 1; }
   .demo-scale { display: none; }

@@ -67,7 +67,7 @@ export function rackSceneSvg(hero:Project){
   const jack=(p:Project,label:string)=>p.items.find(i=>i.label===label&&catalogMap.get(i.componentId)?.renderer==='jack');
   const heroJack=(label:string)=>jack(hero,label);
   const cables:string[]=[];
-  const sawOut=jack(left,'SAW'),inJack=heroJack('IN'),outJack=heroJack('OUT'),in2=jack(right,'IN 2'),cv=heroJack('CV'),sqr=jack(left,'SQR');
+  const sawOut=jack(left,'SAW'),inJack=heroJack('IN L')??heroJack('IN'),outJack=heroJack('OUT L')??heroJack('OUT'),in2=jack(right,'IN 2'),cv=heroJack('CV'),sqr=jack(left,'SQR');
   if(sawOut&&inJack)cables.push(cable(x0+sawOut.x,sawOut.y,inJack.x,inJack.y,'#d9b23a',26));
   if(outJack&&in2)cables.push(cable(outJack.x,outJack.y,x1+in2.x,in2.y,'#c8321e',34));
   if(sqr&&cv)cables.push(cable(x0+sqr.x,sqr.y,cv.x,cv.y,'#2b2b2b',20));

@@ -1,13 +1,11 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 40" role="img" aria-labelledby="title">
-  <title id="title">Five08</title>
-  <defs>
-    <linearGradient id="metal" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#f4f4ef"/>
-      <stop offset="0.48" stop-color="#d9dad5"/>
-      <stop offset="1" stop-color="#bfc1bc"/>
-    </linearGradient>
-  </defs>
+  <title id="title">FIVE08</title>
+  <defs><linearGradient id="metal" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f4f4ef"/><stop offset="0.48" stop-color="#d9dad5"/><stop offset="1" stop-color="#bfc1bc"/></linearGradient></defs>
   <rect x="1" y="1" width="118" height="38" rx="3" fill="url(#metal)" stroke="#171816" stroke-width="2"/>
   <path d="M7 10v4M7 26v4M113 10v4M113 26v4" stroke="#646661" stroke-width="2" stroke-linecap="round"/>
-  <text x="15" y="27" fill="#171816" font-family="Arial, Helvetica, sans-serif" font-size="22" font-weight="600"><tspan>five</tspan><tspan dx="4" fill="#e8472c">•</tspan><tspan dx="4" fill="#171816">08</tspan></text>
+  <g id="wordmark" fill="#171816" data-typeface="Chakra Petch Medium">
+    <path id="wordmark-letters" d="M15 29.080L15 10.920L26.933 10.920L26.933 13.100L17.490 13.100L17.490 19.118L25.688 19.118L25.688 21.297L17.490 21.297L17.490 29.080L15 29.080M29.657 29.080L29.657 10.920L32.147 10.920L32.147 29.080L29.657 29.080M41.175 29.080L34.742 10.920L37.310 10.920L42.420 26.096L42.472 26.096L47.583 10.920L50.151 10.920L43.717 29.080L41.175 29.080M52.615 29.080L52.615 10.920L64.808 10.920L64.808 13.100L55.106 13.100L55.106 18.885L64.056 18.885L64.056 21.038L55.106 21.038L55.106 26.900L64.808 26.900L64.808 29.080"/>
+    <circle cx="70.208" cy="20" r="2.4" fill="#e8472c"/>
+    <path id="wordmark-digits" d="M78.332 29.080L75.608 26.356L75.608 13.644L78.332 10.920L86.011 10.920L88.735 13.644L88.735 26.356L86.011 29.080L78.332 29.080M79.473 26.900L84.869 26.900L86.244 25.526L86.244 14.474L84.869 13.100L79.473 13.100L78.098 14.474L78.098 25.526L79.473 26.900M94.494 29.080L91.977 26.563L91.977 21.349L93.612 19.715L92.237 18.340L92.237 13.437L94.753 10.920L102.224 10.920L104.741 13.437L104.741 18.340L103.366 19.715L105 21.349L105 26.563L102.484 29.080L94.494 29.080M95.894 18.781L101.083 18.781L102.250 17.639L102.250 14.241L101.083 13.100L95.894 13.100L94.727 14.241L94.727 17.639L95.894 18.781M95.635 26.900L101.342 26.900L102.510 25.759L102.510 22.075L101.342 20.908L95.635 20.908L94.468 22.075L94.468 25.759"/>
+  </g>
 </svg>

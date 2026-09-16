@@ -15,7 +15,7 @@ It runs entirely in the browser. There is no account, no server, and no upload. 
 - **A parts library.** Knobs, encoders, illuminated buttons, jacks, sliders, switches, displays, LEDs, mounting hardware, text, shapes and imported artwork. All physical components keep their catalog dimensions; size presets select another real part rather than stretch the current one.
 - **Millimetre placement.** Grid snapping, centre and edge guides, live neighbour distances, equal-gap detection, alignment, distribution, spreading and grid arrangement.
 - **Direct manipulation.** Drag, rubber-band select, resize, rotate, mirror, flip, lock, hide, reorder, duplicate, copy and paste — with undo throughout.
-- **Four views of the same layout.** Hardware, machining cutouts, rear clearance and orbitable 3D inspection, plus rack context. Panel thickness and openings use the same millimetre geometry as the exports.
+- **Four views of the same layout.** Hardware, machining cutouts, mirrored rear clearance and orbitable 3D inspection, plus rack context. All 53 controls, connectors and indicators have detailed front-facing 3D models with distinct finishes. The back shows panel openings without speculative connector bodies. Panel thickness and openings use the same millimetre geometry as the exports; cap heights remain illustrative.
 - **Groups, arrays and assemblies.** Repeat a channel strip, or save it as a reusable assembly with portable JSON import/export. Copies have independent group IDs.
 - **Panel typography.** Panel-wide font, weight, legend size, case and inverted output labels, with individual text overrides. Scale graphics have configurable start, sweep, tick count, major ticks, length and line weight.
 - **Panel previews.** Aluminium, acrylic, FR4, copper, powder-coated and bead-blasted finishes.
@@ -56,6 +56,8 @@ npm run dev
 ```
 
 Vite prints the local URL. The public page is at `/`; the designer is at `/app/`.
+
+The homepage uses an editable 20 HP example panel. Its live 3D, flat panel and rack views share `src/demo.ts`; **Edit this panel** creates a new project without replacing existing work. Hardware retains catalogue dimensions when the example is narrowed. `public/halo-showcase.webp` is a lightweight render of that same model for first paint and browsers without WebGL.
 
 ## Keyboard and pointer controls
 
@@ -115,6 +117,8 @@ The production build is written to `dist/`. The repository uses a Vite multi-pag
 - `index.html` — public page
 - `app/index.html` — designer
 
+Brand titles use self-hosted Chakra Petch Medium; the header and social wordmarks are outlined from the same font. `npm run assets:brand` regenerates those SVGs with equal side margins and copies the font's SIL Open Font License to `public/chakra-petch-OFL.txt`.
+
 ### Source layout
 
 | File | Responsibility |
@@ -126,6 +130,7 @@ The production build is written to `dist/`. The repository uses a Vite multi-pag
 | `src/dxf.ts` | DXF R12 writer |
 | `src/kicad.ts` | Mechanical KiCad board writer |
 | `src/inspect3d.ts` | On-demand Three.js inspection and resource disposal |
+| `src/hardware3d.ts` | Physical-footprint component models, shared materials and mesh batching |
 | `src/assemblies.ts`, `src/assembly-dialog.ts` | Validated reusable selections, storage and library UI |
 | `src/design.ts`, `src/studio-controls.ts` | Shared legend/scale geometry and panel-style/rule controls |
 | `src/raster.ts` | PNG rendering and the 1:1 print sheet |
@@ -136,7 +141,7 @@ The production build is written to `dist/`. The repository uses a Vite multi-pag
 | `src/history.ts` | Undo history, budgeted by bytes rather than step count |
 | `src/artwork.ts` | SVG import sanitiser |
 | `src/main.ts` | The editor |
-| `src/landing.ts`, `src/demo.ts` | The public page and the panel it shows |
+| `src/landing.ts`, `src/landing-hero.ts`, `src/demo.ts` | Public page, on-demand 3D showcase and editable HALO panel |
 
 ## Deploying to Vercel
 

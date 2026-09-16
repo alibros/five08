@@ -42,11 +42,17 @@ Rotated rectangular bounds are considered, but non-circular cutout separation st
 
 ## 3D inspection
 
-Open **3D** next to the canvas view selector. Orbit, zoom, switch front/rear/perspective, and toggle hardware or rear envelopes. The panel is extruded to its actual configured thickness and cut using the shared hole definitions.
+The 2D **Rear clearance** view is horizontally mirrored, as if the panel were turned over. Depth labels remain readable. Rulers and inspector coordinates retain the front-face reference, while dragging and arrow keys follow the on-screen direction. Artwork and machining exports always retain their front-face orientation.
 
-Front width/height follows the catalog. Front elevation is illustrative because the catalog does not yet carry cap heights. Rear boxes use catalog depth and clearance footprints; red indicates a part exceeding the configured rear space. PCBs, wiring, fasteners and their tolerances are not modeled. This is an inspection aid, not a STEP assembly or collision-certification tool.
+Open **3D** next to the canvas view selector. Orbit, zoom, switch front/perspective/side/rear, and toggle hardware or clearance envelopes. The panel is extruded to its configured thickness and cut using the shared hole definitions. Openings remain empty; graphics and labels stay printed on the surface.
 
-The renderer is loaded only when requested, redraws on changes rather than in a permanent animation loop, and releases its WebGL resources when closed.
+All 53 controls, connectors and indicators have dedicated front-facing procedural models: skirted/fluted/soft-touch/concentric caps, encoders and light rings, recessed jack sockets, USB-C/DIN/SD contacts, faders, switch levers, round/square/rectangular buttons, domed LEDs, OLED traces, segmented displays, a moving-coil meter, joystick and touch strip. Metals, plastics, rubber and illuminated surfaces have distinct finishes under studio lighting. Panel finishes retain their material character, with light-dependent brushed grain and translucent acrylic.
+
+Front width/height follows the catalog, never the panel width. Front elevation is illustrative because the catalog does not carry cap heights. Viewed from behind, 3D shows the panel and its openings without invented connector housings, solder pins or spacer bodies. Optional clearance envelopes use catalog depth and conservative footprints; red indicates a part exceeding the configured rear space. Envelopes are off initially so they do not obscure the openings. Wiring, a shared PCB, mounting screws and manufacturing tolerances are not modeled. This is an inspection aid, not a STEP assembly or collision-certification tool.
+
+**Preview value** in the component inspector sets knob pointers, fader/joystick/touch positions, switch states, meter readings and illumination. These are saved visual states, not a circuit simulation. Close and reopen 3D after an edit.
+
+The renderer is loaded only when requested. Repeated hardware shares resources and is batched by material. Camera damping redraws only until motion settles; idle previews do not run a permanent animation loop. Closing inspection releases meshes, textures, environment lighting, shadows, controls and its WebGL context.
 
 ## Exports
 

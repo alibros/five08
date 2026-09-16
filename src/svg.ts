@@ -6,6 +6,9 @@ import {legendStyle,scaleTicks} from './design';
 
 export const esc=(s:string)=>s.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]!));
 
+/** Project coordinates always refer to the front, even when inspecting the back. */
+export const panelViewTransform=(width:number,view:'design'|'cutout'|'rear')=>view==='rear'?`translate(${width} 0) scale(-1 1)`:'';
+
 /* ---- panel finishes ----
    A surface is drawn in three layers: a gradient for the base colour and
    the way light falls across it; a grain for the material — long streaks
@@ -107,7 +110,14 @@ export function componentSvg(i:Item,d:ComponentDefinition,p:Project,selected:boo
   const ink=p.inkColor, w=i.width, h=i.height, c=i.color;let body='';
   if(view==='cutout'&&d.cutout){const shape=cutoutShape({...i,x:0,y:0,rotation:0},d);body=shape?`<g class="cut">${shapePath(shape)}</g>`:'';}
   else if(view==='cutout'){body='';}
-  else if(view==='rear'&&d.keepout){body=`<rect x="${-d.keepout/2}" y="${-Math.max(d.keepout,h)/2}" width="${d.keepout}" height="${Math.max(d.keepout,h)}" rx="1" fill="${p.accentColor}" fill-opacity=".17" stroke="${p.accentColor}" stroke-dasharray="1 1"/><text y="1" text-anchor="middle" font-size="1.7" fill="${ink}">${d.depth??'—'} mm</text>`;}
+  else if(view==='rear'){
+    if(d.category==='Graphics')return'';
+    const shape=cutoutShape({...i,x:0,y:0,rotation:0},d);
+    const rw=Math.max(d.keepout??0,d.width),rh=Math.max(d.keepout??0,d.height);
+    const keepout=d.keepout?`<rect class="rear-keepout" x="${-rw/2}" y="${-rh/2}" width="${rw}" height="${rh}" rx="1" fill="${p.accentColor}" fill-opacity=".12" stroke="${p.accentColor}" stroke-width=".35" stroke-dasharray="1 1"/>`:'';
+    const depth=d.depth?`<text class="rear-depth" y="1" transform="rotate(${-i.rotation}) scale(-1 1)" text-anchor="middle" font-size="1.7" fill="${ink}">${d.depth} mm</text>`:'';
+    body=keepout+(shape?`<g class="cut">${shapePath(shape)}</g>`:'')+depth;
+  }
   else if(d.renderer==='knob'){const r=Math.min(w,h)/2,a=(i.value*270+135)*Math.PI/180,encoder=d.id.includes('encoder');const flutes=d.id.includes('fluted')?Array.from({length:16},(_,n)=>`<line x1="0" y1="${-r*.82}" x2="0" y2="${-r}" stroke="${ink}" stroke-width=".35" transform="rotate(${n*22.5})"/>`).join(''):'';const halo=d.id==='encoder-ring'?`<circle r="${r*.9}" fill="none" stroke="${p.accentColor}" stroke-width="1.3" stroke-dasharray="2.4 1" filter="url(#glow)"/>`:'';const metal=d.id==='encoder-metal'?`<circle r="${r*.72}" fill="none" stroke="#eef1ec" stroke-opacity=".65" stroke-width=".35"/>`:'';const push=encoder?`<circle r="${r*.42}" fill="none" stroke="${ink}" stroke-opacity=".42" stroke-width=".45"/><circle cy="${-r*.56}" r=".65" fill="${p.accentColor}"/>`:`<line x2="${Math.cos(a)*r*.68}" y2="${Math.sin(a)*r*.68}" stroke="${p.accentColor}" stroke-width=".8" stroke-linecap="round"/>`;body=`${halo}<circle r="${r}" fill="${c}" stroke="${ink}" stroke-width=".65"/><circle r="${r*.78}" fill="none" stroke="${ink}" stroke-opacity=".25" stroke-width=".3"/>${flutes}${metal}${push}`;}
   else if(d.renderer==='jack'){const r=Math.min(w,h)/2;body=`<circle r="${r}" fill="${p.panelColor}" stroke="${ink}" stroke-width=".9"/><circle r="${r*.55}" fill="#11120f" stroke="${ink}" stroke-width=".35"/><circle r="${r*.2}" fill="#000"/>`;}
   else if(d.renderer==='slider'){const vertical=d.orientation!=='horizontal';body=vertical?`<rect x="-2" y="${-h/2}" width="4" height="${h}" rx="2" fill="#11120f"/><line y1="${-h/2+2}" y2="${h/2-2}" stroke="#777" stroke-width=".3"/><rect x="-5" y="${-h/2+h*(1-i.value)-2}" width="10" height="4" rx="1" fill="${c}" stroke="${ink}" stroke-width=".5"/>`:`<rect x="${-w/2}" y="-2" width="${w}" height="4" rx="2" fill="#11120f"/><line x1="${-w/2+2}" x2="${w/2-2}" stroke="#777" stroke-width=".3"/><rect x="${-w/2+w*i.value-2}" y="-5" width="4" height="10" rx="1" fill="${c}" stroke="${ink}" stroke-width=".5"/>`;}

@@ -45,7 +45,7 @@
 .inspection-head strong { font:600 15px var(--sans); overflow-wrap:anywhere; }
 .inspection-head span { font-size:11px; color:var(--muted); }
 .inspection-head button { flex-shrink:0; }
-.inspection-scene { position:relative; min-height:0; overflow:hidden; background:#e2e6e4; }
+.inspection-scene { position:relative; min-height:0; overflow:hidden; background:#dce1e4; }
 .inspection-scene canvas { display:block; width:100%; height:100%; touch-action:none; }
 .inspection-toolbar { display:flex; justify-content:center; align-items:center; flex-wrap:wrap; gap:14px 24px; padding:12px 20px; border-top:1px solid var(--rule); }
 .inspection-toolbar .segmented { display:flex; }

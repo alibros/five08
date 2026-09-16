@@ -1,18 +1,17 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" role="img" aria-labelledby="title desc">
-  <title id="title">Five08 Eurorack panel designer</title>
-  <desc id="desc">A free Eurorack panel layout tool based on the 5.08 millimetre HP standard.</desc>
-  <defs><linearGradient id="metal" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f4f4ef"/><stop offset=".48" stop-color="#d9dad5"/><stop offset="1" stop-color="#bfc1bc"/></linearGradient></defs>
+  <title id="title">FIVE08 Eurorack panel designer</title>
+  <desc id="desc">Design Eurorack panels in real dimensions. One HP equals 5.08 millimetres.</desc>
+  <defs><linearGradient id="metal" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f4f4ef"/><stop offset="0.48" stop-color="#d9dad5"/><stop offset="1" stop-color="#bfc1bc"/></linearGradient></defs>
   <rect width="1200" height="630" fill="#f2f0e9"/>
-  <path d="M0 82h1200M0 548h1200" stroke="#c5c7c3"/>
-  <g transform="translate(78 111)">
-    <rect x="3" y="3" width="1044" height="252" rx="18" fill="#171816" opacity=".12"/>
-    <rect width="1044" height="252" rx="18" fill="url(#metal)" stroke="#171816" stroke-width="8"/>
-    <path d="M64 46v45M64 161v45M980 46v45M980 161v45" stroke="#646661" stroke-width="17" stroke-linecap="round"/>
-    <text x="160" y="172" fill="#171816" font-family="Arial,Helvetica,sans-serif" font-size="146" font-weight="700">five</text>
-    <circle cx="504" cy="130" r="22" fill="#e8472c"/>
-    <text x="554" y="172" fill="#171816" font-family="Arial,Helvetica,sans-serif" font-size="146" font-weight="700">08</text>
-    <path d="M796 50h120M796 202h120" stroke="#8e908b" stroke-width="6"/>
-  </g>
-  <text x="80" y="445" fill="#171816" font-family="Arial,Helvetica,sans-serif" font-size="43" font-weight="600">Free Eurorack panel layout tool.</text>
-  <text x="82" y="500" fill="#686b66" font-family="ui-monospace,monospace" font-size="23">5.08 MM PER HP  /  DESIGN, CHECK AND EXPORT</text>
+  <path d="M0 64h1200M0 572h1200" stroke="#c5c7c3"/>
+  <g transform="translate(78 80) scale(8.7)"><rect x="1" y="1" width="118" height="38" rx="3" fill="url(#metal)" stroke="#171816" stroke-width="1"/>
+  <path d="M7 10v4M7 26v4M113 10v4M113 26v4" stroke="#646661" stroke-width="2" stroke-linecap="round"/>
+  <g id="wordmark" fill="#171816" data-typeface="Chakra Petch Medium">
+    <path id="wordmark-letters" d="M15 29.080L15 10.920L26.933 10.920L26.933 13.100L17.490 13.100L17.490 19.118L25.688 19.118L25.688 21.297L17.490 21.297L17.490 29.080L15 29.080M29.657 29.080L29.657 10.920L32.147 10.920L32.147 29.080L29.657 29.080M41.175 29.080L34.742 10.920L37.310 10.920L42.420 26.096L42.472 26.096L47.583 10.920L50.151 10.920L43.717 29.080L41.175 29.080M52.615 29.080L52.615 10.920L64.808 10.920L64.808 13.100L55.106 13.100L55.106 18.885L64.056 18.885L64.056 21.038L55.106 21.038L55.106 26.900L64.808 26.900L64.808 29.080"/>
+    <circle cx="70.208" cy="20" r="2.4" fill="#e8472c"/>
+    <path id="wordmark-digits" d="M78.332 29.080L75.608 26.356L75.608 13.644L78.332 10.920L86.011 10.920L88.735 13.644L88.735 26.356L86.011 29.080L78.332 29.080M79.473 26.900L84.869 26.900L86.244 25.526L86.244 14.474L84.869 13.100L79.473 13.100L78.098 14.474L78.098 25.526L79.473 26.900M94.494 29.080L91.977 26.563L91.977 21.349L93.612 19.715L92.237 18.340L92.237 13.437L94.753 10.920L102.224 10.920L104.741 13.437L104.741 18.340L103.366 19.715L105 21.349L105 26.563L102.484 29.080L94.494 29.080M95.894 18.781L101.083 18.781L102.250 17.639L102.250 14.241L101.083 13.100L95.894 13.100L94.727 14.241L94.727 17.639L95.894 18.781M95.635 26.900L101.342 26.900L102.510 25.759L102.510 22.075L101.342 20.908L95.635 20.908L94.468 22.075L94.468 25.759"/>
+  </g></g>
+  <text x="80" y="497" fill="#171816" font-family="Arial,Helvetica,sans-serif" font-size="40" font-weight="500">Eurorack panel designer</text>
+  <text x="1120" y="497" text-anchor="end" fill="#b43b28" font-family="ui-monospace,monospace" font-size="28">1 HP = 5.08 mm</text>
+  <text x="82" y="544" fill="#686b66" font-family="ui-monospace,monospace" font-size="21">REAL DIMENSIONS / 3D INSPECTION / FABRICATION EXPORTS</text>
 </svg>

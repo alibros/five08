@@ -4,7 +4,7 @@ import {panelFinishes} from './finishes';
 import {demoPanel,resizeDemoPanel} from './demo';
 import {HP_MM,PANEL_H,panelWidth} from './model';
 import {issueCounts,preflight} from './preflight';
-import {componentSvg,finishSwatchSvg,mountingSvg,panelFinishDefs,panelFinishSurface,screwsSvg,shapePath} from './svg';
+import {componentSvg,finishSwatchSvg,mountingSvg,panelFinishDefs,panelFinishSurface,panelViewTransform,screwsSvg,shapePath} from './svg';
 import {cutoutLabel,mountingShapes} from './geometry';
 import type {ComponentDefinition,Item} from './model';
 import {newProjectId,saveProject,setActiveId} from './store';
@@ -14,24 +14,25 @@ import {units} from './units';
 import {pulse,roll} from './roll';
 import {rackSceneSvg} from './rack-scene';
 import {esc} from './svg';
+import {heroMarkup,mountShowcase,studioMarkup} from './landing-hero';
 
 const project=demoPanel();
 let view:'design'|'cutout'|'rear'='design';
 
 const DEMO_FINISHES=['brushed-silver','black-anodized','powder-white','fr4-green'];
 
-const mounting=()=>view==='rear'?''
+const mounting=()=>view==='rear'?mountingSvg(project)
   :view==='cutout'?`<g class="cut">${mountingShapes(project.panel).map(shapePath).join('')}</g>`
   :mountingSvg(project)+screwsSvg(project);
 
-/* The two LEDs read the FOLD knob, so turning it lights the panel up. A module
-   behaves; a picture of a module does not. */
-const FOLD='FOLD', LIT='#ff5d3b', DARK='#5c4038';
+/* The indicators and screen follow POSITION in both the flat and 3D previews. */
+const LIT='#ff7955', DARK='#5c4038';
 function syncIndicators(){
-  const fold=project.items.find(i=>i.label===FOLD&&catalogMap.get(i.componentId)?.renderer==='knob');
-  if(!fold)return;
+  const position=project.items.find(i=>i.label==='POSITION'&&catalogMap.get(i.componentId)?.renderer==='knob');
+  if(!position)return;
   const leds=project.items.filter(i=>catalogMap.get(i.componentId)?.renderer==='led');
-  leds.forEach((led,n)=>{led.color=fold.value>(n+1)/(leds.length+1)?LIT:DARK;});
+  leds.forEach((led,n)=>{const lit=position.value>(n+1)/(leds.length+1);led.color=lit?LIT:DARK;led.value=lit?1:0;});
+  const display=project.items.find(i=>i.componentId==='oled-091');if(display)display.value=position.value;
 }
 
 function panelSvg(){
@@ -40,10 +41,10 @@ function panelSvg(){
   const parts=project.items.map(i=>componentSvg(i,catalogMap.get(i.componentId)!,project,false,view)).join('');
   // The panel sits in a body that carries its shadow and the sheen that
   // follows the pointer; the SVG itself stays exactly what the editor draws.
-  return`<div class="panel-body"><svg class="panel-render" viewBox="0 0 ${w} ${PANEL_H}" role="img" aria-label="A 12 HP Eurorack panel drawn in Five08, shown in ${view==='design'?'hardware':view==='cutout'?'cutout':'rear clearance'} view">
+  return`<div class="panel-body" style="width:calc(var(--panel-h) * ${w/PANEL_H})"><svg class="panel-render" viewBox="0 0 ${w} ${PANEL_H}" role="img" aria-label="The ${project.panel.hp} HP HALO Eurorack panel, shown in ${view==='design'?'hardware':view==='cutout'?'cutout':'rear clearance'} view">
     <defs>${panelFinishDefs(project)}<filter id="glow" x="-75%" y="-75%" width="250%" height="250%"><feGaussianBlur stdDeviation="1" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
     <style>.cut{fill:none;stroke:#ef523c;stroke-width:.45}</style></defs>
-    ${panelFinishSurface(project,w)}${mounting()}${parts}<g id="hero-notes" pointer-events="none"></g>
+    <g class="panel-drawing" transform="${panelViewTransform(w,view)}">${panelFinishSurface(view==='rear'?{...project,panelImage:undefined}:project,w)}${mounting()}${parts}<g id="hero-notes" pointer-events="none"></g></g>
   </svg><i class="sheen" aria-hidden="true"></i></div>`;
 }
 
@@ -92,37 +93,37 @@ const DOES:Array<[string,string,string]>=[
 
 const DOES_NOT=[
   'It does not know your parts. Most dimensions are generic estimates; where a cutout is traced to a named datasheet the part says so and links to it. Everything else is a starting point.',
-  'It is not a constraint-based CAD or circuit-design tool. The 3D view uses simplified hardware and clearance envelopes, not manufacturer CAD models.',
+  'It is not a constraint-based CAD or circuit-design tool. Detailed 3D hardware is illustrative, not manufacturer CAD. Cap heights are not manufacturing measurements.',
   'KiCad export contains the panel outline and openings only, not electrical footprints, artwork or a fabrication-ready PCB.',
-  'It does not store anything on a server. Open it on another machine and your work is not there — export the project file.',
+  'It does not store anything on a server. Export the project file to take your work to another machine.',
   'It does not quote, order or manufacture panels.',
 ];
 
 const REFERENCE:Array<[string,string,string]>=[
   ['Panel height','128.5 mm','3U Eurorack, fits standard rails'],
-  ['1 HP','5.08 mm','0.2 inch — the number this tool is named after'],
+  ['1 HP','5.08 mm','0.2 inch. The number this tool is named after.'],
   ['12 HP, nominal','60.96 mm','HP × 5.08'],
   ['12 HP, Doepfer','60.56 mm','0.4 mm narrower so neighbours are not forced apart'],
   ['Mounting slot','6.5 × 3.2 mm obround','Clearance for an M3 screw with room to shift'],
   ['Slot centres','3 mm from the top and bottom edge','Where the rail threads land'],
   ['Four-slot inset','7.5 mm from each side edge','Five08 default'],
   ['Two-slot placement','On the panel centreline','What narrow modules normally do'],
-  ['Edge margin warning','3 mm','Five08 default — rails and neighbours use this strip'],
-  ['Minimum wall between cutouts','1.2 mm','Five08 default — below this, ask your shop first'],
-  ['Minimum 3.5 mm jack pitch','9.5 mm','Five08 default — room to turn the nut with a spanner'],
-  ['Skiff depth warning','25 mm','Five08 default — deeper parts will not fit a shallow case'],
+  ['Edge margin warning','3 mm','Five08 default. Rails and neighbours use this strip.'],
+  ['Minimum wall between cutouts','1.2 mm','Five08 default. Below this, ask your shop first.'],
+  ['Minimum 3.5 mm jack pitch','9.5 mm','Five08 default. Room to turn the nut with a spanner.'],
+  ['Skiff depth warning','25 mm','Five08 default. Deeper parts will not fit a shallow case.'],
 ];
 
 const EXPORTS:Array<[string,string,string]>=[
   ['Artwork SVG','.svg','Physical-size panel graphics, PNG artwork embedded'],
   ['Cutout SVG','.svg','Outline, mounting slots and apertures, nothing decorative'],
-  ['Cutout DXF','.dxf','R12, millimetres, layered — what a laser cutter or panel shop wants'],
+  ['Cutout DXF','.dxf','Layered R12 in millimetres, for a laser cutter or panel shop'],
   ['KiCad mechanical PCB','.kicad_pcb','Exact Edge.Cuts outline and openings; no artwork or circuitry'],
   ['PNG render','.png','150 to 1200 dpi, for documentation and posts'],
   ['Print at 1:1','paper','Cutout template with centre marks and a 100 mm scale bar'],
   ['VCV Rack SVG','.svg','Artwork plus coloured component-role markers'],
   ['Bill of materials','.csv','Quantities, cutouts, rear depths, and whether a dimension is generic'],
-  ['Project','.panel.json','The editable file — the only copy that leaves the browser'],
+  ['Project','.panel.json','A portable, editable copy of your design'],
 ];
 
 const CHECKS=[
@@ -141,7 +142,7 @@ const CHECKS=[
 
 /* ---------- page ---------- */
 
-const wordmark=`<img src="/five08-logo.svg" width="120" height="40" alt="Five08">`;
+const wordmark=`<img src="/five08-logo.svg?v=${__FIVE08_BRAND_REV__}" width="120" height="40" alt="FIVE08">`;
 
 /* The zone marks a drawing sheet carries in its border: letters down the
    sides, numbers along the top and bottom, a centring tick on each edge. */
@@ -165,7 +166,7 @@ const NOTES=[
   'All dimensions in millimetres unless stated. 1 HP = 5.08 mm.',
   'Generic part dimensions are estimates for planning. Verify every cutout against the manufacturer drawing before fabrication.',
   'Nothing drawn here leaves the browser. Projects are stored locally; the .panel.json export is the only copy.',
-  'Preflight defaults (edge margin, wall thickness, jack pitch, depth) are opinions, not standards. Argue with them in the source.',
+  'Preflight defaults (edge margin, wall thickness, jack pitch, depth) are planning assumptions, not standards. Adjust them in the panel inspector.',
 ];
 
 const REVISIONS:Array<[string,string,string]>=[
@@ -173,6 +174,7 @@ const REVISIONS:Array<[string,string,string]>=[
   ['B','2026-09-15','Datasheet identity. Traced part dimensions, DXF and 1:1 print, preflight, offline.'],
   ['C',__FIVE08_DATE__,'Set on paper. Sheet frame, material hero, editor bench.'],
   ['D','2026-09-16','Physical-size locks, assemblies, panel typography, configurable preflight, KiCad and 3D inspection.'],
+  ['E','2026-09-16','Detailed 3D hardware, studio lighting, side view and an editable homepage showcase.'],
 ];
 
 document.querySelector<HTMLDivElement>('#app')!.innerHTML=`
@@ -182,10 +184,9 @@ ${sheetFrame}
   <a class="wordmark" href="/" aria-label="Five08 home">${wordmark}</a>
   <span class="rev">Eurorack panel layout · MIT</span>
   <nav aria-label="Sections">
-    <a href="#about">1.0 What it is</a>
-    <a href="#reference">2.0 Reference</a>
-    <a href="#exports">3.0 Exports</a>
-    <a href="#checks">4.0 Preflight</a>
+    <a href="#showcase">3D showcase</a>
+    <a href="#studio">Studio</a>
+    <a href="#reference">Reference</a>
     <a href="https://github.com/alibros/five08" rel="noreferrer">Source</a>
   </nav>
   <button id="theme" class="ghost" aria-label="Switch theme">Theme</button>
@@ -193,25 +194,27 @@ ${sheetFrame}
 </header>
 
 <main id="main">
-  <section class="lead">
+  ${heroMarkup()}
+  ${studioMarkup()}
+  <section class="lead" id="panel-workflow" aria-labelledby="panel-workflow-title">
     <div class="lead-copy">
-      <span class="section-no">0.0</span>
-      <h1>A layout tool for Eurorack front panels.</h1>
-      <p class="standfirst">Set the width in HP, place parts in millimetres, and check the spacing before anything is cut. Five08 exports the artwork, the cutout geometry, a DXF for the shop, a parts list, and a sheet you can print at 1:1 and drill through.</p>
-      <p class="terms">Free and MIT licensed. Runs in the browser. No account. Nothing you draw is uploaded.</p>
+      <span class="section-no">THE LAYOUT</span>
+      <h2 id="panel-workflow-title">Designed at real size.</h2>
+      <p class="standfirst">Set your width in HP. Place standard components in millimetres, compose the artwork, and check clearances before anything is cut.</p>
+      <p class="terms">One editable design, from the front drawing to 3D inspection and physical-size exports.</p>
       <div class="lead-actions">
         <a class="button" href="/app/">Open the designer</a>
-        <a class="quiet-link" href="#about">What it does and does not do</a>
+        <a class="quiet-link" href="#exports">Export formats</a>
       </div>
       <div class="width-control">
         <span class="legend">Panel width</span>
         <div class="stepper">
           <button id="hp-down" aria-label="Narrower">−</button>
-          <output id="hp-value" class="mono roll"><span class="roll-int" data-unit="HP" style="--n:12" aria-hidden="true"></span><span class="sr-only">12 HP</span></output>
+          <output id="hp-value" class="mono roll"><span class="roll-int" data-unit="HP" style="--n:20" aria-hidden="true"></span><span class="sr-only">20 HP</span></output>
           <button id="hp-up" aria-label="Wider">+</button>
         </div>
-        <span class="width-mm mono roll" id="hp-mm"><span class="roll-dec" data-unit="mm" style="--w:60;--f:56" aria-hidden="true"></span><span class="sr-only">60.56 mm</span></span>
-        <p class="width-note">Squeeze it and watch preflight start objecting.</p>
+        <span class="width-mm mono roll" id="hp-mm"><span class="roll-dec" data-unit="mm" style="--w:101;--f:20" aria-hidden="true"></span><span class="sr-only">101.20 mm</span></span>
+        <p class="width-note">Hardware stays at its catalogue dimensions at every panel width.</p>
       </div>
       <dl class="glance">
         <div><dt>Panel height</dt><dd>${units('128.5 mm')}</dd></div>
@@ -226,7 +229,7 @@ ${sheetFrame}
         <div class="demo-scale" aria-hidden="true">${Array.from({length:13},(_,n)=>`<span class="${n%5===0?'major':''}" style="top:${(n*10/PANEL_H*100).toFixed(2)}%"><i></i>${n%5===0?`${n*10}`:''}</span>`).join('')}<span class="major end" style="top:100%"><i></i>${PANEL_H}</span></div>
         <div class="demo-panel" id="demo-panel">${panelSvg()}</div>
       </div>
-      <div class="demo-readout"><span id="demo-readout" class="mono"></span><span class="demo-hint">Turn a knob · flip the switch</span></div>
+      <div class="demo-readout"><span id="demo-readout" class="mono"></span><span class="demo-hint">Physical-size layout</span></div>
       <div class="demo-controls">
         <div class="switcher" id="views" role="group" aria-label="View">
           <button data-view="design" class="on">Hardware</button>
@@ -238,7 +241,7 @@ ${sheetFrame}
         </div>
       </div>
       <figcaption>
-        <span id="demo-caption">${units(`A 12 HP panel, ${panelWidth(project.panel).toFixed(2)} × ${PANEL_H} mm, drawn in Five08 and rendered here by the same code the editor uses.`)} Preflight: clear.</span>
+        <span id="demo-caption">${units(`A 20 HP panel, ${panelWidth(project.panel).toFixed(2)} × ${PANEL_H} mm.`)} Preflight: clear.</span>
         <button class="quiet-link" id="open-demo">Open this panel in the designer</button>
       </figcaption>
     </figure>
@@ -246,7 +249,7 @@ ${sheetFrame}
 
   <figure class="rack">
     <div class="rack-scene-host" id="rack-scene">${rackSceneSvg(project)}</div>
-    <figcaption><span class="section-no">Fig. 1</span><span>The same panel bolted between two other modules, patched. What gets drawn here is what ends up in the case — the render, the neighbours and the cables come from the same part library.</span></figcaption>
+    <figcaption><span class="section-no">Fig. 1</span><span>Preview your layout in a patched rack, using the same component library as the designer.</span></figcaption>
   </figure>
 
   ${band('1.0','about','Scope','What the tool covers, and where it stops. The second list is the more useful one.',`
@@ -271,7 +274,7 @@ ${sheetFrame}
       <thead><tr><th scope="col">Measure</th><th scope="col">Value</th><th scope="col">Where it comes from</th></tr></thead>
       <tbody>${REFERENCE.map(row).join('')}</tbody>
     </table>
-    <p class="hp-note"><b>${units(`1 HP = ${HP_MM} mm`)}.</b> Everything on the panel — width, positions, rulers, exports — is a multiple or a measurement of that.</p>
+    <p class="hp-note"><b>${units(`1 HP = ${HP_MM} mm`)}.</b> Panel widths follow this pitch. Positions, rulers and exports use the same millimetre coordinate system.</p>
     </div>`)}
 
   ${band('3.0','exports','Exports','Everything comes out at physical size. The DXF and the cutout SVG are generated from the same geometry, so they cannot disagree.',`
@@ -291,7 +294,7 @@ ${sheetFrame}
 
   ${band('5.0','open','Open it and draw something.',undefined,`
     <div class="band-body">
-    <p>Nothing to install, nothing to sign up for. If it is missing a part you need, the library is a single file — send a pull request.</p>
+    <p>Nothing to install, nothing to sign up for. Missing a part you need? The library is a single file, and contributions are welcome.</p>
     <div class="lead-actions">
       <a class="button" href="/app/">Open the designer</a>
       <a class="quiet-link" href="https://github.com/alibros/five08" rel="noreferrer">Read the source</a>
@@ -335,9 +338,20 @@ ${sheetFrame}
 
 const panelHost=document.querySelector<HTMLDivElement>('#demo-panel')!;
 const rackHost=document.querySelector<HTMLDivElement>('#rack-scene')!;
+const openDemo=()=>{
+  const id=newProjectId();
+  if(saveProject(id,{...project,name:'HALO (from the site)'}).ok){setActiveId(id);window.location.href='/app/';}
+  else{
+    document.querySelector('#demo-caption')!.textContent='Browser storage is full or unavailable. Free some space before opening this example.';
+    const status=document.querySelector('#showcase-status')!;
+    status.textContent='Browser storage is full or unavailable.';status.classList.add('is-error');
+  }
+};
+const showcase=mountShowcase(project,openDemo);
 let rackTimer=0;
 const redraw=()=>{
   panelHost.innerHTML=panelSvg();
+  showcase.refresh();
   // The rack follows the hero, but not at drag rate: it is a second full
   // scene, and nobody is watching it while they turn a knob.
   window.clearTimeout(rackTimer);
@@ -348,7 +362,7 @@ const reducedMotion=window.matchMedia('(prefers-reduced-motion: reduce)');
 /* ---------- panel width ----------
    "Set the width in HP" is the first thing the page claims the tool does, so
    let people do it. Parts move with the panel, and the caption reports what
-   preflight makes of the result — squeeze it far enough and the jacks end up
+   preflight makes of the result. Squeeze it far enough and the jacks end up
    too close together to get a spanner on the nuts, live. */
 
 const MIN_HP=6, MAX_HP=20;
@@ -370,9 +384,9 @@ function describe(){
   roll(hpValue,{n:project.panel.hp},units(`${project.panel.hp} HP`));
   roll(hpMm,{w:Math.floor(w),f:Math.round((w-Math.floor(w))*100)},units(`${w.toFixed(2)} mm`));
   const verdict=counts.errors?`${counts.errors} error${counts.errors===1?'':'s'}`
-    :counts.warnings?`${counts.warnings} warning${counts.warnings===1?'':'s'} — ${found.find(i=>i.severity==='warning')!.message.toLowerCase()}`
+    :counts.warnings?`${counts.warnings} warning${counts.warnings===1?'':'s'}: ${found.find(i=>i.severity==='warning')!.message.toLowerCase()}`
     :'clear';
-  caption.innerHTML=`${units(`A ${project.panel.hp} HP panel, ${w.toFixed(2)} × ${PANEL_H} mm, drawn in Five08 and rendered here by the same code the editor uses.`)} Preflight: <b class="${counts.errors?'bad':counts.warnings?'warn':'good'}">${units(verdict)}</b>.`;
+  caption.innerHTML=`${units(`${project.panel.hp} HP · ${w.toFixed(2)} × ${PANEL_H} mm.`)} Preflight: <b class="${counts.errors?'bad':counts.warnings?'warn':'good'}">${units(verdict)}</b>.`;
   // A two-frame dip so the eye registers that the verdict changed, not just what it says now.
   if(lastVerdict&&verdict!==lastVerdict)pulse(caption,'swap');
   lastVerdict=verdict;
@@ -391,7 +405,7 @@ let spinning=0;
 
 /* The light and the tilt follow the pointer across the panel: a sheen
    slides over the metal and the whole thing leans a couple of degrees, the
-   way a panel does when you look at it from off-axis. Hover only — a finger
+   way a panel does when you look at it from off-axis. Hover only: a finger
    covering the screen has no viewpoint to track. */
 const hoverable=window.matchMedia('(hover: hover)');
 function lookAt(e:PointerEvent|null){
@@ -438,7 +452,7 @@ const panelPoint=(e:PointerEvent)=>{
   if(!svg)return null;
   const point=svg.createSVGPoint();
   point.x=e.clientX;point.y=e.clientY;
-  const ctm=svg.getScreenCTM();
+  const ctm=svg.querySelector<SVGGElement>('.panel-drawing')!.getScreenCTM();
   return ctm?point.matrixTransform(ctm.inverse()):null;
 };
 
@@ -499,20 +513,20 @@ document.querySelectorAll<HTMLButtonElement>('[data-view]').forEach(b=>b.onclick
 
 document.querySelectorAll<HTMLButtonElement>('[data-finish]').forEach(b=>b.onclick=()=>{
   const finish=panelFinishes.find(f=>f.id===b.dataset.finish)!;
+  const previousInk=project.inkColor,previousAccent=project.accentColor;
   project.panel.finish=finish.id;
   project.panel.material=finish.material;
   project.panelColor=finish.panel;
   project.inkColor=finish.ink;
   project.accentColor=finish.accent;
+  project.items.forEach(item=>{if(catalogMap.get(item.componentId)?.category==='Graphics'){
+    if(item.color===previousInk)item.color=finish.ink;else if(item.color===previousAccent)item.color=finish.accent;
+  }});
   document.querySelectorAll('[data-finish]').forEach(x=>x.classList.toggle('on',x===b));
   redraw();
 });
 
-document.querySelector<HTMLButtonElement>('#open-demo')!.onclick=()=>{
-  const id=newProjectId();
-  if(saveProject(id,{...project,name:'Wavefolder (from the site)'}).ok)setActiveId(id);
-  window.location.href='/app/';
-};
+document.querySelector<HTMLButtonElement>('#open-demo')!.onclick=openDemo;
 
 registerOffline();
 

@@ -3,7 +3,7 @@ import './studio.css';
 import {catalog,catalogMap,categories} from './catalog';
 import {applyFinish,panelFinishes} from './finishes';
 import {clone,dimensionLocked,emptyProject,PANEL_H,panelWidth,parseProject,uid,type ComponentDefinition,type Item,type Project} from './model';
-import {componentSvg,cutoutSvg,esc,finishSwatchSvg,mountingSvg,panelFinishDefs,panelFinishSurface,plotSheetSvg,rackContextSvg,screwsSvg,templateSvg,thumbnailSvg} from './svg';
+import {componentSvg,cutoutSvg,esc,finishSwatchSvg,mountingSvg,panelFinishDefs,panelFinishSurface,panelViewTransform,plotSheetSvg,rackContextSvg,screwsSvg,templateSvg,thumbnailSvg} from './svg';
 import {applyPlacements,expandGroups,extent,flipVertical,gridPlacements,matchSize,mirrorPlacements,repeatItems,rotateGroup,rotatePlacements,spreadBetween} from './arrange';
 import {sanitizeProjectArtwork,sanitizeSvg,svgDataUrl} from './artwork';
 import {panelDxf} from './dxf';
@@ -93,7 +93,7 @@ app.innerHTML=`<div class="skip-links">
 <div class="toast" id="toast" role="status" aria-live="polite"></div>`;
 
 document.querySelector<HTMLAnchorElement>('.brand')!.innerHTML=
-  '<img src="/five08-logo.svg" width="120" height="40" alt="Five08"><small>Eurorack panel designer</small>';
+  `<img src="/five08-logo.svg?v=${__FIVE08_BRAND_REV__}" width="120" height="40" alt="FIVE08"><small>Eurorack panel designer</small>`;
 document.querySelector('.library-tools')!.insertAdjacentHTML('beforeend',`<button class="tool-button assembly-library-button" id="open-assemblies">${icon('folder')} Assemblies</button>`);
 document.querySelector('#views')!.insertAdjacentHTML('afterend',`<button class="quiet inspection-button" id="inspect-3d" title="Inspect panel in 3D">${icon('dxf')}<span>3D</span></button>`);
 document.querySelector('#open-assemblies')!.addEventListener('click',openAssemblies);
@@ -151,6 +151,8 @@ function notify(s:string){const e=document.querySelector('#toast')!;window.clear
 function sv(v:number){return snap?Math.round(v/grids[gridIndex])*grids[gridIndex]:Math.round(v*10)/10;}
 function magneticGrid(v:number){const free=Math.round(v*100)/100;if(!snap)return free;const step=grids[gridIndex],nearest=Math.round(v/step)*step,tolerance=Math.max(.05,Math.min(.18,.9/(PX*zoom)));return Math.abs(nearest-v)<=tolerance?nearest:free;}
 function selectedItems(){return project.items.filter(i=>selection.has(i.id));}
+const canvasItems=()=>project.items.filter(i=>!i.hidden&&(view!=='rear'||catalogMap.get(i.componentId)?.category!=='Graphics'));
+const viewX=(x:number)=>view==='rear'?panelWidth(project.panel)-x:x;
 /** Clicking one member of a group selects the whole group. */
 const selectIds=(ids:Iterable<string>)=>{selection=expandGroups(ids,project.items);};
 
@@ -158,7 +160,7 @@ function render(){
   issues=preflight(project,catalogMap);
   renderLibrary();renderCanvas();renderInspector();renderChrome();
 }
-function renderChrome(){(document.querySelector('#project-name') as HTMLInputElement).value=project.name;const w=panelWidth(project.panel),items=selectedItems();document.querySelector('#dimensions')!.textContent=units(`${project.panel.hp} HP · ${w.toFixed(2)} × ${PANEL_H} mm`);document.querySelector('#selection-status')!.textContent=items.length===1?`${catalogMap.get(items[0].componentId)!.name} · X ${items[0].x.toFixed(1)} Y ${items[0].y.toFixed(1)}`:items.length>1?`${items.length} selected`:`${project.items.length} components`;setZoomStatus();document.querySelector('#snap-status')!.textContent=`${smartGuides?'Guides':'No guides'} · ${snap?`${grids[gridIndex]} mm grid`:'free'}`;const counts=issueCounts(issues),wc=document.querySelector('#warning-count')!;const wasVerdict=wc.textContent;wc.innerHTML=counts.errors?`${icon('cross')}${counts.errors} error${counts.errors===1?'':'s'}${counts.warnings?` · ${counts.warnings} warning${counts.warnings===1?'':'s'}`:''}`:counts.warnings?`${icon('warn')}${counts.warnings} warning${counts.warnings===1?'':'s'}`:`${icon('check')}Layout checks pass`;wc.classList.toggle('warn',counts.warnings>0&&counts.errors===0);wc.classList.toggle('bad',counts.errors>0);if(wasVerdict&&wasVerdict!==wc.textContent)pulse(wc,'swap');(document.querySelector('#undo') as HTMLButtonElement).disabled=!history.canUndo;(document.querySelector('#redo') as HTMLButtonElement).disabled=!history.canRedo;(document.querySelector('#delete') as HTMLButtonElement).disabled=selection.size===0;(document.querySelector('#align-x') as HTMLButtonElement).disabled=selection.size<2;(document.querySelector('#align-y') as HTMLButtonElement).disabled=selection.size<2;(document.querySelector('#distribute-h') as HTMLButtonElement).disabled=selection.size<3;(document.querySelector('#distribute-v') as HTMLButtonElement).disabled=selection.size<3;(document.querySelector('#center-panel') as HTMLButtonElement).disabled=selection.size===0;document.querySelector('#grid-cycle')!.textContent=`${grids[gridIndex]} mm`;document.querySelector('#snap-toggle')!.classList.toggle('on',snap);(document.querySelector('#zoom-selection') as HTMLButtonElement).disabled=selection.size===0;document.querySelector('#theme-toggle')!.setAttribute('data-tooltip',`Theme: ${theme}`);document.querySelector('#smart-guides')!.classList.toggle('on',smartGuides);document.querySelector('#grid-toggle')!.classList.toggle('on',showGrid);document.querySelector('#toggle-safe')!.classList.toggle('on',showSafe);document.querySelector('#toggle-rack')!.classList.toggle('on',showRack);document.querySelectorAll('[data-view]').forEach(e=>{const on=(e as HTMLElement).dataset.view===view;e.classList.toggle('on',on);e.setAttribute('aria-pressed',String(on));});document.querySelectorAll('[data-inspector-tab]').forEach(e=>{const on=(e as HTMLElement).dataset.inspectorTab===inspectorTab;e.classList.toggle('on',on);e.setAttribute('aria-selected',String(on));});document.querySelector('.layout')!.classList.toggle('left-closed',!leftOpen);document.querySelector('.layout')!.classList.toggle('right-closed',!rightOpen);document.querySelector('#layers-count')!.textContent=String(project.items.length);const context={design:['Hardware view','Front-panel controls and artwork'],cutout:['Machining view','Cutouts and drilling geometry'],rear:['Rear clearance','Bodies, depth and keepout zones']}[view];document.querySelector('#mode-context')!.innerHTML=`<span>${context[0]}</span><small>${context[1]}</small>`;renderSelectionBar();}
+function renderChrome(){(document.querySelector('#project-name') as HTMLInputElement).value=project.name;const w=panelWidth(project.panel),items=selectedItems();document.querySelector('#dimensions')!.textContent=units(`${project.panel.hp} HP · ${w.toFixed(2)} × ${PANEL_H} mm`);document.querySelector('#selection-status')!.textContent=items.length===1?`${catalogMap.get(items[0].componentId)!.name} · X ${items[0].x.toFixed(1)} Y ${items[0].y.toFixed(1)}`:items.length>1?`${items.length} selected`:`${project.items.length} components`;setZoomStatus();document.querySelector('#snap-status')!.textContent=`${smartGuides?'Guides':'No guides'} · ${snap?`${grids[gridIndex]} mm grid`:'free'}`;const counts=issueCounts(issues),wc=document.querySelector('#warning-count')!;const wasVerdict=wc.textContent;wc.innerHTML=counts.errors?`${icon('cross')}${counts.errors} error${counts.errors===1?'':'s'}${counts.warnings?` · ${counts.warnings} warning${counts.warnings===1?'':'s'}`:''}`:counts.warnings?`${icon('warn')}${counts.warnings} warning${counts.warnings===1?'':'s'}`:`${icon('check')}Layout checks pass`;wc.classList.toggle('warn',counts.warnings>0&&counts.errors===0);wc.classList.toggle('bad',counts.errors>0);if(wasVerdict&&wasVerdict!==wc.textContent)pulse(wc,'swap');(document.querySelector('#undo') as HTMLButtonElement).disabled=!history.canUndo;(document.querySelector('#redo') as HTMLButtonElement).disabled=!history.canRedo;(document.querySelector('#delete') as HTMLButtonElement).disabled=selection.size===0;(document.querySelector('#align-x') as HTMLButtonElement).disabled=selection.size<2;(document.querySelector('#align-y') as HTMLButtonElement).disabled=selection.size<2;(document.querySelector('#distribute-h') as HTMLButtonElement).disabled=selection.size<3;(document.querySelector('#distribute-v') as HTMLButtonElement).disabled=selection.size<3;(document.querySelector('#center-panel') as HTMLButtonElement).disabled=selection.size===0;document.querySelector('#grid-cycle')!.textContent=`${grids[gridIndex]} mm`;document.querySelector('#snap-toggle')!.classList.toggle('on',snap);(document.querySelector('#zoom-selection') as HTMLButtonElement).disabled=selection.size===0;document.querySelector('#theme-toggle')!.setAttribute('data-tooltip',`Theme: ${theme}`);document.querySelector('#smart-guides')!.classList.toggle('on',smartGuides);document.querySelector('#grid-toggle')!.classList.toggle('on',showGrid);document.querySelector('#toggle-safe')!.classList.toggle('on',showSafe);document.querySelector('#toggle-rack')!.classList.toggle('on',showRack);document.querySelectorAll('[data-view]').forEach(e=>{const on=(e as HTMLElement).dataset.view===view;e.classList.toggle('on',on);e.setAttribute('aria-pressed',String(on));});document.querySelectorAll('[data-inspector-tab]').forEach(e=>{const on=(e as HTMLElement).dataset.inspectorTab===inspectorTab;e.classList.toggle('on',on);e.setAttribute('aria-selected',String(on));});document.querySelector('.layout')!.classList.toggle('left-closed',!leftOpen);document.querySelector('.layout')!.classList.toggle('right-closed',!rightOpen);document.querySelector('#layers-count')!.textContent=String(project.items.length);const context={design:['Hardware view','Front-panel controls and artwork'],cutout:['Machining view','Cutouts and drilling geometry'],rear:['Rear clearance','Mirrored rear face and depth envelopes']}[view];document.querySelector('#mode-context')!.innerHTML=`<span>${context[0]}</span><small>${context[1]}</small>`;renderSelectionBar();}
 
 function renderLibrary(){const tabs=document.querySelector('#category-tabs')!;tabs.innerHTML=['All',...categories].map(c=>`<button class="category-pill ${c===activeCategory?'on':''}" data-category="${c}">${c==='All'?'All parts':c}</button>`).join('');tabs.querySelectorAll<HTMLElement>('[data-category]').forEach(b=>b.onclick=()=>{activeCategory=b.dataset.category!;renderLibrary();});const q=libraryQuery.trim().toLowerCase();const defs=catalog.filter(d=>!d.libraryHidden&&(activeCategory==='All'||d.category===activeCategory)&&(!q||[d.name,d.description,...d.tags,d.manufacturer||''].some(x=>x.toLowerCase().includes(q))));document.querySelector('#library-count')!.textContent=`${defs.length} part${defs.length===1?'':'s'}`;const groups=activeCategory==='All'?[...categories]:[activeCategory];document.querySelector('#library')!.innerHTML=groups.map(cat=>{const ds=defs.filter(d=>d.category===cat);return ds.length?`<section class="drawer-section"><h3 class="drawer-tab"><span>${cat}</span><i>${ds.length}</i></h3><div class="drawer-grid">${ds.map(d=>`<button class="part-card" data-component="${d.id}" draggable="true" aria-label="Add ${d.name}" title="${esc(d.name)} · ${d.width} × ${d.height} mm${d.cutout?` · ${cutoutLabel(d)}`:''}${d.status==='verified'?' · verified against a datasheet':''}"><span class="part-thumbnail">${thumbnailSvg(d,project,d.color,44)}</span><strong>${esc(d.name)}</strong><small class="mono">${d.width} × ${d.height}${d.cutout?`<b> · ${cutoutLabel(d).replace(' cutout','')}</b>`:''}</small>${d.status==='verified'?'<i class="verified" aria-hidden="true"></i>':''}<span class="add-part" aria-hidden="true">Add</span></button>`).join('')}</div></section>`:''}).join('')||`<div class="empty-library"><strong>No matching parts</strong><span>Try another name, family or manufacturer.</span></div>`;document.querySelectorAll<HTMLElement>('[data-component]').forEach(b=>{b.onclick=()=>add(b.dataset.component!);b.ondragstart=e=>e.dataTransfer?.setData('component',b.dataset.component!);});}
 function finishCards(){return panelFinishes.map(f=>`<button class="finish-card ${project.panel.finish===f.id?'selected':''}" data-finish="${f.id}" aria-label="Use ${f.name}"><span class="finish-swatch">${finishSwatchSvg(f,32)}</span><span><strong>${f.name}</strong><small>${f.material}</small></span>${project.panel.finish===f.id?`<b>${icon('check')}</b>`:''}</button>`).join('');}
@@ -203,7 +205,7 @@ function bindGraphicsControl(i:Item,d:ComponentDefinition){
 }
 
 function sizeControl(d:ComponentDefinition){const owner=presetOwner(d);if(owner)return`<div class="form-row size-preset"><label>Standard size</label><select id="size-preset">${owner.sizePresets!.map(p=>`<option value="${p.componentId}" ${p.componentId===d.id?'selected':''}>${p.label}</option>`).join('')}</select></div>`;return dimensionLocked(d)?`<div class="locked-size-note"><span>${icon('lock')}</span><div><strong>Mechanical size locked</strong><small>${d.width} × ${d.height} mm · based on the selected hardware</small></div></div>`:'';}
-function renderCanvas(){const w=panelWidth(project.panel),stage=document.querySelector<HTMLDivElement>('#panel-stage')!;stage.style.width=`${w*PX*zoom}px`;stage.style.height=`${PANEL_H*PX*zoom}px`;const safeMargin=project.rules?.edgeMargin??3;const safe=showSafe?`<g class="design-guide"><rect x="${safeMargin}" y="${safeMargin}" width="${Math.max(0,w-2*safeMargin)}" height="${PANEL_H-2*safeMargin}" rx="1" fill="none" stroke="${project.accentColor}" stroke-opacity=".35" stroke-width=".3" stroke-dasharray="1 1"/><rect width="${w}" height="8" fill="${project.accentColor}" opacity=".045"/><rect y="${PANEL_H-8}" width="${w}" height="8" fill="${project.accentColor}" opacity=".045"/></g>`:'';const grid=showGrid?`<rect class="design-guide" width="${w}" height="${PANEL_H}" fill="url(#grid)"/>`:'';const visible=project.items.filter(i=>!i.hidden);stage.innerHTML=`<svg class="panel-svg" id="panel-svg" width="${w*PX}" height="${PANEL_H*PX}" viewBox="0 0 ${w} ${PANEL_H}" style="transform:scale(${zoom});transform-origin:top left"><defs>${panelFinishDefs(project)}<pattern id="grid" width="${grids[gridIndex]}" height="${grids[gridIndex]}" patternUnits="userSpaceOnUse"><path d="M ${grids[gridIndex]} 0H0V${grids[gridIndex]}" fill="none" stroke="${project.inkColor}" stroke-opacity=".08" stroke-width=".1"/></pattern><style>.cut{fill:none;stroke:#ef523c;stroke-width:.45}.panel-item:focus{outline:none}.smart-line{stroke:var(--trace,#2563a8);stroke-width:.42;vector-effect:non-scaling-stroke}.measure-line{stroke:var(--signal,#c8321e);stroke-width:.35;vector-effect:non-scaling-stroke}.measure-text{fill:#fff;font:1.75px ui-monospace,monospace;paint-order:stroke;stroke:var(--signal-ink,#8e2415);stroke-width:.7px}.equal-pill{fill:var(--signal,#c8321e)}.equal-text{fill:#fff;font:bold 1.45px ui-monospace,monospace}.marquee{fill:var(--trace,#2563a8);fill-opacity:.08;stroke:var(--ink,#191b1e);stroke-width:.3;stroke-dasharray:1.2 .9;vector-effect:non-scaling-stroke}.marquee-hit{fill:none;stroke:var(--trace,#2563a8);stroke-width:.35;stroke-dasharray:1 .8;vector-effect:non-scaling-stroke}.marquee-dim{fill:var(--ink,#191b1e);font:1.9px ui-monospace,monospace;paint-order:stroke;stroke:var(--paper,#f2efe6);stroke-width:.8px}.focus-ring{fill:none;stroke:var(--trace,#2563a8);stroke-width:1.6;stroke-dasharray:2 1.4;vector-effect:non-scaling-stroke;paint-order:stroke}</style></defs>${showRack?rackContextSvg(project):''}<rect class="light-sheet" width="${w}" height="${PANEL_H}" rx=".6" fill="#fff"/>${panelFinishSurface(project,w)}${grid}${safe}${view!=='rear'?mountingSvg(project)+(showRack&&view==='design'?screwsSvg(project):''):''}${visible.map(i=>componentSvg(i,catalogMap.get(i.componentId)!,project,selection.has(i.id),view)).join('')}<g id="smart-guide-layer" pointer-events="none"></g><g id="overlay-layer" pointer-events="none"></g><g id="focus-layer" pointer-events="none"></g>${project.items.length===0?emptyPanelSvg(w):''}</svg>`;const selectionKey=[...selection].sort().join();if(selectionKey!==lastSelectionKey){stage.querySelectorAll('.selection-ui').forEach(g=>g.classList.add('landing'));lastSelectionKey=selectionKey;}bindCanvas();renderRuler(w);}
+function renderCanvas(){const w=panelWidth(project.panel),stage=document.querySelector<HTMLDivElement>('#panel-stage')!;stage.style.width=`${w*PX*zoom}px`;stage.style.height=`${PANEL_H*PX*zoom}px`;const safeMargin=project.rules?.edgeMargin??3;const safe=showSafe?`<g class="design-guide"><rect x="${safeMargin}" y="${safeMargin}" width="${Math.max(0,w-2*safeMargin)}" height="${PANEL_H-2*safeMargin}" rx="1" fill="none" stroke="${project.accentColor}" stroke-opacity=".35" stroke-width=".3" stroke-dasharray="1 1"/><rect width="${w}" height="8" fill="${project.accentColor}" opacity=".045"/><rect y="${PANEL_H-8}" width="${w}" height="8" fill="${project.accentColor}" opacity=".045"/></g>`:'';const grid=showGrid?`<rect class="design-guide" width="${w}" height="${PANEL_H}" fill="url(#grid)"/>`:'';const visible=canvasItems();stage.innerHTML=`<svg class="panel-svg" id="panel-svg" width="${w*PX}" height="${PANEL_H*PX}" viewBox="0 0 ${w} ${PANEL_H}" style="transform:scale(${zoom});transform-origin:top left"><defs>${panelFinishDefs(project)}<pattern id="grid" width="${grids[gridIndex]}" height="${grids[gridIndex]}" patternUnits="userSpaceOnUse"><path d="M ${grids[gridIndex]} 0H0V${grids[gridIndex]}" fill="none" stroke="${project.inkColor}" stroke-opacity=".08" stroke-width=".1"/></pattern><style>.cut{fill:none;stroke:#ef523c;stroke-width:.45}.panel-item:focus{outline:none}.smart-line{stroke:var(--trace,#2563a8);stroke-width:.42;vector-effect:non-scaling-stroke}.measure-line{stroke:var(--signal,#c8321e);stroke-width:.35;vector-effect:non-scaling-stroke}.measure-text{fill:#fff;font:1.75px ui-monospace,monospace;paint-order:stroke;stroke:var(--signal-ink,#8e2415);stroke-width:.7px}.equal-pill{fill:var(--signal,#c8321e)}.equal-text{fill:#fff;font:bold 1.45px ui-monospace,monospace}.marquee{fill:var(--trace,#2563a8);fill-opacity:.08;stroke:var(--ink,#191b1e);stroke-width:.3;stroke-dasharray:1.2 .9;vector-effect:non-scaling-stroke}.marquee-hit{fill:none;stroke:var(--trace,#2563a8);stroke-width:.35;stroke-dasharray:1 .8;vector-effect:non-scaling-stroke}.marquee-dim{fill:var(--ink,#191b1e);font:1.9px ui-monospace,monospace;paint-order:stroke;stroke:var(--paper,#f2efe6);stroke-width:.8px}.focus-ring{fill:none;stroke:var(--trace,#2563a8);stroke-width:1.6;stroke-dasharray:2 1.4;vector-effect:non-scaling-stroke;paint-order:stroke}</style></defs>${showRack?rackContextSvg(project):''}<g id="panel-content" transform="${panelViewTransform(w,view)}"><rect class="light-sheet" width="${w}" height="${PANEL_H}" rx=".6" fill="#fff"/>${panelFinishSurface(view==='rear'?{...project,panelImage:undefined}:project,w)}${grid}${safe}${mountingSvg(project)+(showRack&&view==='design'?screwsSvg(project):'')}${visible.map(i=>componentSvg(i,catalogMap.get(i.componentId)!,project,selection.has(i.id),view)).join('')}<g id="smart-guide-layer" pointer-events="none"></g><g id="overlay-layer" pointer-events="none"></g><g id="focus-layer" pointer-events="none"></g></g>${project.items.length===0?emptyPanelSvg(w):''}</svg>`;const selectionKey=[...selection].sort().join();if(selectionKey!==lastSelectionKey){stage.querySelectorAll('.selection-ui').forEach(g=>g.classList.add('landing'));lastSelectionKey=selectionKey;}bindCanvas();renderRuler(w);}
 /**
  * Rulers with real millimetre ticks, like a drawing board's: every mm when
  * there is room, every 5 otherwise, numbered every 10. The grid drawn behind
@@ -246,14 +248,16 @@ function renderRuler(w:number){
   const mm=PX*zoom;
   const minor=mm>=3.2?1:mm>=1.4?5:10,label=mm>=1.4?10:mm>=.7?20:50;
   wrap.style.setProperty('--mm',`${mm}px`);
-  wrap.style.setProperty('--ox',`${originX.toFixed(1)}px`);
+  wrap.style.setProperty('--ox',`${(originX+viewX(0)*mm).toFixed(1)}px`);
   wrap.style.setProperty('--oy',`${originY.toFixed(1)}px`);
   wrap.style.setProperty('--grid-mm',String(label));
   const ticks=(length:number,origin:number,extent:number,vertical:boolean)=>{
-    const from=Math.floor(-origin/mm/minor)*minor,to=Math.ceil((length-origin)/mm/minor)*minor;
+    const direction=!vertical&&view==='rear'?-1:1,zero=direction<0?origin+extent*mm:origin;
+    const a=-zero/(mm*direction),b=(length-zero)/(mm*direction);
+    const from=Math.floor(Math.min(a,b)/minor)*minor,to=Math.ceil(Math.max(a,b)/minor)*minor;
     let out='';
     for(let v=from;v<=to;v+=minor){
-      const at=origin+v*mm,inside=v>=0&&v<=extent;
+      const at=zero+v*mm*direction,inside=v>=0&&v<=extent;
       const major=v%label===0,mid=v%(label/2)===0;
       const len=major?9:mid?6:3.5;
       out+=vertical
@@ -416,7 +420,7 @@ function focusSelection(){
   zoom=target;
   applyZoom();
   const stage=stageEl();
-  canvas.scrollLeft=stage.offsetLeft+(box.l+box.r)/2*PX*zoom-canvas.clientWidth/2;
+  canvas.scrollLeft=stage.offsetLeft+viewX((box.l+box.r)/2)*PX*zoom-canvas.clientWidth/2;
   canvas.scrollTop=stage.offsetTop+(box.t+box.b)/2*PX*zoom-canvas.clientHeight/2;
   renderRuler(panelWidth(project.panel));
 }
@@ -432,7 +436,7 @@ function applyCanvasA11y(){
   svg.setAttribute('role','listbox');
   svg.setAttribute('aria-multiselectable','true');
   svg.setAttribute('aria-label','Panel components');
-  const visible=project.items.filter(i=>!i.hidden);
+  const visible=canvasItems();
   if(focusedId&&!visible.some(i=>i.id===focusedId))focusedId='';
   const tabStop=focusedId;
   svg.querySelectorAll<SVGGElement>('.panel-item').forEach(g=>{
@@ -465,7 +469,7 @@ function drawFocusRing(){
 }
 
 function moveFocus(delta:number){
-  const visible=project.items.filter(i=>!i.hidden);
+  const visible=canvasItems();
   if(!visible.length)return false;
   const at=visible.findIndex(i=>i.id===focusedId);
   const next=visible[((at<0?(delta>0?-1:0):at)+delta+visible.length)%visible.length];
@@ -482,7 +486,7 @@ const marqueeRect=(d:MarqueeDrag)=>({l:Math.min(d.startX,d.x),r:Math.max(d.start
 
 function marqueeHits(d:MarqueeDrag){
   const box=marqueeRect(d);
-  return project.items.filter(i=>!i.hidden&&i.x+i.width/2>box.l&&i.x-i.width/2<box.r&&i.y+i.height/2>box.t&&i.y-i.height/2<box.b);
+  return canvasItems().filter(i=>i.x+i.width/2>box.l&&i.x-i.width/2<box.r&&i.y+i.height/2>box.t&&i.y-i.height/2<box.b);
 }
 
 function drawMarquee(d:MarqueeDrag){
@@ -493,13 +497,24 @@ function drawMarquee(d:MarqueeDrag){
   layer.innerHTML=`<rect class="marquee" x="${box.l}" y="${box.t}" width="${box.r-box.l}" height="${box.b-box.t}"/>`
     +hits.map(i=>`<rect class="marquee-hit" x="${i.x-i.width/2-.8}" y="${i.y-i.height/2-.8}" width="${i.width+1.6}" height="${i.height+1.6}" rx=".6"/>`).join('')
     +(box.r-box.l>4?`<text class="marquee-dim" x="${(box.r-.8).toFixed(2)}" y="${(box.b-.9).toFixed(2)}" text-anchor="end">${dims}</text>`:'');
+  faceAnnotations(layer);
   document.querySelector('#coordinates')!.textContent=units(`${dims} mm · ${hits.length} in range`);
 }
 
-function point(e:PointerEvent|DragEvent,svg:SVGSVGElement){const p=svg.createSVGPoint();p.x=e.clientX;p.y=e.clientY;return p.matrixTransform(svg.getScreenCTM()!.inverse());}
+function point(e:PointerEvent|DragEvent,svg:SVGSVGElement){const p=svg.createSVGPoint();p.x=e.clientX;p.y=e.clientY;return p.matrixTransform((svg.querySelector<SVGGElement>('#panel-content')??svg).getScreenCTM()!.inverse());}
+
+/** Counter-flip measurement text while its geometry stays in front-reference coordinates. */
+function faceAnnotations(layer:Element){
+  if(view!=='rear')return;
+  layer.querySelectorAll('text').forEach(text=>{
+    const x=Number(text.getAttribute('x')??0),anchor=text.getAttribute('text-anchor')??'start';
+    text.setAttribute('transform',`translate(${2*x} 0) scale(-1 1)`);
+    text.setAttribute('text-anchor',anchor==='start'?'end':anchor==='end'?'start':anchor);
+  });
+}
 
 function smartPosition(item:Item,x:number,y:number){
-  const others=project.items.filter(i=>!selection.has(i.id)&&!i.hidden),tolerance=1.2/(PX*zoom),w=panelWidth(project.panel);let guide='';
+  const others=canvasItems().filter(i=>!selection.has(i.id)),tolerance=1.2/(PX*zoom),w=panelWidth(project.panel);let guide='';
   const snapAxis=(axis:'x'|'y',value:number,size:number,limit:number)=>{const own=[value-size/2,value,value+size/2],targets=[0,limit/2,limit,...others.flatMap(o=>axis==='x'?[o.x-o.width/2,o.x,o.x+o.width/2]:[o.y-o.height/2,o.y,o.y+o.height/2])];let best=Infinity,delta=0,target=0;own.forEach(a=>targets.forEach(t=>{const d=t-a;if(Math.abs(d)<Math.abs(best)){best=d;delta=d;target=t;}}));if(Math.abs(best)<=tolerance){guide+=axis==='x'?`<line class="smart-line" x1="${target}" y1="0" x2="${target}" y2="${PANEL_H}"/>`:`<line class="smart-line" x1="0" y1="${target}" x2="${w}" y2="${target}"/>`;return value+delta;}return value;};
   x=snapAxis('x',x,item.width,w);y=snapAxis('y',y,item.height,PANEL_H);
   let l=x-item.width/2,r=x+item.width/2,t=y-item.height/2,b=y+item.height/2;
@@ -566,7 +581,7 @@ function renderInspector(){const el=document.querySelector<HTMLDivElement>('#ins
  }
  const i=items[0],d=catalogMap.get(i.componentId)!,lockedSize=dimensionLocked(d);el.innerHTML=`<div class="part-heading"><span class="part-thumbnail large">${thumbnailSvg(d,project,i.color,46)}</span><div><strong>${d.name}</strong><small>${d.manufacturer?`${d.manufacturer} · ${d.partNumber}`:d.description}</small><div class="provenance">${d.source
   ?`<span class="provenance-mark ${d.status==='verified'?'traced':'partial'}">${d.status==='verified'?'Traced':'Cutout traced'}</span>${d.source.url?`<a href="${d.source.url}" target="_blank" rel="noreferrer">${esc(d.source.note)}</a>`:`<span>${esc(d.source.note)}</span>`}`
-  :`<span>No datasheet behind these figures — check the real part.</span>`}</div><div class="mechanical-line">${d.id.includes('encoder')?'Endless rotation · Push switch · ':d.id.includes('lit')?'Illuminated · ':''}${cutoutLabel(d)} · ${d.depth?`${d.depth} mm deep`:'surface'}</div></div><span class="badge">${d.status}</span></div><div class="inspector-section"><div class="section-label">Transform</div><div class="two-col">${field('X','x',i.x,'number',.1,'mm')}${field('Y','y',i.y,'number',.1,'mm')}</div><div class="two-col">${field('Width','width',i.width,'number',.1,'mm',lockedSize)}${field('Height','height',i.height,'number',.1,'mm',lockedSize)}</div>${sizeControl(d)}${field('Rotation','rotation',i.rotation,'number',1,'°')}</div>${graphicsControl(i,d)}<div class="inspector-section"><div class="section-label">Appearance</div>${d.renderer==="image"?imageControl(i):""}${d.renderer!=='led'&&d.renderer!=='hole'?field('Label','label',i.label,'text'):''}${['knob','slider','touch','led'].includes(d.renderer)?field('Preview value','value',i.value,'range',.01):''}<div class="form-row"><label>Component colour</label><div class="color-row"><input id="item-color" aria-label="Component colour" type="color" value="${i.color}"><input id="item-color-text" aria-label="Component colour hex" value="${i.color}"></div></div></div><div class="inspector-section"><div class="section-label">Export mapping</div><div class="form-row"><label>VCV role</label><select id="role">${['none','param','input','output','light','custom'].map(x=>`<option value="${x}" ${i.role===x?'selected':''}>${x}</option>`).join('')}</select></div>${field('Order spec','item-spec',i.spec??'','text')}${field('Identifier','identifier',i.identifier,'text')}<div class="meta-grid"><span>Cutout</span><strong>${d.cutout?cutoutLabel(d):'None'}</strong><span>Rear depth</span><strong>${d.depth?`${d.depth} mm`:'—'}</strong><span>Keepout</span><strong>${d.keepout?`${d.keepout} mm`:'—'}</strong></div></div><div class="button-row layer-order"><button class="tool-button wide" id="send-back">Send back</button><button class="tool-button wide" id="bring-forward">Bring forward</button></div><div class="button-row"><button class="tool-button wide" id="duplicate">Duplicate</button><button class="tool-button" id="lock">${i.locked?'Unlock':'Lock'}</button></div>`;bindItemInspector(i);}
+  :`<span>No datasheet behind these figures — check the real part.</span>`}</div><div class="mechanical-line">${d.id.includes('encoder')?'Endless rotation · Push switch · ':d.id.includes('lit')?'Illuminated · ':''}${cutoutLabel(d)} · ${d.depth?`${d.depth} mm deep`:'surface'}</div></div><span class="badge">${d.status}</span></div><div class="inspector-section"><div class="section-label">Transform</div><div class="two-col">${field('X','x',i.x,'number',.1,'mm')}${field('Y','y',i.y,'number',.1,'mm')}</div><div class="two-col">${field('Width','width',i.width,'number',.1,'mm',lockedSize)}${field('Height','height',i.height,'number',.1,'mm',lockedSize)}</div>${sizeControl(d)}${field('Rotation','rotation',i.rotation,'number',1,'°')}</div>${graphicsControl(i,d)}<div class="inspector-section"><div class="section-label">Appearance</div>${d.renderer==="image"?imageControl(i):""}${d.renderer!=='led'&&d.renderer!=='hole'?field('Label','label',i.label,'text'):''}${['knob','slider','touch','led','toggle','button','display'].includes(d.renderer)?field('Preview value','value',i.value,'range',.01):''}<div class="form-row"><label>Component colour</label><div class="color-row"><input id="item-color" aria-label="Component colour" type="color" value="${i.color}"><input id="item-color-text" aria-label="Component colour hex" value="${i.color}"></div></div></div><div class="inspector-section"><div class="section-label">Export mapping</div><div class="form-row"><label>VCV role</label><select id="role">${['none','param','input','output','light','custom'].map(x=>`<option value="${x}" ${i.role===x?'selected':''}>${x}</option>`).join('')}</select></div>${field('Order spec','item-spec',i.spec??'','text')}${field('Identifier','identifier',i.identifier,'text')}<div class="meta-grid"><span>Cutout</span><strong>${d.cutout?cutoutLabel(d):'None'}</strong><span>Rear depth</span><strong>${d.depth?`${d.depth} mm`:'—'}</strong><span>Keepout</span><strong>${d.keepout?`${d.keepout} mm`:'—'}</strong></div></div><div class="button-row layer-order"><button class="tool-button wide" id="send-back">Send back</button><button class="tool-button wide" id="bring-forward">Bring forward</button></div><div class="button-row"><button class="tool-button wide" id="duplicate">Duplicate</button><button class="tool-button" id="lock">${i.locked?'Unlock':'Lock'}</button></div>`;bindItemInspector(i);}
 
 function field(label:string,id:string,value:string|number,type:string,step:string|number='',unit='',disabled=false){return`<div class="form-row"><label for="field-${id}">${label}</label><div class="input-unit"><input id="field-${id}" type="${type}" value="${esc(String(value))}" ${step!==''?`step="${step}"`:''} ${type==='range'?'min="0" max="1"':''} ${disabled?'disabled':''}>${unit?`<span>${unit}</span>`:''}</div></div>`;}
 function bindPanelInspector(){const get=(id:string)=>document.querySelector<HTMLInputElement|HTMLSelectElement>(id)!;get('#field-hp').onchange=e=>mutate(()=>{project.panel.hp=Math.max(2,Math.min(84,Number((e.target as HTMLInputElement).value)));});get('#width-mode').value=project.panel.widthMode;get('#width-mode').onchange=e=>mutate(()=>project.panel.widthMode=(e.target as HTMLSelectElement).value as Project['panel']['widthMode']);document.querySelector<HTMLInputElement>('#field-customWidth')?.addEventListener('change',e=>mutate(()=>project.panel.customWidth=Number((e.target as HTMLInputElement).value)));get('#field-thickness').onchange=e=>mutate(()=>project.panel.thickness=Number((e.target as HTMLInputElement).value));get('#mounting').value=project.panel.mounting;get('#mounting').onchange=e=>mutate(()=>project.panel.mounting=(e.target as HTMLSelectElement).value as Project['panel']['mounting']);document.querySelectorAll<HTMLElement>('[data-finish]').forEach(b=>b.onclick=()=>mutate(()=>applyFinish(project,b.dataset.finish!)));(['panel','ink','accent'] as const).forEach(k=>get(`#${k}-color`).oninput=e=>{project[`${k}Color`]=(e.target as HTMLInputElement).value;if(k==='panel'){project.panel.finish='custom-flat';document.querySelector('.finish-card.selected')?.classList.remove('selected');}persist();renderCanvas();});}
@@ -1135,8 +1150,8 @@ async function inspect3d(){
   document.body.insertAdjacentHTML('beforeend',`<div class="modal-backdrop inspection-backdrop" id="modal"><section class="inspection-modal" role="dialog" aria-modal="true" aria-label="3D panel inspection">
     <header class="inspection-head"><div><strong>${esc(project.name)}</strong><span class="mono">${panelWidth(project.panel).toFixed(2)} x ${PANEL_H} x ${project.panel.thickness} mm</span></div><button class="icon-button" id="close-inspection" aria-label="Close 3D inspection">${icon('cross')}</button></header>
     <div class="inspection-scene" id="inspection-scene"></div>
-    <div class="inspection-toolbar"><div class="segmented" role="group" aria-label="3D viewpoint"><button data-camera="front">Front</button><button data-camera="iso" class="on">Perspective</button><button data-camera="rear">Rear</button></div><label><input id="inspect-hardware" type="checkbox" checked>Hardware</label><label><input id="inspect-rear" type="checkbox" checked>Rear envelopes</label></div>
-    <footer class="inspection-note">Rear envelopes are catalogue estimates; front elevations are illustrative. Wiring, PCBs and fasteners are not modelled.</footer>
+    <div class="inspection-toolbar"><div class="segmented" role="group" aria-label="3D viewpoint"><button data-camera="front" aria-pressed="false">Front</button><button data-camera="iso" class="on" aria-pressed="true">Perspective</button><button data-camera="side" aria-pressed="false">Side</button><button data-camera="rear" aria-pressed="false">Rear</button></div><label><input id="inspect-hardware" type="checkbox" checked>Hardware</label><label><input id="inspect-rear" type="checkbox">Clearance envelopes</label></div>
+    <footer class="inspection-note">Footprints and cutouts are catalogue-sized. Front details are illustrative; optional rear envelopes use catalogue depth. Not a mechanical CAD assembly.</footer>
   </section></div>`);
   const modal=document.querySelector('#modal')!,host=document.querySelector<HTMLElement>('#inspection-scene')!;
   document.querySelector('#close-inspection')!.addEventListener('click',closeModal);
@@ -1147,7 +1162,7 @@ async function inspect3d(){
     const inspection=createInspection(host,project,catalogMap,new XMLSerializer().serializeToString(artDoc));
     disposeModal=inspection.dispose;
     modal.querySelectorAll<HTMLButtonElement>('[data-camera]').forEach(b=>b.onclick=()=>{
-      inspection.setView(b.dataset.camera as 'front'|'rear'|'iso');
+      inspection.setView(b.dataset.camera as import('./inspect3d').InspectionView);
       modal.querySelectorAll('[data-camera]').forEach(el=>{el.classList.toggle('on',el===b);el.setAttribute('aria-pressed',String(el===b));});
     });
     modal.querySelector<HTMLInputElement>('#inspect-hardware')!.onchange=e=>inspection.setHardware((e.target as HTMLInputElement).checked);
@@ -1282,7 +1297,7 @@ window.addEventListener('pointermove',e=>{
     return;
   }
   const panelRect=svg.getBoundingClientRect();
-  const dx=(e.clientX-current.startClientX)/(panelRect.width/panelWidth(project.panel));
+  const dx=(e.clientX-current.startClientX)/(panelRect.width/panelWidth(project.panel))*(view==='rear'?-1:1);
   const dy=(e.clientY-current.startClientY)/(panelRect.height/PANEL_H);
   const moving=selectedItems().filter(i=>!i.locked);
   current.moved=current.moved||Math.abs(dx)>.05||Math.abs(dy)>.05;
@@ -1303,7 +1318,7 @@ window.addEventListener('pointermove',e=>{
   if(key&&key!==lastGuideKey)guide=guide.replaceAll('class="smart-line"','class="smart-line fresh"');
   lastGuideKey=key;
   const layer=svg.querySelector('#smart-guide-layer');
-  if(layer)layer.innerHTML=guide;
+  if(layer){layer.innerHTML=guide;faceAnnotations(layer);}
 });
 
 window.addEventListener('pointerup',()=>{
@@ -1384,7 +1399,7 @@ window.addEventListener('keydown',e=>{
   else if(meta&&key==='c'){e.preventDefault();copySelection();}
   else if(meta&&key==='x'){e.preventDefault();cutSelection();}
   else if(meta&&key==='v'){e.preventDefault();pasteClipboard();}
-  else if(meta&&key==='a'){e.preventDefault();selection=new Set(project.items.filter(i=>!i.hidden).map(i=>i.id));render();}
+  else if(meta&&key==='a'){e.preventDefault();selection=new Set(canvasItems().map(i=>i.id));render();}
   else if(meta&&key==='s'){e.preventDefault();flush();doExport('json');}
   else if(meta&&key==='e'){e.preventDefault();exportDialog();}
   else if(meta&&key==='o'){e.preventDefault();projectsDialog();}
@@ -1407,9 +1422,10 @@ window.addEventListener('keydown',e=>{
   else if(['arrowleft','arrowright','arrowup','arrowdown'].includes(key)&&selection.size){
     e.preventDefault();
     const step=e.shiftKey?1:snap?grids[gridIndex]:.1;
+    const horizontal=step*(view==='rear'?-1:1);
     mutate(()=>selectedItems().filter(i=>!i.locked).forEach(i=>{
-      if(key==='arrowleft')i.x-=step;
-      if(key==='arrowright')i.x+=step;
+      if(key==='arrowleft')i.x-=horizontal;
+      if(key==='arrowright')i.x+=horizontal;
       if(key==='arrowup')i.y-=step;
       if(key==='arrowdown')i.y+=step;
     }));
@@ -1418,7 +1434,7 @@ window.addEventListener('keydown',e=>{
 
 document.querySelector('#palette-key')!.textContent=apple?'⌘K':'Ctrl K';
 document.querySelector('#skip-canvas')!.addEventListener('click',()=>{
-  const visible=project.items.filter(i=>!i.hidden);
+  const visible=canvasItems();
   if(!visible.length){notify('The panel is empty — add a part from the library first');return;}
   focusedId=focusedId||visible[0].id;
   selectIds([focusedId]);
