@@ -44,6 +44,8 @@ Cutout SVG, DXF, KiCad and 3D inspection share `src/geometry.ts`. Artwork SVG ex
 
 See [the studio workflow](docs/studio-workflow.md) for assemblies, styles, rules and inspection, and [the research roadmap](docs/research-roadmap.md) for the rationale and remaining work.
 
+The [component visual audit](docs/component-visual-audit.md) records 2D/3D catalog coverage, appearance references, physical-size guarantees and the repeatable visual checks.
+
 ## Use it locally
 
 Requires Node.js 22 or newer and a current browser. 3D inspection requires WebGL 2 and downloads its rendering code on first use; open it online once before relying on it offline.

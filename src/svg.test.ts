@@ -134,13 +134,12 @@ describe('library thumbnails',()=>{
     }
   });
 
-  it('leaves room for a glow to fade instead of clipping it square',()=>{
-    const led=catalogMap.get('led-3mm')!;
-    const span=Number(thumbnailSvg(led,project).match(/viewBox="0 0 ([\d.]+)/)![1]);
-    expect(span).toBeGreaterThan(led.width*2);
-    // A part with no glow gets the plain margin
-    const knob=catalogMap.get('knob-medium')!;
-    expect(Number(thumbnailSvg(knob,project).match(/viewBox="0 0 ([\d.]+)/)![1])).toBeCloseTo(knob.width*1.18,1);
+  it('uses contained lens highlights without external filters or clipped halos',()=>{
+    for(const id of ['led-3mm','led-ring','encoder-ring','knob-medium']){
+      const d=catalogMap.get(id)!,svg=thumbnailSvg(d,project);
+      expect(svg).not.toContain('url(#');
+      expect(Number(svg.match(/viewBox="0 0 ([\d.]+)/)![1])).toBeCloseTo(d.width*1.18,1);
+    }
   });
 
   it('shows words only for a text part',()=>{
@@ -151,14 +150,23 @@ describe('library thumbnails',()=>{
   it('takes a colour override so the inspector can preview the real item',()=>
     expect(thumbnailSvg(catalogMap.get('knob-medium')!,project,'#abcdef')).toContain('#abcdef'));
 
+  it('gives monochrome previews contrast without recolouring the part',()=>{
+    const text=catalogMap.get('text-label')!,hole=catalogMap.get('mount-hole')!;
+    const light=thumbnailSvg(text,project,'#ffffff'),dark=thumbnailSvg(text,project,'#15191c');
+    expect(light).toContain('fill="#262b2d"');expect(light).toContain('fill="#ffffff"');
+    expect(dark).toContain('fill="#dbe0e2"');expect(dark).toContain('fill="#15191c"');
+    expect(thumbnailSvg(hole,{...project,inkColor:'#ffffff'})).toContain('fill="#262b2d"');
+    expect(thumbnailSvg(catalogMap.get('midi-din')!,project)).not.toContain('preview-surface');
+  });
+
   it('reflects a part’s real proportions',()=>{
     // A 45 mm fader is tall and thin; a knob is square. The old drawings made
     // both a circle in a 40×40 box.
     const fader=thumbnailSvg(catalogMap.get('slider-45')!,project);
-    expect(fader).toContain('rx="2"');
+    expect(fader).toContain('data-detail="recessed track"');
+    expect(fader).toContain('width="3.2" height="51"');
     expect(Number(fader.match(/viewBox="0 0 ([\d.]+)/)![1])).toBeGreaterThan(60);
-    // A 3 mm LED sits in a larger box than its size alone would give, because
-    // its glow needs somewhere to fade out.
+    // Small indicators remain recognisable at sidebar size.
     expect(Number(thumbnailSvg(catalogMap.get('led-3mm')!,project).match(/viewBox="0 0 ([\d.]+)/)![1])).toBeLessThan(12);
   });
 });

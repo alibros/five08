@@ -3,6 +3,7 @@ import type {PanelFinish} from './finishes';
 import {dimensionLocked,FONT_STACK,PANEL_H,panelWidth} from './model';
 import {cutoutShape,cutoutShapes,mountingShapes,type Shape} from './geometry';
 import {legendStyle,scaleTicks} from './design';
+import {hardwareSvg} from './hardware2d';
 
 export const esc=(s:string)=>s.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]!));
 
@@ -107,7 +108,8 @@ export function screwsSvg(p:Project,prefix=''){
  * find a picture in the sidebar instead of the part on the panel.
  */
 export function componentSvg(i:Item,d:ComponentDefinition,p:Project,selected:boolean,view:'design'|'cutout'|'rear',wrapper:'panel'|'preview'='panel'){
-  const ink=p.inkColor, w=i.width, h=i.height, c=i.color;let body='';
+  const ink=p.inkColor,w=dimensionLocked(d)?d.width:i.width,h=dimensionLocked(d)?d.height:i.height,c=i.color;
+  const hardware=view==='design'?hardwareSvg(d,i,p.accentColor):null;let body='';
   if(view==='cutout'&&d.cutout){const shape=cutoutShape({...i,x:0,y:0,rotation:0},d);body=shape?`<g class="cut">${shapePath(shape)}</g>`:'';}
   else if(view==='cutout'){body='';}
   else if(view==='rear'){
@@ -118,20 +120,13 @@ export function componentSvg(i:Item,d:ComponentDefinition,p:Project,selected:boo
     const depth=d.depth?`<text class="rear-depth" y="1" transform="rotate(${-i.rotation}) scale(-1 1)" text-anchor="middle" font-size="1.7" fill="${ink}">${d.depth} mm</text>`:'';
     body=keepout+(shape?`<g class="cut">${shapePath(shape)}</g>`:'')+depth;
   }
-  else if(d.renderer==='knob'){const r=Math.min(w,h)/2,a=(i.value*270+135)*Math.PI/180,encoder=d.id.includes('encoder');const flutes=d.id.includes('fluted')?Array.from({length:16},(_,n)=>`<line x1="0" y1="${-r*.82}" x2="0" y2="${-r}" stroke="${ink}" stroke-width=".35" transform="rotate(${n*22.5})"/>`).join(''):'';const halo=d.id==='encoder-ring'?`<circle r="${r*.9}" fill="none" stroke="${p.accentColor}" stroke-width="1.3" stroke-dasharray="2.4 1" filter="url(#glow)"/>`:'';const metal=d.id==='encoder-metal'?`<circle r="${r*.72}" fill="none" stroke="#eef1ec" stroke-opacity=".65" stroke-width=".35"/>`:'';const push=encoder?`<circle r="${r*.42}" fill="none" stroke="${ink}" stroke-opacity=".42" stroke-width=".45"/><circle cy="${-r*.56}" r=".65" fill="${p.accentColor}"/>`:`<line x2="${Math.cos(a)*r*.68}" y2="${Math.sin(a)*r*.68}" stroke="${p.accentColor}" stroke-width=".8" stroke-linecap="round"/>`;body=`${halo}<circle r="${r}" fill="${c}" stroke="${ink}" stroke-width=".65"/><circle r="${r*.78}" fill="none" stroke="${ink}" stroke-opacity=".25" stroke-width=".3"/>${flutes}${metal}${push}`;}
-  else if(d.renderer==='jack'){const r=Math.min(w,h)/2;body=`<circle r="${r}" fill="${p.panelColor}" stroke="${ink}" stroke-width=".9"/><circle r="${r*.55}" fill="#11120f" stroke="${ink}" stroke-width=".35"/><circle r="${r*.2}" fill="#000"/>`;}
-  else if(d.renderer==='slider'){const vertical=d.orientation!=='horizontal';body=vertical?`<rect x="-2" y="${-h/2}" width="4" height="${h}" rx="2" fill="#11120f"/><line y1="${-h/2+2}" y2="${h/2-2}" stroke="#777" stroke-width=".3"/><rect x="-5" y="${-h/2+h*(1-i.value)-2}" width="10" height="4" rx="1" fill="${c}" stroke="${ink}" stroke-width=".5"/>`:`<rect x="${-w/2}" y="-2" width="${w}" height="4" rx="2" fill="#11120f"/><line x1="${-w/2+2}" x2="${w/2-2}" stroke="#777" stroke-width=".3"/><rect x="${-w/2+w*i.value-2}" y="-5" width="4" height="10" rx="1" fill="${c}" stroke="${ink}" stroke-width=".5"/>`;}
-  else if(d.renderer==='button'){const rectangular=d.id.includes('square')||d.id.includes('rect')||d.id.includes('wide'),lit=d.id.includes('lit'),metal=d.id.includes('metal'),arcade=d.id.includes('arcade');const shape=rectangular?`<rect x="${-w/2}" y="${-h/2}" width="${w}" height="${h}" rx="${d.id.includes('wide')?2:1.5}" fill="${c}" stroke="${ink}" stroke-width=".7"/>`:`<circle r="${Math.min(w,h)/2}" fill="${c}" stroke="${ink}" stroke-width=".7"/>`;const inset=rectangular?`<rect x="${-w*.39}" y="${-h*.34}" width="${w*.78}" height="${h*.68}" rx="1" fill="none" stroke="${lit?'#fff':ink}" stroke-opacity="${lit ? .62 : .22}" stroke-width=".45"/>`:`<circle r="${Math.min(w,h)*(arcade ? .38 : .34)}" fill="none" stroke="${metal?'#f4f6f2':ink}" stroke-opacity=".35" stroke-width=".45"/>`;const glow=lit?(rectangular?`<rect x="${-w*.34}" y="${-h*.29}" width="${w*.68}" height="${h*.58}" rx="1" fill="${c}" opacity=".58" filter="url(#glow)"/>`:`<circle r="${Math.min(w,h)*.24}" fill="${p.accentColor}" filter="url(#glow)"/>`):'';body=`${shape}${glow}${inset}`;}
-  else if(d.renderer==='toggle'){body=d.orientation==='horizontal'?`<rect x="${-w/2}" y="${-h/2}" width="${w}" height="${h}" rx="1" fill="#222" stroke="${ink}" stroke-width=".5"/><rect x="${-w*.3}" y="${-h*.4}" width="${w*.38}" height="${h*.8}" rx=".8" fill="${c}"/>`:`<circle r="3" fill="none" stroke="${ink}" stroke-width=".6"/><line y2="${-h*.48}" stroke="${c}" stroke-width="2.2" stroke-linecap="round"/><circle cy="${-h*.48}" r="1.4" fill="${c}"/>`;}
-  else if(d.renderer==='led'){if(d.id==='led-ring')body=Array.from({length:12},(_,n)=>`<circle cx="${Math.cos(n*Math.PI/6)*w*.39}" cy="${Math.sin(n*Math.PI/6)*h*.39}" r="1.1" fill="${n<Math.round(i.value*12)?c:'#5b5d56'}"/>`).join('');else body=`<circle class="led-body" r="${Math.min(w,h)/2}" fill="${c}" stroke="${ink}" stroke-width=".3" filter="url(#glow)"/>`;}
-  else if(d.renderer==='display'){if(d.id==='bargraph')body=Array.from({length:10},(_,n)=>`<rect x="${-w*.32}" y="${h/2-(n+1)*h/10+1}" width="${w*.64}" height="${h/12}" rx=".3" fill="${n<i.value*10?c:'#293029'}"/>`).join('');else body=`<rect x="${-w/2}" y="${-h/2}" width="${w}" height="${h}" rx="1" fill="#090d0b" stroke="${ink}" stroke-width=".5"/><text fill="${c}" font-family="ui-monospace,monospace" font-size="${Math.min(h*.42,4)}" text-anchor="middle" dominant-baseline="middle">${d.id==='seven-seg'?'12':d.id==='vu-meter'?'−12  0  +3':'WAVE 01'}</text>`;}
-  else if(d.renderer==='connector')body=`<rect x="${-w/2}" y="${-h/2}" width="${w}" height="${h}" rx="${d.id==='midi-din'?h/2:1}" fill="#11120f" stroke="${ink}" stroke-width=".7"/>${d.id==='midi-din'?Array.from({length:5},(_,n)=>`<circle cx="${(n-2)*2.4}" cy="${n%2?1:-1}" r=".6" fill="#aaa"/>`).join(''):''}`;
-  else if(d.renderer==='hole')body=d.orientation==='horizontal'?`<rect x="${-w/2}" y="${-h/2}" width="${w}" height="${h}" rx="${h/2}" fill="none" stroke="${ink}" stroke-width=".7"/>`:`<circle r="${w/2}" fill="none" stroke="${ink}" stroke-width=".7"/><line x1="${-w*.3}" x2="${w*.3}" stroke="${ink}" stroke-width=".3"/>`;
+  else if(hardware!==null)body=hardware;
+  else if(d.renderer==='hole')body=d.orientation==='horizontal'?`<rect x="${-w/2+.15}" y="${-h/2+.15}" width="${w-.3}" height="${h-.3}" rx="${(h-.3)/2}" fill="none" stroke="${ink}" stroke-width=".3"/>`:`<circle r="${w/2-.15}" fill="none" stroke="${ink}" stroke-width=".3"/><path d="M${-w*.25} 0H${w*.25}M0 ${-h*.25}V${h*.25}" stroke="${ink}" stroke-width=".15"/>`;
   else if(d.renderer==='text')body=textSvg({...i,font:i.font??p.design?.font,weight:i.weight??p.design?.weight},c);
   else if(d.renderer==='scale')body=scaleSvg(i,ink);
   else if(d.renderer==='arrow')body=arrowSvg(i,c);
   else if(d.renderer==='image')body=i.imageData?`<image href="${i.imageData}" x="${-w/2}" y="${-h/2}" width="${w}" height="${h}" preserveAspectRatio="none"/>`:`<g opacity=".6"><rect x="${-w/2}" y="${-h/2}" width="${w}" height="${h}" rx="1" fill="none" stroke="${ink}" stroke-width=".4" stroke-dasharray="1 1"/><path d="M${-w*.35} ${h*.3}l${w*.25}-${h*.28} ${w*.18} ${h*.16} ${w*.2}-${h*.24} ${w*.22} ${h*.2}" fill="none" stroke="${ink}" stroke-width=".5"/><circle cx="${-w*.2}" cy="${-h*.22}" r="${Math.min(w,h)*.07}" fill="${c}"/></g>`;
-  else if(d.renderer==='touch')body=d.id==='joystick'?`<circle r="${w/2}" fill="#20221e" stroke="${ink}" stroke-width=".7"/><circle cx="${(i.value-.5)*w*.35}" cy="${(i.value-.5)*-h*.35}" r="${w*.18}" fill="${c}" stroke="${ink}" stroke-width=".5"/>`:`<rect x="${-w/2}" y="${-h/2}" width="${w}" height="${h}" rx="${w/2}" fill="#20221e" stroke="${c}" stroke-width=".6"/>`;
+  else if(d.category==='Panel hardware'&&d.renderer==='shape')body=d.id==='cutout-circle'?`<ellipse rx="${w/2-.15}" ry="${h/2-.15}" fill="none" stroke="${ink}" stroke-width=".3"/>`:`<rect x="${-w/2+.15}" y="${-h/2+.15}" width="${w-.3}" height="${h-.3}" fill="none" stroke="${ink}" stroke-width=".3"/>`;
   else body=d.id==='divider'?`<line x1="${-w/2}" x2="${w/2}" stroke="${c}" stroke-width="${h}"/>`:`<${d.id.includes('circle')?'ellipse':'rect'} ${d.id.includes('circle')?`rx="${w/2}" ry="${h/2}"`:`x="${-w/2}" y="${-h/2}" width="${w}" height="${h}" rx="1"`} fill="none" stroke="${c}" stroke-width=".6"/>`;
   const style=legendStyle(p,i),labelY=h/2+3.6,labelW=Math.max(style.size,style.label.length*style.size*.67+2);
   const label=i.label&&d.renderer!=='text'&&view==='design'?`<g class="component-legend">${style.inverted?`<rect x="${-labelW/2}" y="${labelY-style.size}" width="${labelW}" height="${style.size*1.5}" rx=".3" fill="${ink}"/>`:''}<text y="${labelY}" fill="${style.inverted?p.panelColor:ink}" font-family="${esc(style.font)}" font-size="${style.size}" font-weight="${style.weight}" text-anchor="middle">${esc(style.label)}</text></g>`:'';
@@ -304,18 +299,14 @@ export function thumbnailSvg(d:ComponentDefinition,p:Project,colour=d.color,px=4
     value:.62,locked:false,hidden:false,role:'none',identifier:'',
   });
 
-  // Fit the part to the box with a proportional margin, so every thumbnail has
-  // the same visual breathing room whatever the part's real size. Anything
-  // wearing the glow filter needs more: the blur is a fixed millimetre radius,
-  // so on a 3 mm LED it spreads further than the part itself and would be
-  // clipped into a hard square at the edge of the box.
-  const round=(v:number)=>Math.round(v*100)/100;
-  const base=round(Math.max(d.width,d.height)*1.18);
-  const glows=componentSvg(nominal(base),d,p,false,'design','preview').includes('url(#glow)');
-  const span=round(glows?base+GLOW_BLEED*2:base);
-
-  return`<svg class="part-svg" viewBox="0 0 ${span} ${span}" width="${px}" height="${px}" aria-hidden="true">${componentSvg(nominal(span),d,p,false,'design','preview')}</svg>`;
+  // The artwork is contained by the footprint, including illuminated lenses.
+  const span=Math.round(Math.max(d.width,d.height)*1.18*100)/100;
+  // Monochrome artwork and hole outlines need contrast even when the UI theme
+  // differs from the panel's ink. Keep the drawing itself and its colour intact.
+  const monochrome=d.category==='Graphics'||d.category==='Panel hardware';
+  const foreground=d.category==='Panel hardware'||d.renderer==='scale'||d.renderer==='image'?p.inkColor:colour;
+  const channels=[1,3,5].map(start=>Number.parseInt(foreground.slice(start,start+2),16));
+  const light=channels[0]*.2126+channels[1]*.7152+channels[2]*.0722>140;
+  const surface=monochrome?`<rect class="preview-surface" width="${span}" height="${span}" rx="${span*.06}" fill="${light?'#262b2d':'#dbe0e2'}"/>`:'';
+  return`<svg class="part-svg" viewBox="0 0 ${span} ${span}" width="${px}" height="${px}" aria-hidden="true">${surface}${componentSvg(nominal(span),d,p,false,'design','preview')}</svg>`;
 }
-
-/** How far the glow filter's blur carries, in millimetres. */
-const GLOW_BLEED=2.5;

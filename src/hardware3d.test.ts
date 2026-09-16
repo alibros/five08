@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import {catalog,catalogMap} from './catalog';
 import type {Item} from './model';
 import {batchHardware,createHardware,HardwareResources} from './hardware3d';
+import {dinContacts,faderPosition,ringSegments} from './hardware-visual';
 
 let resources=new HardwareResources();
 afterEach(()=>{resources.dispose();resources=new HardwareResources();});
@@ -11,7 +12,7 @@ const item=(id:string,value=.6):Item=>{
   return{id,componentId:id,x:0,y:0,rotation:0,label:'',color:d.color,width:d.width,height:d.height,value,locked:false,hidden:false,role:'none',identifier:''};
 };
 const model=(id:string,value=.6)=>createHardware(catalogMap.get(id)!,item(id,value),'#ff6046',resources);
-const bounds=(g:THREE.Group)=>new THREE.Box3().setFromObject(g,true);
+const bounds=(g:THREE.Object3D)=>new THREE.Box3().setFromObject(g,true);
 const hardware=catalog.filter(d=>d.category!=='Graphics'&&d.renderer!=='hole'&&d.renderer!=='shape');
 
 describe('the complete 3D hardware catalog',()=>{
@@ -73,9 +74,70 @@ describe('the complete 3D hardware catalog',()=>{
     expect(box.getSize(new THREE.Vector3()).x).toBeCloseTo(9,4);expect(i).toEqual(before);
   });
 
+  it('projects DIN contacts, faders and illuminated rings into the shared 2D layout',()=>{
+    const contacts=model('midi-din').front.children.filter(n=>n.name==='DIN contact recess');
+    expect(contacts).toHaveLength(5);
+    dinContacts().forEach((p,n)=>{expect(contacts[n].position.x).toBeCloseTo(p.x);expect(contacts[n].position.y).toBeCloseTo(-p.y);});
+    for(const value of [0,.5,1]){
+      for(const id of ['slider-20','slider-30','slider-45','crossfader']){
+        const cap=model(id,value).front.getObjectByName('fader cap')!,p=faderPosition(catalogMap.get(id)!,value),world=cap.getWorldPosition(new THREE.Vector3());
+        expect(world.x).toBeCloseTo(p.x);expect(world.y).toBeCloseTo(-p.y);
+      }
+      const ring=model('led-ring',value).front.children.filter(n=>n.name==='LED lens');
+      ringSegments(12,22*.39,value).forEach((p,n)=>{
+        expect(ring[n].position.x).toBeCloseTo(p.x);expect(ring[n].position.y).toBeCloseTo(-p.y);
+        expect(((ring[n] as THREE.Mesh).material as THREE.MeshStandardMaterial).emissiveIntensity>0).toBe(p.active);
+      });
+    }
+  });
+
+  it('recesses USB-C contacts inside a capsule-shaped metal shell',()=>{
+    const {front}=model('usb-c');
+    const contacts=front.children.filter(n=>n.name==='USB-C contact');expect(contacts).toHaveLength(24);
+    expect(new Set(contacts.map(n=>n.position.y)).size).toBe(2);
+    const shell=bounds(front.getObjectByName('connector shell')!);
+    const tongue=bounds(front.getObjectByName('USB-C tongue')!);
+    expect(tongue.max.z).toBeLessThan(shell.max.z);
+    const geometry=(front.getObjectByName('connector shell') as THREE.Mesh).geometry;
+    // The silhouette must contain rounded ends, not square corners hidden by a black box.
+    for(const name of ['connector shell','connector opening']){
+      const points=(front.getObjectByName(name) as THREE.Mesh).geometry.attributes.position;
+      for(let n=0;n<points.count;n++){
+        const x=Math.abs(points.getX(n)),y=Math.abs(points.getY(n));
+        if(x>3)expect((x-3)**2+y*y).toBeLessThanOrEqual(2.5**2+.001);
+      }
+    }
+    expect(geometry.getAttribute('normal').count).toBeGreaterThan(24);
+  });
+
+  it('does not illuminate switched-off lenses or a non-illuminated metal button',()=>{
+    for(const id of ['led-3mm','led-ring','encoder-ring','button-lit','button-lit-square','button-metal']){
+      model(id,0).front.traverse(n=>{
+        if(n instanceof THREE.Mesh)expect((n.material as THREE.MeshStandardMaterial).emissiveIntensity,id).toBe(0);
+      });
+    }
+  });
+
+  it('keeps the selector index above its raised grip',()=>{
+    const {front}=model('rotary-switch');
+    expect(bounds(front.getObjectByName('pointer')!).min.z).toBeGreaterThan(bounds(front.getObjectByName('selector grip')!).max.z);
+  });
+
   it('omits hidden items entirely',()=>{
     const d=catalogMap.get('knob-medium')!,m=createHardware(d,{...item(d.id),hidden:true},'#ff6046',resources);
     expect(m.front.children).toHaveLength(0);
+  });
+
+  it('honours component colour without changing the physical footprint',()=>{
+    const colours=(front:THREE.Group)=>{
+      const values:string[]=[];
+      front.traverse(n=>{if(n instanceof THREE.Mesh)values.push((n.material as THREE.MeshStandardMaterial).color.getHexString());});return values;
+    };
+    for(const d of hardware){
+      const original=model(d.id).front,recoloured=createHardware(d,{...item(d.id),color:'#2858ac'},'#ff6046',resources).front;
+      expect(colours(recoloured),d.id).not.toEqual(colours(original));
+      expect(bounds(recoloured)).toEqual(bounds(original));
+    }
   });
 });
 

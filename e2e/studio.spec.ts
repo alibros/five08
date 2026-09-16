@@ -89,10 +89,11 @@ test('3D inspection is nonblank, interactive, responsive and disposed on close',
   await expect(page.locator('#inspection-scene canvas')).toBeVisible();
   await expect.poll(async()=>(await pixels(page)).visible).toBeGreaterThan(300);
   const before=await pixels(page);
-  await page.click('[data-camera="rear"]');expect((await pixels(page)).hash).not.toBe(before.hash);
+  await page.click('[data-camera="rear"]');await expect.poll(async()=>(await pixels(page)).hash).not.toBe(before.hash);
+  const rear=await pixels(page);
   const box=(await page.locator('#inspection-scene canvas').boundingBox())!;
   await page.mouse.move(box.x+box.width/2,box.y+box.height/2);await page.mouse.down();await page.mouse.move(box.x+box.width/2+80,box.y+box.height/2+20,{steps:4});await page.mouse.up();
-  expect((await pixels(page)).hash).not.toBe(before.hash);
+  await expect.poll(async()=>(await pixels(page)).hash).not.toBe(rear.hash);
   await page.setViewportSize({width:390,height:844});await page.click('[data-camera="front"]');
   await expect.poll(async()=>(await pixels(page)).visible).toBeGreaterThan(300);
   expect(await page.locator('.inspection-modal').evaluate(el=>el.scrollWidth<=innerWidth)).toBe(true);
