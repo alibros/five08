@@ -57,3 +57,20 @@ test('the editor updates every control family without allowing a physical resize
     await page.click('#delete');
   }
 });
+
+for(const width of [1440,1100])test(`picker previews are legible and stable at ${width}px`,async({page})=>{
+  await page.setViewportSize({width,height:900});await page.goto('/app/');
+  if(await page.locator('.layout').evaluate(el=>el.classList.contains('left-closed')))await page.click('#open-left');
+  const card=page.locator('[data-component="knob-medium"]');await card.scrollIntoViewIfNeeded();
+  const before=await card.boundingBox();await card.hover();
+  await expect(card.locator('.add-part svg')).toBeVisible();
+  expect(await card.boundingBox()).toEqual(before);
+  const failures=await page.locator('.part-card').evaluateAll(cards=>cards.flatMap(card=>{
+    const preview=card.querySelector('.part-thumbnail')!,svg=preview.querySelector('svg')!;
+    const box=preview.getBoundingClientRect(),drawing=svg.getBoundingClientRect(),name=card.querySelector('strong')!;
+    const good=drawing.width>=70&&drawing.height>=70&&drawing.left>=box.left&&drawing.right<=box.right+.1
+      &&drawing.top>=box.top&&drawing.bottom<=box.bottom+.1&&card.scrollWidth<=card.clientWidth&&name.scrollHeight<=name.clientHeight+1;
+    return good?[]:[card.getAttribute('data-component')];
+  }));
+  expect(failures).toEqual([]);
+});

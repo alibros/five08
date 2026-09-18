@@ -53,7 +53,7 @@ export function createInspection(host:HTMLElement,p:Project,definitions:Map<stri
   const renderer=new THREE.WebGLRenderer({antialias:true,alpha:options.background===null,preserveDrawingBuffer:true});
   renderer.setPixelRatio(Math.min(devicePixelRatio,1.75));
   renderer.outputColorSpace=THREE.SRGBColorSpace;
-  renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.05;
+  renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=.95;
   renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFShadowMap;
   host.append(renderer.domElement);
   renderer.domElement.setAttribute('aria-label','3D panel inspection');
@@ -63,15 +63,15 @@ export function createInspection(host:HTMLElement,p:Project,definitions:Map<stri
   if(options.pageInteraction){controls.enableZoom=false;controls.enablePan=false;renderer.domElement.style.touchAction='pan-y';}
   const root=new THREE.Group();scene.add(root);
   const environmentScene=new RoomEnvironment(),pmrem=new THREE.PMREMGenerator(renderer);
-  const environment=pmrem.fromScene(environmentScene,.04);scene.environment=environment.texture;scene.environmentIntensity=.75;
+  const environment=pmrem.fromScene(environmentScene,.04);scene.environment=environment.texture;scene.environmentIntensity=.6;
   environmentScene.dispose();pmrem.dispose();
-  scene.add(new THREE.HemisphereLight('#f4f7ff','#7a818a',.7));
-  const key=new THREE.DirectionalLight('#fff6e9',3.1);key.position.set(-70,100,150);key.castShadow=true;
+  scene.add(new THREE.HemisphereLight('#f4f7ff','#7a818a',.35));
+  const key=new THREE.DirectionalLight('#fff6e9',2.4);key.position.set(-90,110,100);key.castShadow=true;
   key.shadow.mapSize.set(2048,2048);key.shadow.normalBias=.075;key.shadow.bias=-.00012;key.shadow.radius=4;
   const span=Math.max(w,h)*.85+30;
   Object.assign(key.shadow.camera,{left:-span,right:span,top:span,bottom:-span,near:1,far:800});
   key.shadow.camera.updateProjectionMatrix();scene.add(key);
-  const rim=new THREE.DirectionalLight('#cfdeee',2.2);rim.position.set(100,40,-120);scene.add(rim);
+  const rim=new THREE.DirectionalLight('#cfdeee',1.8);rim.position.set(100,40,-120);scene.add(rim);
   const shape=new THREE.Shape([new THREE.Vector2(-w/2,-h/2),new THREE.Vector2(w/2,-h/2),new THREE.Vector2(w/2,h/2),new THREE.Vector2(-w/2,h/2)]);
   for(const s of [...mountingShapes(p.panel),...cutoutShapes(p.items,definitions)]){
     const points=contour(s).map(v=>new THREE.Vector2(v.x-w/2,h/2-v.y));

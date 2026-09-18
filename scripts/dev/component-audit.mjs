@@ -55,7 +55,7 @@ try{
 
     const renderer=new THREE.WebGLRenderer({antialias:true,preserveDrawingBuffer:true});
     renderer.setSize(240,312);renderer.setPixelRatio(1);renderer.outputColorSpace=THREE.SRGBColorSpace;
-    renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.05;
+    renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=.95;
     renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFShadowMap;
     const environmentScene=new RoomEnvironment(),pmrem=new THREE.PMREMGenerator(renderer),environment=pmrem.fromScene(environmentScene,.04);
     environmentScene.dispose();pmrem.dispose();
@@ -67,12 +67,12 @@ try{
       const grid=section.querySelector('.grid'),bg=tone==='dark'?'#171d1e':'#edf0f1',surface=tone==='dark'?'#242c2a':'#bdc4c6';
       for(const d of hardware.filter(d=>renderers.includes(d.renderer))){
         const i=item(d),resources=new HardwareResources(),scene=new THREE.Scene();
-        scene.background=new THREE.Color(bg);scene.environment=environment.texture;scene.environmentIntensity=.75;
-        const key=new THREE.DirectionalLight('#fff6e9',3.1);key.position.set(-70,100,150);key.castShadow=true;
+        scene.background=new THREE.Color(bg);scene.environment=environment.texture;scene.environmentIntensity=.6;
+        const key=new THREE.DirectionalLight('#fff6e9',2.4);key.position.set(-90,110,100);key.castShadow=true;
         key.shadow.mapSize.set(512,512);Object.assign(key.shadow.camera,{left:-60,right:60,top:60,bottom:-60,near:1,far:500});key.shadow.camera.updateProjectionMatrix();
         key.shadow.normalBias=.075;key.shadow.bias=-.00012;scene.add(key);
-        const rim=new THREE.DirectionalLight('#cfdeee',2.2);rim.position.set(100,40,-120);scene.add(rim);
-        scene.add(new THREE.HemisphereLight('#f4f7ff','#7a818a',.7));
+        const rim=new THREE.DirectionalLight('#cfdeee',1.8);rim.position.set(100,40,-120);scene.add(rim);
+        scene.add(new THREE.HemisphereLight('#f4f7ff','#7a818a',.35));
         const root=new THREE.Group(),model=createHardware(d,i,p.accentColor,resources);root.add(model.front);scene.add(root);
         const span=Math.max(d.width,d.height)+8;
         const shape=new THREE.Shape([new THREE.Vector2(-span/2,-span/2),new THREE.Vector2(span/2,-span/2),new THREE.Vector2(span/2,span/2),new THREE.Vector2(-span/2,span/2)]);

@@ -110,6 +110,22 @@ describe('the complete 3D hardware catalog',()=>{
     expect(geometry.getAttribute('normal').count).toBeGreaterThan(24);
   });
 
+  it('models actual holes in the DIN insulator with contacts below its face',()=>{
+    const {front}=model('midi-din');front.updateMatrixWorld(true);
+    const insulator=front.getObjectByName('DIN insulator') as THREE.Mesh;
+    const face=bounds(insulator).max.z,shell=bounds(front.getObjectByName('DIN socket shell')!);
+    expect(face).toBeLessThan(shell.max.z);
+    const ray=new THREE.Raycaster(new THREE.Vector3(0,0,10),new THREE.Vector3(0,0,-1));
+    expect(ray.intersectObject(insulator)).not.toHaveLength(0);
+    for(const p of dinContacts()){
+      ray.ray.origin.set(p.x,-p.y,10);
+      expect(ray.intersectObject(insulator)).toHaveLength(0);
+    }
+    for(const contact of front.children.filter(n=>n.name==='DIN contact recess')){
+      expect(bounds(contact).max.z).toBeLessThan(face);
+    }
+  });
+
   it('does not illuminate switched-off lenses or a non-illuminated metal button',()=>{
     for(const id of ['led-3mm','led-ring','encoder-ring','button-lit','button-lit-square','button-metal']){
       model(id,0).front.traverse(n=>{
@@ -142,6 +158,24 @@ describe('the complete 3D hardware catalog',()=>{
 });
 
 describe('inspection resource use',()=>{
+  it('shares small deterministic finish textures and disposes them once',()=>{
+    const plastic=resources.material('#242520','plastic') as THREE.MeshPhysicalMaterial;
+    const another=resources.material('#237596','plastic') as THREE.MeshPhysicalMaterial;
+    const rubber=resources.material('#242520','rubber') as THREE.MeshPhysicalMaterial;
+    const steel=resources.material('#b5bdc2','metal') as THREE.MeshPhysicalMaterial;
+    const polished=resources.material('#b5bdc2','polished') as THREE.MeshPhysicalMaterial;
+    expect(plastic.roughnessMap).toBe(another.roughnessMap);
+    expect(plastic.bumpMap).toBe(plastic.roughnessMap);
+    expect((plastic.roughnessMap as THREE.DataTexture).image.width).toBe(64);
+    expect(rubber.roughness).toBeGreaterThan(plastic.roughness);
+    expect(polished.roughness).toBeLessThan(steel.roughness);
+    expect(polished.roughnessMap).toBeNull();
+    const textures=[plastic.roughnessMap!,rubber.roughnessMap!,steel.roughnessMap!];
+    const spies=textures.map(t=>vi.spyOn(t,'dispose'));
+    resources.dispose();resources.dispose();
+    for(const spy of spies)expect(spy).toHaveBeenCalledOnce();
+  });
+
   it('shares repeated geometry and materials, then releases them',()=>{
     const a=model('knob-medium').front.getObjectByName('cap') as THREE.Mesh,b=model('knob-medium').front.getObjectByName('cap') as THREE.Mesh;
     expect(a.geometry).toBe(b.geometry);expect(a.material).toBe(b.material);

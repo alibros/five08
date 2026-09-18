@@ -300,10 +300,7 @@ h1 { font-size: 58px; max-width: 14ch; line-height: 1.0; letter-spacing: 0; font
 .swatches .finish-svg { display: block; }
 .demo figcaption { margin-top: 10px; padding-left: 36px; max-width: 50ch; font-size: 12.5px; line-height: 1.65; color: var(--muted); }
 
-/* ---- the rack ----
-   A photograph, except drawn: the panel in a case with its neighbours out
-   of focus and a few cables. Wider than the frame so the row runs off both
-   edges. */
+/* ---- the rack ---- */
 .rack { margin: 0; padding: 0 0 8px; border-top: 1px solid var(--rule); }
 .rack-scene-host {
   display: flex; overflow: hidden; border-radius: 2px;
@@ -312,6 +309,7 @@ h1 { font-size: 58px; max-width: 14ch; line-height: 1.0; letter-spacing: 0; font
 /* The scene carries its own aspect ratio from its viewBox, so the figure is
    exactly as tall as the rack it holds and nothing is cropped. */
 .rack-scene { display: block; width: 100%; height: auto; }
+.rack-scene .panel-texture { opacity: .16; }
 .rack figcaption {
   display: grid; grid-template-columns: 72px minmax(0, 1fr); gap: 0 18px;
   padding: 12px 0 0; max-width: 78ch; font-size: 12.5px; line-height: 1.6; color: var(--muted);

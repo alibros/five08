@@ -51,6 +51,18 @@ describe('the complete 2D hardware catalog',()=>{
     expect(drawing('midi-trs').querySelector('[data-detail="DIN contact"]')).toBeNull();
   });
 
+  it('shades jack retaining nuts without changing their real socket diameters',()=>{
+    for(const id of ['jack-mono','jack-stereo','jack-thonk','midi-trs','banana']){
+      const doc=drawing(id);
+      const facets=[...doc.querySelectorAll('[data-detail="hex retaining nut"] polygon')];
+      expect(facets).toHaveLength(7);
+      expect(new Set(facets.map(face=>face.getAttribute('fill'))).size).toBeGreaterThan(3);
+      const bore=doc.querySelector('[data-detail="socket well"] circle')!;
+      expect(Number(bore.getAttribute('r'))*2).toBe(id==='banana'?4:3.5);
+      expect(Number(doc.querySelector('[data-detail="washer"] circle')!.getAttribute('r'))*2).toBe(catalogMap.get(id)!.width);
+    }
+  });
+
   it('makes all stateful renderers respond to preview values',()=>{
     for(const d of hardware.filter(d=>['knob','slider','toggle','led','display','touch'].includes(d.renderer)||d.id.includes('lit'))){
       expect(render(d.id,0),d.id).not.toBe(render(d.id,1));
@@ -58,6 +70,22 @@ describe('the complete 2D hardware catalog',()=>{
       expect(render(d.id,2),d.id).toBe(render(d.id,1));
       expect(render(d.id,NaN),d.id).toBe(render(d.id,.5));
     }
+  });
+
+  it('gives rotary caps directional bevels and self-contained face shading',()=>{
+    for(const d of hardware.filter(d=>d.renderer==='knob')){
+      const doc=drawing(d.id),bevel=doc.querySelector('[data-detail="cap bevel"]')!;
+      expect(bevel.querySelectorAll('path')).toHaveLength(48);
+      expect(new Set([...bevel.querySelectorAll('path')].map(p=>p.getAttribute('fill'))).size).toBeGreaterThan(12);
+      expect(doc.querySelectorAll('[data-detail="top insert"] circle').length).toBeGreaterThan(10);
+    }
+  });
+
+  it('keeps lens and screen highlights inside their own hardware groups',()=>{
+    for(const id of ['oled-096','seven-seg','bargraph','vu-meter']){
+      expect(drawing(id).querySelectorAll('[data-detail="glass edge"] line')).toHaveLength(2);
+    }
+    expect(drawing('led-5mm').querySelectorAll('[data-detail="LED lens"] path')).toHaveLength(1);
   });
 
   it('switches illuminated rings fully off and fully on',()=>{

@@ -6,12 +6,33 @@ import {dinContacts,faderTravel,fluteInset,hardwareColors,knobAngle,oledTrace,pr
 
 type Material = THREE.MeshStandardMaterial;
 type Profile = Array<[radius:number,z:number]>;
+type Finish = 'plastic'|'rubber'|'metal'|'polished'|'glass'|'light'|'matte';
 export type HardwareModel = {front:THREE.Group};
 
 /** Per-inspection resources: repeated parts share meshes, finishes and small details. */
 export class HardwareResources {
   private geometries = new Map<string,THREE.BufferGeometry>();
   private materials = new Map<string,Material>();
+  private textures = new Map<string,THREE.DataTexture>();
+
+  private surface(finish:Finish){
+    let texture=this.textures.get(finish);
+    if(!texture){
+      const size=64,data=new Uint8Array(size*size*4);
+      // Deterministic micro-grain: a tiny shared texture, not an external asset or animated noise.
+      for(let y=0;y<size;y++)for(let x=0;x<size;x++){
+        const hash=Math.imul(x+1,374761393)^Math.imul(y+1,668265263);
+        const grain=((hash^(hash>>>13))>>>0)%53;
+        const value=finish==='metal'?184+(y%4)*12+grain*.2:184+grain;
+        const n=(y*size+x)*4;data[n]=data[n+1]=data[n+2]=value;data[n+3]=255;
+      }
+      texture=new THREE.DataTexture(data,size,size);texture.wrapS=texture.wrapT=THREE.RepeatWrapping;
+      texture.magFilter=THREE.LinearFilter;texture.minFilter=THREE.LinearMipmapLinearFilter;
+      texture.generateMipmaps=true;texture.repeat.set(3,3);texture.needsUpdate=true;
+      this.textures.set(finish,texture);
+    }
+    return texture;
+  }
 
   geometry(key:string,build:()=>THREE.BufferGeometry){
     let geometry=this.geometries.get(key);
@@ -19,15 +40,17 @@ export class HardwareResources {
     return geometry;
   }
 
-  material(color:string,finish:'plastic'|'rubber'|'metal'|'glass'|'light'|'matte'='plastic',level=1){
+  material(color:string,finish:Finish='plastic',level=1){
     const key=`${color}:${finish}:${level}`;
     let material=this.materials.get(key);
     if(!material){
       material=new THREE.MeshPhysicalMaterial({color:finish==='light'?shade(color,.12):color,
-        metalness:finish==='metal'?.9:0,
-        roughness:finish==='metal'?.26:finish==='rubber'?.82:finish==='matte'?.65:finish==='glass'?.15:.44,
-        clearcoat:finish==='glass'?.85:finish==='plastic'?.12:0,
-        clearcoatRoughness:.22,emissiveIntensity:0,
+        metalness:finish==='metal'?.94:finish==='polished'?1:0,
+        roughness:finish==='metal'?.34:finish==='polished'?.17:finish==='rubber'?.92:finish==='matte'?.72:finish==='glass'?.12:.36,
+        clearcoat:finish==='glass'?.95:finish==='plastic'?.25:0,
+        clearcoatRoughness:.18,emissiveIntensity:0,
+        ...(['plastic','rubber','metal','matte'].includes(finish)?{roughnessMap:this.surface(finish)}:{}),
+        ...(['plastic','rubber'].includes(finish)?{bumpMap:this.surface(finish),bumpScale:finish==='rubber'?.022:.009}:{}),
         ...(finish==='light'?{emissive:color,emissiveIntensity:.3+level*.9,roughness:.3}:{}),
       });
       this.materials.set(key,material);
@@ -36,8 +59,8 @@ export class HardwareResources {
   }
 
   dispose(){
-    this.geometries.forEach(g=>g.dispose());this.materials.forEach(m=>m.dispose());
-    this.geometries.clear();this.materials.clear();
+    this.geometries.forEach(g=>g.dispose());this.materials.forEach(m=>m.dispose());this.textures.forEach(t=>t.dispose());
+    this.geometries.clear();this.materials.clear();this.textures.clear();
   }
 }
 
@@ -70,8 +93,12 @@ class Builder {
 
   frame(parent:THREE.Group,w:number,h:number,iw:number,ih:number,r:number,ir:number,depth:number,material:Material,name:string){
     const geometry=this.resources.geometry(`frame:${w}:${h}:${iw}:${ih}:${r}:${ir}:${depth}`,()=>{
-      const shape=roundedShape(w,h,r);shape.holes.push(new THREE.Path(roundedShape(iw,ih,ir).getPoints(24).reverse()));
-      return new THREE.ExtrudeGeometry(shape,{depth,bevelEnabled:false,curveSegments:24});
+      const bevel=Math.min(.09,depth*.15,(w-iw)*.15,(h-ih)*.15,r*.3);
+      const inset=bevel/Math.cos(Math.PI/48);
+      const shape=roundedShape(w-2*inset,h-2*inset,r-inset);
+      shape.holes.push(new THREE.Path(roundedShape(iw+2*inset,ih+2*inset,ir+inset).getPoints(24).reverse()));
+      const geometry=new THREE.ExtrudeGeometry(shape,{depth:depth-2*bevel,bevelEnabled:true,bevelSize:bevel,bevelThickness:bevel,bevelSegments:3,curveSegments:24});
+      geometry.translate(0,0,bevel);return geometry;
     });
     return this.mesh(parent,geometry,material,name,0,0,.01);
   }
@@ -185,8 +212,13 @@ function knob(b:Builder,g:THREE.Group,d:ComponentDefinition,i:Item,accent:string
   }
   const base=skirt?capR*.72:capR;
   b.lathe(g,[[0,1],[base*.93,1],[base,1.5],[base,height-1],[base*.93,height-.25],[base*.86,height],[0,height]],material,'cap',d.id==='knob-fluted'?16:metal?64:encoder?36:0);
-  if(metal)b.cylinder(g,base*.78,.12,height,res.material(shade(i.color,1.15),'metal'),'machined top');
-  else b.cylinder(g,base*.8,.08,height-.02,res.material(shade(i.color,1.15),d.id==='knob-soft-touch'?'rubber':'matte'),'top insert');
+  if(metal){
+    b.cylinder(g,base*.78,.12,height,res.material(i.color,'metal'),'machined top');
+    for(const fraction of [.38,.52,.65])b.ring(g,base*fraction,base*fraction-.035,.025,height+.125,res.material(shade(i.color,.75),'metal'),'machining line');
+  }else{
+    b.lathe(g,[[0,height-.03],[base*.8,height-.03],[base*.8,height+.015],[base*.77,height+.08],[base*.5,height+.095],[0,height+.095]],res.material(i.color,d.id==='knob-soft-touch'?'rubber':'matte'),'top insert');
+  }
+  b.ring(g,base*.827,base*.805,.035,height+.015,res.material(shade(i.color,.55),metal?'metal':'plastic'),'cap seam');
   if(encoder){
     const a=-knobAngle(i.value)*Math.PI/180;
     b.cylinder(g,.45,.1,height+.14,ink,'position dot',Math.cos(a)*base*.57,Math.sin(a)*base*.57,24);
@@ -201,11 +233,11 @@ function knob(b:Builder,g:THREE.Group,d:ComponentDefinition,i:Item,accent:string
 
 function jack(b:Builder,g:THREE.Group,d:ComponentDefinition,i:Item){
   const r=d.width/2,banana=d.id==='banana',res=b.resources;
-  const metal=res.material(STEEL,'metal'),black=res.material(DARK,'rubber'),bore=banana?2:1.75;
+  const metal=res.material(STEEL,'metal'),black=res.material('#030507','matte'),bore=banana?2:1.75;
   b.ring(g,r,bore,.45,.02,banana?res.material(i.color):metal,'washer');
   b.ring(g,r*.88,bore,1.5,.47,banana?res.material(i.color):metal,'hex retaining nut',6);
   b.ring(g,banana?r*.62:2.7,bore,1.3,1.97,banana?metal:res.material(i.color),'socket collar');
-  b.ring(g,bore+.28,bore,.26,3.27,metal,'socket lip');
+  b.ring(g,bore+.28,bore,.26,3.27,res.material(STEEL,'polished'),'socket lip');
   b.ring(g,bore+.02,bore-.12,5,-1.7,black,'socket well');
   b.cylinder(g,bore-.1,.12,-1.7,black,'socket interior');
   b.box(g,.28,.8,.12,-.7,res.material(GOLD,'metal'),'contact spring',bore-.28,0,.02);
@@ -215,13 +247,13 @@ function slider(b:Builder,g:THREE.Group,d:ComponentDefinition,i:Item){
   const vertical=d.orientation!=='horizontal',travel=faderTravel(d),res=b.resources;
   const track=new THREE.Group();track.name='fader assembly';g.add(track);
   if(!vertical)track.rotation.z=-Math.PI/2;
-  b.plate(track,3.2,travel+6,1.4,.8,-.5,res.material(DARK,'rubber'),'recessed track');
+  b.plate(track,3.2,travel+6,1.4,.8,-.5,res.material('#030507','matte'),'recessed track');
   b.box(track,.55,travel+3,.3,.18,res.material(STEEL,'metal'),'guide rail',0,0,.1);
   const y=(i.value-.5)*travel;
   b.box(track,1.7,2.8,3,.3,res.material(STEEL,'metal'),'fader stem',0,y);
   b.box(track,10,5.5,3,2.3,res.material(i.color),'fader cap',0,y,.6);
   b.box(track,8.8,.45,.12,5.32,res.material(DARK,'matte'),'fader index',0,y,.08);
-  for(const offset of [-1.6,1.6])b.box(track,8.3,.23,.16,5.17,res.material(shade(i.color,.6)),'cap grip',0,y+offset,.04);
+  for(const offset of [-1.65,-1.1,1.1,1.65])b.box(track,7.8,.17,.12,5.24,res.material(shade(i.color,.65)),'cap grip',0,y+offset,.04);
 }
 
 function button(b:Builder,g:THREE.Group,d:ComponentDefinition,i:Item){
@@ -260,7 +292,7 @@ function toggle(b:Builder,g:THREE.Group,d:ComponentDefinition,i:Item){
   const lever=new THREE.Group();lever.name='toggle lever';lever.position.z=2.8;
   const position=togglePosition(d.id,i.value);
   lever.rotation.x=-position*.38;g.add(lever);
-  b.lathe(lever,[[0,0],[.8,0],[.8,5.8],[1.05,6.4],[1.05,9],[.7,9.5],[0,9.5]],res.material(i.color,'metal'),'polished lever');
+  b.lathe(lever,[[0,0],[.8,0],[.8,5.8],[1.05,6.4],[1.05,9],[.7,9.5],[0,9.5]],res.material(i.color,'polished'),'polished lever');
 }
 
 function led(b:Builder,g:THREE.Group,d:ComponentDefinition,i:Item){
@@ -316,14 +348,21 @@ function connector(b:Builder,g:THREE.Group,d:ComponentDefinition,i:Item){
   const res=b.resources,metal=res.material(d.id==='usb-c'?i.color:STEEL,'metal'),dark=res.material(d.id==='usb-c'?DARK:i.color,'rubber');
   if(d.id==='midi-din'){
     b.ring(g,d.width/2,7,.8,0,metal,'DIN flange');
-    b.ring(g,7.7,6.7,2,.8,metal,'DIN socket shell');
-    b.cylinder(g,6.7,1,1.2,dark,'DIN insulator');
+    b.ring(g,7.7,6.7,2,.8,res.material(STEEL,'polished'),'DIN socket shell');
+    const insulator=res.geometry('DIN perforated insulator',()=>{
+      const shape=new THREE.Shape();shape.absarc(0,0,6.7,0,TAU,false);
+      for(const p of dinContacts()){
+        const hole=new THREE.Path();hole.absarc(p.x,-p.y,.84,0,TAU,true);shape.holes.push(hole);
+      }
+      return new THREE.ExtrudeGeometry(shape,{depth:.9,bevelEnabled:false,curveSegments:32});
+    });
+    b.mesh(g,insulator,dark,'DIN insulator',0,0,.8);
     for(const p of dinContacts()){
-      const hole=new THREE.Group();hole.name='DIN contact recess';hole.position.set(p.x,-p.y,2.22);g.add(hole);
-      b.ring(hole,.78,.52,.1,0,metal,'DIN contact');
-      b.cylinder(hole,.51,.03,.01,res.material('#030507','matte'),'DIN pin well',0,0,24);
+      const hole=new THREE.Group();hole.name='DIN contact recess';hole.position.set(p.x,-p.y,.83);g.add(hole);
+      b.ring(hole,.82,.6,.6,0,res.material('#8b8366','metal'),'DIN contact');
+      b.cylinder(hole,.59,.03,-.04,res.material('#030507','matte'),'DIN pin well',0,0,24);
     }
-    b.box(g,1.4,1.8,.02,2.21,res.material('#030507','matte'),'DIN key',0,5.8,.1);
+    b.box(g,1.4,1.8,.025,1.71,res.material('#030507','matte'),'DIN key',0,5.8,.1);
     return;
   }
   const w=d.width,h=d.height;
